@@ -1,1 +1,157 @@
-#!/usr/bin/env python3\n\"\"\"\n╔════════════════════════════════════════════════════════════╗\n║  🚀 TERMUX PRO - Copilot + GitHub + Chat IA               ║\n║     Ultimate Development Environment on Phone             ║\n╚══════════════════════════════════════════════════════════���═╝\n\nMain Hub Interface - Everything integrated\n\"\"\"\n\nimport os\nimport sys\nimport json\nimport subprocess\nfrom pathlib import Path\nfrom datetime import datetime\n\ntry:\n    from rich.console import Console\n    from rich.table import Table\n    from rich.panel import Panel\n    from rich.text import Text\n    from rich.layout import Layout\n    from rich.align import Align\nexcept ImportError:\n    print(\"\\n❌ Installing rich...\")\n    subprocess.run([sys.executable, \"-m\", \"pip\", \"install\", \"rich\"], capture_output=True)\n    from rich.console import Console\n    from rich.panel import Panel\n    from rich.text import Text\n    from rich.align import Align\n\nconsole = Console()\n\nWORKSPACE = Path.home() / 'ai-workspace'\nCONFIG = WORKSPACE / 'config' / 'ai.conf'\n\nclass TermuxProHub:\n    def __init__(self):\n        self.api_key = os.getenv('OPENAI_API_KEY')\n        self.load_config()\n    \n    def load_config(self):\n        if not CONFIG.exists():\n            CONFIG.parent.mkdir(parents=True, exist_ok=True)\n            CONFIG.write_text('export OPENAI_API_KEY=\"sk-your-key\"')\n    \n    def clear_screen(self):\n        os.system('clear' if os.name != 'nt' else 'cls')\n    \n    def print_banner(self):\n        banner = \"\"\"\n╔════════════════════════════════════════════════════════════════╗\n║                                                                ║\n║        🚀 TERMUX PRO - Developer Hub                          ║\n║        Copilot + GitHub + Chat IA - All in One               ║\n║                                                                ║\n║        Made for 📱 Phone Development                          ║\n║                                                                ║\n╚════════════════════════════════════════════════════════════════╝\n        \"\"\"\n        console.print(banner, style=\"cyan bold\")\n    \n    def print_status(self):\n        \"\"\"Arata status sistem\"\"\"\n        git_installed = os.system('git --version > /dev/null 2>&1') == 0\n        python_ok = sys.version_info.major >= 3\n        api_ok = self.api_key and self.api_key != \"sk-your-key\"\n        \n        status_table = Table(show_header=False, box=None, padding=(0, 2))\n        status_table.add_row(\"🐍 Python\", \"✅ 3.x\" if python_ok else \"❌ Old\")\n        status_table.add_row(\"🔑 OpenAI Key\", \"✅ Set\" if api_ok else \"❌ Not set\")\n        status_table.add_row(\"📦 Git\", \"✅ Installed\" if git_installed else \"❌ Missing\")\n        \n        console.print(Panel(status_table, title=\"[bold cyan]System Status[/bold cyan]\", border_style=\"cyan\"))\n    \n    def show_main_menu(self):\n        \"\"\"Meniu principal frumos\"\"\"\n        menu_text = \"\"\"\n[bold cyan]┌─────────────────────────────────────────────────────────────┐[/]\n[bold cyan]│[/]  [bold yellow]1[/]  💬 [bold]AI Chat[/bold]                                        [bold cyan]│[/]\n[bold cyan]│[/]  [bold yellow]2[/]  💻 [bold]Copilot (Code Generator)[/bold]                [bold cyan]│[/]\n[bold cyan]│[/]  [bold yellow]3[/]  🐙 [bold]GitHub Tools[/bold]                              [bold cyan]│[/]\n[bold cyan]│[/]  [bold yellow]4[/]  📊 [bold]Statistics & History[/bold]                    [bold cyan]│[/]\n[bold cyan]│[/]  [bold yellow]5[/]  🔧 [bold]Settings & Config[/bold]                      [bold cyan]│[/]\n[bold cyan]│[/]  [bold yellow]6[/]  📚 [bold]Terminal Help[/bold]                            [bold cyan]│[/]\n[bold cyan]│[/]  [bold yellow]7[/]  🎨 [bold]Theme & Appearance[/bold]                     [bold cyan]│[/]\n[bold cyan]│[/]  [bold yellow]8[/]  🚀 [bold]Advanced Tools[/bold]                          [bold cyan]│[/]\n[bold cyan]│[/]  [bold yellow]9[/]  ℹ️  [bold]Help & Info[/bold]                             [bold cyan]│[/]\n[bold cyan]│[/]  [bold yellow]0[/]  🚪 [bold]Exit[/bold]                                    [bold cyan]│[/]\n[bold cyan]└─────────────────────────────────────────────────────────────┘[/]\n        \"\"\"\n        console.print(menu_text)\n    \n    def option_1_chat(self):\n        \"\"\"AI Chat\"\"\"\n        console.print(\"\\n[cyan]→ Starting AI Chat...[/]\\n\")\n        os.system('python $HOME/ai-workspace/scripts/chat.py')\n    \n    def option_2_copilot(self):\n        \"\"\"Copilot\"\"\"\n        console.print(\"\\n[cyan]→ Starting Copilot...[/]\\n\")\n        console.print(\"[yellow]Examples:[/]\")\n        console.print(\"  [green]copilot[/] 'write a python function'\")\n        console.print(\"  [green]copilot[/] 'bash script to backup'\")\n        console.print(\"  [green]copilot[/] 'javascript async function'\\n\")\n        \n        prompt = input(\"[bold cyan]📝 Enter request:[/bold cyan] \").strip()\n        if prompt:\n            os.system(f'python $HOME/ai-workspace/scripts/copilot.py \"{prompt}\"')\n    \n    def option_3_github(self):\n        \"\"\"GitHub Tools\"\"\"\n        while True:\n            console.clear()\n            console.print(Panel(\n                \"[bold cyan]GitHub Tools[/]\",\n                border_style=\"cyan\"\n            ))\n            \n            github_menu = \"\"\"\n[cyan]┌─────────────────────────────────┐[/]\n[cyan]│[/]  [bold yellow]1[/]  Clone Repository        [cyan]│[/]\n[cyan]│[/]  [bold yellow]2[/]  Init New Repo            [cyan]│[/]\n[cyan]│[/]  [bold yellow]3[/]  Git Status              [cyan]│[/]\n[cyan]│[/]  [bold yellow]4[/]  Commit & Push            [cyan]│[/]\n[cyan]│[/]  [bold yellow]5[/]  Create Branch            [cyan]│[/]\n[cyan]│[/]  [bold yellow]0[/]  Back to Main Menu         [cyan]│[/]\n[cyan]└─────────────────────────────────┘[/]\n            \"\"\"\n            console.print(github_menu)\n            \n            choice = input(\"\\n[bold yellow]Choose (0-5):[/bold yellow] \").strip()\n            \n            if choice == '1':\n                console.print(\"\\n[cyan]Cloning Repository...[/]\")\n                repo_url = input(\"[bold]Repo URL:[/bold] \").strip()\n                if repo_url:\n                    os.system(f'git clone {repo_url}')\n            \n            elif choice == '2':\n                console.print(\"\\n[cyan]Init New Repository...[/]\")\n                repo_name = input(\"[bold]Repo name:[/bold] \").strip()\n                if repo_name:\n                    os.makedirs(repo_name, exist_ok=True)\n                    os.chdir(repo_name)\n                    os.system('git init')\n                    console.print(f\"[green]✅ Initialized: {repo_name}[/]\")\n            \n            elif choice == '3':\n                console.print(\"\\n[cyan]Git Status:[/]\\n\")\n                os.system('git status')\n            \n            elif choice == '4':\n                msg = input(\"\\n[bold]Commit message:[/bold] \").strip()\n                if msg:\n                    os.system('git add .')\n                    os.system(f'git commit -m \"{msg}\"')\n                    os.system('git push')\n            \n            elif choice == '5':\n                branch = input(\"\\n[bold]Branch name:[/bold] \").strip()\n                if branch:\n                    os.system(f'git checkout -b {branch}')\n            \n            elif choice == '0':\n                break\n            \n            input(\"\\n[cyan]Press Enter...[/]\")\n    \n    def option_4_stats(self):\n        \"\"\"Statistics\"\"\"\n        chats_dir = WORKSPACE / 'chats'\n        code_dir = WORKSPACE / 'generated_code'\n        \n        if chats_dir.exists():\n            chats = list(chats_dir.glob('*.json'))\n            total_msgs = 0\n            for chat_file in chats:\n                try:\n                    with open(chat_file) as f:\n                        data = json.load(f)\n                        total_msgs += len(data.get('messages', []))\n                except:\n                    pass\n        else:\n            chats = []\n            total_msgs = 0\n        \n        code_files = list(code_dir.glob('*')) if code_dir.exists() else []\n        \n        stats_text = f\"\"\"\n[bold cyan]📊 Statistics[/]\n\nChat Sessions:    [yellow]{len(chats)}[/]\nTotal Messages:   [yellow]{total_msgs}[/]\nGenerated Code:   [yellow]{len(code_files)}[/]\nWorkspace:        [yellow]{WORKSPACE}[/]\n        \"\"\"\n        \n        console.print(Panel(stats_text, border_style=\"cyan\"))\n        input(\"\\n[cyan]Press Enter...[/]\")\n    \n    def option_5_settings(self):\n        \"\"\"Settings\"\"\"\n        console.print(Panel(\n            \"[bold cyan]Settings[/]\\n\\nEdit with: [yellow]nano ~/ai-workspace/config/ai.conf[/]\",\n            border_style=\"cyan\"\n        ))\n        \n        edit = input(\"\\n[bold]Edit now? (y/n):[/bold] \").strip().lower()\n        if edit == 'y':\n            os.system('nano $HOME/ai-workspace/config/ai.conf')\n    \n    def option_6_terminal_help(self):\n        \"\"\"Terminal Help\"\"\"\n        console.print(\"\\n[bold cyan]Terminal Help[/]\\n\")\n        command = input(\"[bold]Explain command:[/bold] \").strip()\n        if command:\n            console.print(\"\\n[cyan]Asking Copilot...[/]\\n\")\n            os.system(f'python $HOME/ai-workspace/scripts/copilot.py help \"{command}\"')\n    \n    def option_9_help(self):\n        \"\"\"Help\"\"\"\n        help_text = \"\"\"\n[bold cyan]QUICK REFERENCE[/]\n\n[bold yellow]Commands:[/]\n  [green]ai[/]          Main menu (this)\n  [green]chat[/]        AI Chat directly\n  [green]copilot[/]     Code generation\n  [green]cop[/]         Short for copilot\n  [green]goto_ai[/]     Go to workspace\n\n[bold yellow]Hotkeys:[/]\n  [green]Ctrl+C[/]      Cancel/Exit\n  [green]Ctrl+D[/]      Send EOF\n\n[bold yellow]Files:[/]\n  Config:        ~/ai-workspace/config/ai.conf\n  Chats:         ~/ai-workspace/chats/\n  Generated:     ~/ai-workspace/generated_code/\n        \"\"\"\n        console.print(Panel(help_text, border_style=\"cyan\"))\n        input(\"\\n[cyan]Press Enter...[/]\")\n    \n    def run(self):\n        \"\"\"Main loop\"\"\"\n        while True:\n            self.clear_screen()\n            self.print_banner()\n            self.print_status()\n            self.show_main_menu()\n            \n            choice = input(\"[bold yellow]Choose option (0-9):[/bold yellow] \").strip()\n            \n            if choice == '1':\n                self.option_1_chat()\n            elif choice == '2':\n                self.option_2_copilot()\n            elif choice == '3':\n                self.option_3_github()\n            elif choice == '4':\n                self.option_4_stats()\n            elif choice == '5':\n                self.option_5_settings()\n            elif choice == '6':\n                self.option_6_terminal_help()\n            elif choice == '7':\n                console.print(\"[yellow]Theme feature coming soon...[/]\")\n            elif choice == '8':\n                console.print(\"[yellow]Advanced tools coming soon...[/]\")\n            elif choice == '9':\n                self.option_9_help()\n            elif choice == '0':\n                console.print(\"\\n[cyan]👋 Goodbye! Happy coding![/]\\n\")\n                break\n            else:\n                console.print(\"[red]❌ Invalid option[/]\")\n            \n            input(\"\\n[cyan]Press Enter to continue...[/]\")\n\nif __name__ == \"__main__\":\n    hub = TermuxProHub()\n    try:\n        hub.run()\n    except KeyboardInterrupt:\n        console.print(\"\\n[red]Interrupted[/]\\n\")\n"
+#!/usr/bin/env python3
+"""
+🚀 TERMUX PRO HUB - Developer Interface
+Integrated: GitHub + Copilot + Chat AI + Beautiful UI
+"""
+
+import os
+import sys
+import json
+import subprocess
+from pathlib import Path
+
+try:
+    from rich.console import Console
+    from rich.panel import Panel
+    from rich.text import Text
+except ImportError:
+    subprocess.run([sys.executable, "-m", "pip", "install", "rich"], capture_output=True)
+    from rich.console import Console
+    from rich.panel import Panel
+
+console = Console()
+WORKSPACE = Path.home() / 'ai-workspace'
+
+class TermuxProHub:
+    def __init__(self):
+        self.api_key = os.getenv('OPENAI_API_KEY')
+    
+    def clear(self):
+        os.system('clear')
+    
+    def banner(self):
+        b = """
+╔════════════════════════════════════════════════════════════════╗
+║                                                                ║
+║        🚀 TERMUX PRO - Developer Hub                          ║
+║        GitHub + Copilot + Chat AI                            ║
+║        Beautiful Interface for Phone Development             ║
+║                                                                ║
+╚════════════════════════════════════════════════════════════════╝
+        """
+        console.print(b, style="cyan bold")
+    
+    def menu(self):
+        m = """
+[bold cyan]┌─────────────────────────────────────────────────────────────┐[/]
+[bold cyan]│[/]  [bold yellow]1[/]  💬 [bold]AI Chat[/bold]                                      [bold cyan]│[/]
+[bold cyan]│[/]  [bold yellow]2[/]  💻 [bold]Copilot (Code Generator)[/bold]            [bold cyan]│[/]
+[bold cyan]│[/]  [bold yellow]3[/]  🐙 [bold]GitHub Tools[/bold]                         [bold cyan]│[/]
+[bold cyan]│[/]  [bold yellow]4[/]  📊 [bold]Statistics[/bold]                           [bold cyan]│[/]
+[bold cyan]│[/]  [bold yellow]5[/]  🔧 [bold]Settings[/bold]                             [bold cyan]│[/]
+[bold cyan]│[/]  [bold yellow]6[/]  ℹ️  [bold]Help[/bold]                                 [bold cyan]│[/]
+[bold cyan]│[/]  [bold yellow]0[/]  🚪 [bold]Exit[/bold]                                [bold cyan]│[/]
+[bold cyan]└─────────────────────────────────────────────────────────────┘[/]
+        """
+        console.print(m)
+    
+    def option_1(self):
+        console.print("\n[cyan]→ Starting AI Chat...\n[/]")
+        os.system('python $HOME/ai-workspace/scripts/chat.py')
+    
+    def option_2(self):
+        console.print("\n[cyan]→ Copilot Code Generator\n[/]")
+        prompt = input("[bold]📝 Describe code:[/bold] ").strip()
+        if prompt:
+            os.system(f'copilot "{prompt}"')
+    
+    def option_3(self):
+        self.clear()
+        console.print(Panel("[bold cyan]GitHub Tools[/]", border_style="cyan"))
+        
+        git_menu = """
+[cyan]1[/] Clone | [cyan]2[/] Init | [cyan]3[/] Status | [cyan]4[/] Commit | [cyan]5[/] Setup | [cyan]0[/] Back
+        """
+        console.print(git_menu)
+        
+        choice = input("\n[bold]Choose:[/bold] ").strip()
+        
+        if choice == '1':
+            url = input("[bold]Repo URL:[/bold] ").strip()
+            if url:
+                os.system(f'git clone {url}')
+        elif choice == '2':
+            name = input("[bold]Repo name:[/bold] ").strip()
+            if name:
+                os.makedirs(name, exist_ok=True)
+                os.chdir(name)
+                os.system('git init')
+                console.print(f"[green]✅ Initialized: {name}[/]")
+        elif choice == '3':
+            os.system('git status')
+        elif choice == '4':
+            msg = input("[bold]Message:[/bold] ").strip()
+            if msg:
+                os.system('git add .')
+                os.system(f'git commit -m "{msg}"')
+                os.system('git push')
+        elif choice == '5':
+            os.system('bash $HOME/ai-workspace/scripts/git_helper.sh')
+        
+        input("\n[cyan]Press Enter...[/]")
+    
+    def option_4(self):
+        chats_dir = WORKSPACE / 'chats'
+        chats = len(list(chats_dir.glob('*.json'))) if chats_dir.exists() else 0
+        code = len(list((WORKSPACE / 'generated_code').glob('*'))) if (WORKSPACE / 'generated_code').exists() else 0
+        
+        stats = f"[bold cyan]📊 Statistics\n\nChat Sessions: {chats}\nGenerated Code: {code}[/]"
+        console.print(Panel(stats, border_style="cyan"))
+        input("\n[cyan]Press Enter...[/]")
+    
+    def option_5(self):
+        console.print(Panel(
+            "[bold cyan]⚙️  Settings\n\nEdit: nano ~/ai-workspace/config/ai.conf[/]",
+            border_style="cyan"
+        ))
+        edit = input("\n[bold]Edit now? (y/n):[/bold] ").strip().lower()
+        if edit == 'y':
+            os.system('nano $HOME/ai-workspace/config/ai.conf')
+    
+    def option_6(self):
+        help_text = """[bold cyan]QUICK REFERENCE\n\nCommands:\n  tp/ai       Main hub\n  chat        Chat AI\n  copilot/cop Code gen\n  gs, ga, gp  Git shortcuts\n\nFiles:\n  Config: ~/ai-workspace/config/ai.conf\n  Chats: ~/ai-workspace/chats/[/]"""
+        console.print(Panel(help_text, border_style="cyan"))
+        input("\n[cyan]Press Enter...[/]")
+    
+    def run(self):
+        while True:
+            self.clear()
+            self.banner()
+            self.menu()
+            
+            choice = input("[bold yellow]Choose (0-6):[/bold yellow] ").strip()
+            
+            if choice == '1':
+                self.option_1()
+            elif choice == '2':
+                self.option_2()
+            elif choice == '3':
+                self.option_3()
+            elif choice == '4':
+                self.option_4()
+            elif choice == '5':
+                self.option_5()
+            elif choice == '6':
+                self.option_6()
+            elif choice == '0':
+                console.print("\n[cyan]👋 Goodbye! Happy coding!\n[/]")
+                break
+            
+            input("\n[cyan]Press Enter...[/]")
+
+if __name__ == "__main__":
+    hub = TermuxProHub()
+    try:
+        hub.run()
+    except KeyboardInterrupt:
+        console.print("\n[red]Interrupted\n[/]")
