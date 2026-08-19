@@ -1,1 +1,107 @@
-#!/usr/bin/env python3\n\"\"\"\n💻 TERMUX CODEX HELPER - Code Generation pe Telefon\nRuleaza: python ~/ai-workspace/scripts/codex_helper.py\n\"\"\"\n\nimport os\nimport openai\nimport json\nfrom pathlib import Path\nfrom datetime import datetime\n\nAPI_KEY = os.getenv('OPENAI_API_KEY')\nCODE_DIR = Path.home() / 'ai-workspace' / 'generated_code'\n\nif not API_KEY or API_KEY == \"sk-your-api-key-here\":\n    print(\"\u274c API_KEY not set!\")\n    print(\"\ud83d\udcdd Run: nano ~/ai-workspace/config/ai.conf\")\n    exit(1)\n\nopenai.api_key = API_KEY\n\nclass CodexHelper:\n    def __init__(self):\n        CODE_DIR.mkdir(parents=True, exist_ok=True)\n    \n    def generate_code(self, prompt, language='python'):\n        \"\"\"Genereaza cod din descriere\"\"\"\n        try:\n            response = openai.ChatCompletion.create(\n                model=\"gpt-3.5-turbo\",\n                messages=[\n                    {\"role\": \"system\", \"content\": f\"You are an expert {language} developer. Generate clean, well-documented code.\"},\n                    {\"role\": \"user\", \"content\": prompt}\n                ],\n                temperature=0.7,\n                max_tokens=2000\n            )\n            \n            return response['choices'][0]['message']['content']\n        except Exception as e:\n            return f\"\u274c Error: {e}\"\n    \n    def save_code(self, filename, code, language='python'):\n        \"\"\"Salveaza cod \u00een fisier\"\"\"\n        filepath = CODE_DIR / f\"{filename}.{self._get_extension(language)}\"\n        filepath.write_text(code, encoding='utf-8')\n        print(f\"\u2705 Cod salvat: {filepath}\")\n        return filepath\n    \n    def _get_extension(self, language):\n        ext_map = {\n            'python': 'py',\n            'javascript': 'js',\n            'bash': 'sh',\n            'java': 'java',\n            'cpp': 'cpp',\n            'c': 'c'\n        }\n        return ext_map.get(language, 'txt')\n    \n    def interactive_generation(self):\n        \"\"\"Chat interactiv pentru code generation\"\"\"\n        print(\"\"\"\n\u2554\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2557\n\u2551   \ud83d\udcbb CODEX HELPER - Code Generation   \u2551\n\u2551   Descrie ce cod vrei sa genereze      \u2551\n\u255a\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u255d\n        \"\"\")\n        \n        while True:\n            print(\"\"\"\n1. Generate code\n2. Save code to file\n3. Exit\n            \"\"\")\n            \n            choice = input(\"\ud83d\udc40 Choose (1-3): \").strip()\n            \n            if choice == '1':\n                language = input(\"Language (python/javascript/bash): \").strip() or 'python'\n                prompt = input(\"\\n\ud83d\udcdd Describe code to generate: \").strip()\n                \n                if prompt:\n                    print(\"\\n\u23f3 Generating...\")\n                    code = self.generate_code(prompt, language)\n                    print(f\"\\n\u2705 Generated Code:\\n\")\n                    print(\"\u2500\" * 50)\n                    print(code)\n                    print(\"\u2500\" * 50)\n                    \n                    save = input(\"\\nSave code? (y/n): \").lower()\n                    if save == 'y':\n                        filename = input(\"Filename (without extension): \").strip()\n                        if filename:\n                            self.save_code(filename, code, language)\n            \n            elif choice == '2':\n                print(\"\\n\ud83d\udcbe Manual save feature coming soon...\")\n            \n            elif choice == '3':\n                print(\"\ud83d\udc4b Goodbye!\")\n                break\n            \n            input(\"\\n\u23f3 Press Enter...\")\n\nif __name__ == \"__main__\":\n    codex = CodexHelper()\n    codex.interactive_generation()\n"
+#!/usr/bin/env python3
+"""
+💻 TERMUX CODEX HELPER - Code Generation pe Telefon
+Ruleaza: python ~/ai-workspace/scripts/codex_helper.py
+"""
+
+import os
+import openai
+from pathlib import Path
+
+API_KEY = os.getenv('OPENAI_API_KEY')
+CODE_DIR = Path.home() / 'ai-workspace' / 'generated_code'
+
+if not API_KEY or API_KEY == "sk-your-api-key-here":
+    print("❌ API_KEY not set!")
+    print("📝 Run: nano ~/ai-workspace/config/ai.conf")
+    exit(1)
+
+openai.api_key = API_KEY
+
+class CodexHelper:
+    def __init__(self):
+        CODE_DIR.mkdir(parents=True, exist_ok=True)
+
+    def generate_code(self, prompt, language='python'):
+        """Genereaza cod din descriere"""
+        try:
+            response = openai.ChatCompletion.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": f"You are an expert {language} developer. Generate clean, well-documented code."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.7,
+                max_tokens=2000
+            )
+
+            return response['choices'][0]['message']['content']
+        except Exception as e:
+            return f"❌ Error: {e}"
+
+    def save_code(self, filename, code, language='python'):
+        """Salveaza cod in fisier"""
+        filepath = CODE_DIR / f"{filename}.{self._get_extension(language)}"
+        filepath.write_text(code, encoding='utf-8')
+        print(f"✅ Cod salvat: {filepath}")
+        return filepath
+
+    def _get_extension(self, language):
+        ext_map = {
+            'python': 'py',
+            'javascript': 'js',
+            'bash': 'sh',
+            'java': 'java',
+            'cpp': 'cpp',
+            'c': 'c'
+        }
+        return ext_map.get(language, 'txt')
+
+    def interactive_generation(self):
+        """Chat interactiv pentru code generation"""
+        print("""
+╔═══════════════════════════════════════════╗
+║   💻 CODEX HELPER - Code Generation        ║
+║   Descrie ce cod vrei sa genereze          ║
+╚═══════════════════════════════════════════╝
+        """)
+
+        while True:
+            print("""
+1. Generate code
+2. Save code to file
+3. Exit
+            """)
+
+            choice = input("👀 Choose (1-3): ").strip()
+
+            if choice == '1':
+                language = input("Language (python/javascript/bash): ").strip() or 'python'
+                prompt = input("\n📝 Describe code to generate: ").strip()
+
+                if prompt:
+                    print("\n⏳ Generating...")
+                    code = self.generate_code(prompt, language)
+                    print(f"\n✅ Generated Code:\n")
+                    print("─" * 50)
+                    print(code)
+                    print("─" * 50)
+
+                    save = input("\nSave code? (y/n): ").lower()
+                    if save == 'y':
+                        filename = input("Filename (without extension): ").strip()
+                        if filename:
+                            self.save_code(filename, code, language)
+
+            elif choice == '2':
+                print("\n💾 Manual save feature coming soon...")
+
+            elif choice == '3':
+                print("👋 Goodbye!")
+                break
+
+            input("\n⏳ Press Enter...")
+
+if __name__ == "__main__":
+    codex = CodexHelper()
+    codex.interactive_generation()

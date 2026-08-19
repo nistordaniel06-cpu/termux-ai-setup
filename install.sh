@@ -1,1 +1,107 @@
-#!/bin/bash\nset -e\n\necho \"\"\necho \"╔════════════════════════════════════════════════════════════╗\"\necho \"║  🚀 TERMUX AI MASTER - ONE-LINE INSTALLER              ║\"\necho \"║  Chat IA + Codex + Menu pe STEROZI 💪                   ║\"\necho \"╚════════════════════════════════════════════════════════════╝\"\necho \"\"\n\nif [ ! -d \"$PREFIX\" ]; then\n    echo \"❌ ERROR: Run this in Termux!\"\n    exit 1\nfi\n\necho \"📦 Updating packages...\"\npkg update && pkg upgrade -y > /dev/null 2>&1\n\necho \"🐍 Installing Python...\"\npkg install -y python python-dev clang build-essential git nano curl > /dev/null 2>&1\n\necho \"📥 Installing Python packages...\"\npip install --upgrade pip openai==0.27.8 anthropic requests python-dotenv 2>&1 | grep -v \"already\" || true\n\necho \"📁 Creating workspace...\"\nmkdir -p ~/ai-workspace/{chats,generated_code,scripts,config}\n\necho \"⬇️  Downloading scripts...\"\nGITHUB_RAW=\"https://raw.githubusercontent.com/nistordaniel06-cpu/termux-ai-setup/main/scripts\"\n\necho \"  → chat.py\"\ncurl -fsSL \"${GITHUB_RAW}/chat.py\" -o ~/ai-workspace/scripts/chat.py 2>/dev/null || echo \"Warning: chat.py\"\n\necho \"  → codex_helper.py\"\ncurl -fsSL \"${GITHUB_RAW}/codex_helper.py\" -o ~/ai-workspace/scripts/codex_helper.py 2>/dev/null || echo \"Warning: codex_helper.py\"\n\necho \"  → ai_menu.py\"\ncurl -fsSL \"${GITHUB_RAW}/ai_menu.py\" -o ~/ai-workspace/scripts/ai_menu.py 2>/dev/null || echo \"Warning: ai_menu.py\"\n\nchmod +x ~/ai-workspace/scripts/*.py 2>/dev/null || true\n\necho \"⚙️  Creating configuration...\"\ncat > ~/ai-workspace/config/ai.conf << 'CONF'\n# Termux AI Master Configuration\n# Edit this and set your OpenAI API key\n\nexport OPENAI_API_KEY=\"sk-your-api-key-here\"\nexport AI_MODEL=\"gpt-3.5-turbo\"\nexport AI_TEMPERATURE=\"0.7\"\nexport AI_MAX_TOKENS=\"1000\"\nCONF\n\necho \"🔗 Adding aliases to ~/.bashrc...\"\nif ! grep -q \"TERMUX AI MASTER\" ~/.bashrc 2>/dev/null; then\n    cat >> ~/.bashrc << 'ALIAS'\n\n# ╔════════════════════════════════════════════════════════════╗\n# ║  🚀 TERMUX AI MASTER - Aliases & Configuration            ║\n# ╚════════════════════════════════════════════════════════════╝\n\nexport AI_WORKSPACE=\"$HOME/ai-workspace\"\n\n# Load AI configuration\nif [ -f \"$AI_WORKSPACE/config/ai.conf\" ]; then\n    source \"$AI_WORKSPACE/config/ai.conf\"\nfi\n\n# Main commands\nalias ai='python $AI_WORKSPACE/scripts/ai_menu.py'\nalias chat='python $AI_WORKSPACE/scripts/chat.py'\nalias codex='python $AI_WORKSPACE/scripts/codex_helper.py'\nalias aichats='ls -lh $AI_WORKSPACE/chats/ 2>/dev/null || echo \"No chats yet\"'\nalias goto_ai='cd $AI_WORKSPACE && ls -la'\nalias ai_config='nano $AI_WORKSPACE/config/ai.conf'\nalias ai_help='echo \"Commands: ai | chat | codex | aichats | goto_ai | ai_config\"'\nALIAS\nfi\n\nsource ~/.bashrc 2>/dev/null || true\n\necho \"\"\necho \"╔════════════════════════════════════════════════════════════╗\"\necho \"║  ✅ INSTALLATION COMPLETE!                                ║\"\necho \"╚════════════════════════════════════════════════════════════╝\"\necho \"\"\necho \"🎯 NEXT STEPS:\"\necho \"\"\necho \"1️⃣  Set your OpenAI API Key:\"\necho \"   nano ~/ai-workspace/config/ai.conf\"\necho \"   Change: OPENAI_API_KEY='sk-your-actual-key'\"\necho \"\"\necho \"2️⃣  Reload shell:\"\necho \"   source ~/.bashrc\"\necho \"\"\necho \"3️⃣  Start using:\"\necho \"   ai          → 🎯 Master Menu (recommended!)\"\necho \"   chat        → 💬 Chat directly\"\necho \"   codex       → 💻 Code generation\"\necho \"   aichats     → 📚 View saved chats\"\necho \"   ai_config   → ⚙️  Edit config\"\necho \"\"\necho \"💡 Pro tip: Type 'ai' to start!\"\necho \"\"\necho \"📁 Workspace: ~/ai-workspace/\"\necho \"\"\necho \"═══════════════════════════════════════════════════════════\"\necho \"\"\n"
+#!/bin/bash
+set -e
+
+echo ""
+echo "╔════════════════════════════════════════════════════════════╗"
+echo "║  🚀 TERMUX AI MASTER - ONE-LINE INSTALLER              ║"
+echo "║  Chat IA + Codex + Menu pe STEROZI 💪                   ║"
+echo "╚════════════════════════════════════════════════════════════╝"
+echo ""
+
+if [ ! -d "$PREFIX" ]; then
+    echo "❌ ERROR: Run this in Termux!"
+    exit 1
+fi
+
+echo "📦 Updating packages..."
+pkg update && pkg upgrade -y > /dev/null 2>&1
+
+echo "🐍 Installing Python..."
+pkg install -y python python-dev clang build-essential git nano curl > /dev/null 2>&1
+
+echo "📥 Installing Python packages..."
+pip install --upgrade pip openai==0.27.8 anthropic requests python-dotenv 2>&1 | grep -v "already" || true
+
+echo "📁 Creating workspace..."
+mkdir -p ~/ai-workspace/{chats,generated_code,scripts,config}
+
+echo "⬇️  Downloading scripts..."
+GITHUB_RAW="https://raw.githubusercontent.com/nistordaniel06-cpu/termux-ai-setup/main/scripts"
+
+echo "  → chat.py"
+curl -fsSL "${GITHUB_RAW}/chat.py" -o ~/ai-workspace/scripts/chat.py 2>/dev/null || echo "Warning: chat.py"
+
+echo "  → codex_helper.py"
+curl -fsSL "${GITHUB_RAW}/codex_helper.py" -o ~/ai-workspace/scripts/codex_helper.py 2>/dev/null || echo "Warning: codex_helper.py"
+
+echo "  → ai_menu.py"
+curl -fsSL "${GITHUB_RAW}/ai_menu.py" -o ~/ai-workspace/scripts/ai_menu.py 2>/dev/null || echo "Warning: ai_menu.py"
+
+chmod +x ~/ai-workspace/scripts/*.py 2>/dev/null || true
+
+echo "⚙️  Creating configuration..."
+cat > ~/ai-workspace/config/ai.conf << 'CONF'
+# Termux AI Master Configuration
+# Edit this and set your OpenAI API key
+
+export OPENAI_API_KEY="sk-your-api-key-here"
+export AI_MODEL="gpt-3.5-turbo"
+export AI_TEMPERATURE="0.7"
+export AI_MAX_TOKENS="1000"
+CONF
+
+echo "🔗 Adding aliases to ~/.bashrc..."
+if ! grep -q "TERMUX AI MASTER" ~/.bashrc 2>/dev/null; then
+    cat >> ~/.bashrc << 'ALIAS'
+
+# ╔════════════════════════════════════════════════════════════╗
+# ║  🚀 TERMUX AI MASTER - Aliases & Configuration            ║
+# ╚════════════════════════════════════════════════════════════╝
+
+export AI_WORKSPACE="$HOME/ai-workspace"
+
+# Load AI configuration
+if [ -f "$AI_WORKSPACE/config/ai.conf" ]; then
+    source "$AI_WORKSPACE/config/ai.conf"
+fi
+
+# Main commands
+alias ai='python $AI_WORKSPACE/scripts/ai_menu.py'
+alias chat='python $AI_WORKSPACE/scripts/chat.py'
+alias codex='python $AI_WORKSPACE/scripts/codex_helper.py'
+alias aichats='ls -lh $AI_WORKSPACE/chats/ 2>/dev/null || echo "No chats yet"'
+alias goto_ai='cd $AI_WORKSPACE && ls -la'
+alias ai_config='nano $AI_WORKSPACE/config/ai.conf'
+alias ai_help='echo "Commands: ai | chat | codex | aichats | goto_ai | ai_config"'
+ALIAS
+fi
+
+source ~/.bashrc 2>/dev/null || true
+
+echo ""
+echo "╔════════════════════════════════════════════════════════════╗"
+echo "║  ✅ INSTALLATION COMPLETE!                                ║"
+echo "╚════════════════════════════════════════════════════════════╝"
+echo ""
+echo "🎯 NEXT STEPS:"
+echo ""
+echo "1️⃣  Set your OpenAI API Key:"
+echo "   nano ~/ai-workspace/config/ai.conf"
+echo "   Change: OPENAI_API_KEY='sk-your-actual-key'"
+echo ""
+echo "2️⃣  Reload shell:"
+echo "   source ~/.bashrc"
+echo ""
+echo "3️⃣  Start using:"
+echo "   ai          → 🎯 Master Menu (recommended!)"
+echo "   chat        → 💬 Chat directly"
+echo "   codex       → 💻 Code generation"
+echo "   aichats     → 📚 View saved chats"
+echo "   ai_config   → ⚙️  Edit config"
+echo ""
+echo "💡 Pro tip: Type 'ai' to start!"
+echo ""
+echo "📁 Workspace: ~/ai-workspace/"
+echo ""
+echo "═══════════════════════════════════════════════════════════"
+echo ""
