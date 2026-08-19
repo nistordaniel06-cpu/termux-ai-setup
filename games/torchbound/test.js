@@ -19,6 +19,8 @@ function assert(cond, msg) { if (!cond) throw new Error("ASSERT FAILED: " + msg)
   await page.waitForTimeout(400);
 
   const snap = () => page.evaluate(() => window.__game.snap());
+  // pornim de la un profil curat, ca testele sa nu depinda de rulari anterioare
+  await page.evaluate(() => window.__game.wipeMeta());
 
   // ---------- 1. pornire ----------
   console.log("\n[1] Pornire");
@@ -179,6 +181,65 @@ function assert(cond, msg) { if (!cond) throw new Error("ASSERT FAILED: " + msg)
   await page.waitForTimeout(1400);
   await page.screenshot({ path: path.join(__dirname, "shot_play.png") });
   ok("captura salvata");
+
+  // ---------- 11. progres permanent ----------
+  console.log("\n[11] Cioburi, tabără și deblocări");
+  await page.evaluate(() => window.__game.wipeMeta());
+  await page.evaluate(() => window.__game.start());
+  await page.waitForTimeout(200);
+
+  // curatam doua camere si verificam ca se aduna cioburi si progres
+  for (let r = 0; r < 2; r++) {
+    await page.evaluate(() => window.__game.dropEnemies());
+    await page.waitForTimeout(160);
+    await page.evaluate(() => window.__game.setPos(225, 140));
+    await page.keyboard.down("w");
+    await page.waitForTimeout(600);
+    await page.keyboard.up("w");
+    await page.waitForTimeout(200);
+  }
+  s = await snap();
+  assert(s.runShards > 0, "curatarea camerelor trebuie sa dea cioburi, got " + s.runShards);
+  assert(s.totalRooms === 2, "doua camere curatate trebuie contorizate, got " + s.totalRooms);
+  ok(`${s.runShards} cioburi in rundă, ${s.totalRooms} camere la total`);
+
+  // la moarte cioburile intra in punga, cu bonusul de mod
+  await page.evaluate(() => window.__game.setMode("clasic"));
+  const beforeDeath = await snap();
+  await page.evaluate(() => window.__game.hurt(9999));
+  await page.waitForTimeout(300);
+  s = await snap();
+  const expectedShards = Math.round(beforeDeath.runShards * 1.25);
+  assert(s.shards === expectedShards, `punga trebuie sa creasca cu ${expectedShards} (bonus clasic +25%), got ${s.shards}`);
+  ok(`la moarte: +${s.shards} cioburi în pungă (bonus clasic aplicat)`);
+
+  // deblocarile: ricoseul e blocat la inceput, apare dupa 8 camere
+  await page.evaluate(() => window.__game.setTotalRooms(0));
+  let locked = await page.evaluate(() => window.__game.unlocked("ricochet"));
+  assert(locked === false, "ricoseul trebuie sa fie blocat la 0 camere");
+  await page.evaluate(() => window.__game.setTotalRooms(8));
+  let unlocked = await page.evaluate(() => window.__game.unlocked("ricochet"));
+  assert(unlocked === true, "ricoseul trebuie deblocat la 8 camere");
+  ok("deblocare: Ricoșeu blocat la 0 camere, deschis la 8");
+
+  // cumparaturile din tabara se aplica pe eroul urmatoarei runde
+  await page.evaluate(() => window.__game.grantShards(500));
+  await page.evaluate(() => window.__game.openCamp("start"));
+  await page.waitForTimeout(150);
+  await page.screenshot({ path: path.join(__dirname, "shot_camp.png") });
+
+  const purseBefore = (await snap()).shards;
+  await page.locator("#shop .buy").first().click();   // Vigoare: +12 viață
+  await page.waitForTimeout(150);
+  s = await snap();
+  assert(s.shards < purseBefore, `cumparatura trebuie sa scada punga: ${purseBefore} -> ${s.shards}`);
+  ok(`cumpărat din tabără: ${purseBefore} -> ${s.shards} cioburi`);
+
+  await page.evaluate(() => window.__game.start());
+  await page.waitForTimeout(200);
+  s = await snap();
+  assert(s.maxHp === 112, `Vigoare trebuie sa dea 112 viață maximă, got ${s.maxHp}`);
+  ok(`upgrade-ul se aplică pe runda următoare: ${s.maxHp} viață maximă`);
 
   const real = errors.filter((e) => !/ERR_CONNECTION_RESET|net::ERR|fonts\.googleapis/.test(e));
   if (real.length) { console.log("\nERORI:", real); throw new Error("erori in consola: " + real.join(" | ")); }

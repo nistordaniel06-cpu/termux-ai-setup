@@ -265,6 +265,65 @@
   .card .nm { font-family: var(--f-display); font-weight: 700; font-size: 14.5px; letter-spacing: 0.03em; }
   .card .ds { font-size: 12.5px; color: var(--text-dim); line-height: 1.35; }
 
+  /* ---------------- Tabăra (progres permanent) ---------------- */
+  #campOverlay .panel { width: min(460px, 100%); gap: 13px; }
+
+  .purse {
+    display: flex; align-items: baseline; gap: 7px;
+    font-family: var(--f-mono); font-weight: 700; font-size: 21px;
+    color: var(--gold); font-variant-numeric: tabular-nums;
+  }
+  .purse span {
+    font-family: var(--f-display); font-size: 10px; font-weight: 700;
+    letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-dim);
+  }
+
+  #shop { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+
+  .buy {
+    display: flex; align-items: center; gap: 11px; width: 100%; text-align: left;
+    color: var(--text); font-family: var(--f-body);
+    background: linear-gradient(100deg, var(--panel), #0a1220);
+    border: 1px solid var(--panel-edge); border-radius: 9px;
+    padding: 11px 13px; cursor: pointer;
+    transition: border-color 130ms ease, transform 130ms ease;
+  }
+  .buy:active { transform: scale(0.985); }
+  .buy:hover:not(:disabled) { border-color: var(--gold); }
+  .buy:disabled { cursor: default; opacity: 0.55; }
+  .buy:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+  .buy .info { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+  .buy .nm { font-family: var(--f-display); font-weight: 700; font-size: 14px; letter-spacing: 0.03em; }
+  .buy .ds { font-size: 12px; color: var(--text-dim); }
+
+  .pips { display: flex; gap: 3px; margin-top: 2px; }
+  .pip { width: 15px; height: 4px; border-radius: 2px; background: #24354f; }
+  .pip.on { background: var(--gold); box-shadow: 0 0 7px rgba(255,207,92,0.5); }
+
+  .price {
+    font-family: var(--f-mono); font-weight: 700; font-size: 13px;
+    font-variant-numeric: tabular-nums; color: var(--gold);
+    white-space: nowrap; min-width: 42px; text-align: right;
+  }
+  .price.maxed { color: var(--mint); font-size: 11px; }
+  .price.short { color: #5d6a80; }
+
+  #track {
+    width: 100%; background: rgba(16,26,44,0.7);
+    border: 1px solid var(--panel-edge); border-radius: 9px;
+    padding: 11px 13px; display: flex; flex-direction: column; gap: 7px;
+  }
+  #trackTop {
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-family: var(--f-display); font-size: 11px;
+    letter-spacing: 0.13em; text-transform: uppercase; color: var(--text-dim);
+  }
+  #trackTop b { color: var(--cyan); }
+  #trackBar { height: 6px; border-radius: 3px; background: #0b1220; overflow: hidden; }
+  #trackFill { height: 100%; width: 0%; border-radius: 3px; background: linear-gradient(90deg, var(--cyan-deep), var(--cyan)); }
+  #trackNote { font-size: 11.5px; color: #63748f; }
+
   .statRow { display: flex; gap: 30px; }
   .stat { display: flex; flex-direction: column; gap: 3px; }
   .stat b { font-family: var(--f-mono); font-size: 25px; font-variant-numeric: tabular-nums; color: var(--gold); }
@@ -325,11 +384,12 @@
       <h1 class="title">Torchbound</h1>
       <p class="lede">Oprit pe loc, eroul țintește singur și trage cu <b>damage plin</b>. Din mers tragi mai slab — cât de des, depinde de modul ales. Curăță camera, treci prin ușă, alege puteri.</p>
       <div class="modes" id="modes" role="group" aria-label="Mod de tragere">
-        <button class="mode" type="button" data-mode="clasic" aria-pressed="false">Clasic<small>doar pe loc</small></button>
-        <button class="mode" type="button" data-mode="hibrid" aria-pressed="true">Hibrid<small>apeși în mers</small></button>
+        <button class="mode" type="button" data-mode="clasic" aria-pressed="false">Clasic<small>doar pe loc · +25%</small></button>
+        <button class="mode" type="button" data-mode="hibrid" aria-pressed="true">Hibrid<small>apeși în mers · +10%</small></button>
         <button class="mode" type="button" data-mode="liber" aria-pressed="false">Liber<small>tragi mereu</small></button>
       </div>
       <button class="btn" id="startBtn">Intră în temniță</button>
+      <button class="btn secondary" id="campBtn">Tabăra · <span id="purseStart">0</span> cioburi</button>
       <p class="lede" style="font-size:12px;">Stânga: joystick · Dreapta: tragi (apasă des, e mai rapid decât ținut) · PC: WASD + Spațiu</p>
     </div>
   </div>
@@ -342,6 +402,21 @@
     </div>
   </div>
 
+  <div id="campOverlay" class="overlay hidden">
+    <div class="panel">
+      <div class="kicker">între runde</div>
+      <h2 class="sub">Tabăra</h2>
+      <div class="purse"><span>Cioburi</span> <b id="purse">0</b></div>
+      <div id="shop"></div>
+      <div id="track">
+        <div id="trackTop"><span>Următoarea deblocare</span> <b id="trackName">—</b></div>
+        <div id="trackBar"><div id="trackFill"></div></div>
+        <div id="trackNote"></div>
+      </div>
+      <button class="btn" id="campBack">Înapoi</button>
+    </div>
+  </div>
+
   <div id="overOverlay" class="overlay hidden">
     <div class="panel">
       <div class="kicker">torța s-a stins</div>
@@ -351,7 +426,10 @@
         <div class="stat"><b id="fKills">0</b><span>Uciși</span></div>
         <div class="stat"><b id="fLvl">1</b><span>Nivel</span></div>
       </div>
+      <div class="purse"><span>Câștigat</span> <b id="fShards">+0</b></div>
+      <p class="lede" style="font-size:11.5px;margin:-8px 0 0;" id="fBonus"></p>
       <button class="btn" id="retryBtn">Din nou</button>
+      <button class="btn secondary" id="campBtn2">Tabăra</button>
     </div>
   </div>
 </div>
@@ -439,22 +517,89 @@
   var HOLD_MULT = 1.6;
 
   var fireMode = "hibrid";              // "clasic" | "hibrid" | "liber"
-  try {
-    var saved = localStorage.getItem("torchbound.fireMode");
-    if (saved === "clasic" || saved === "hibrid" || saved === "liber") fireMode = saved;
-  } catch (err) { /* stocarea poate fi blocata - ramanem pe implicit */ }
+
+  // Modurile sunt toate disponibile de la inceput - un mod de control e o
+  // preferinta, nu o recompensa. In schimb modul greu plateste mai bine, ca sa
+  // fie ales din interes, nu din obligatie.
+  var MODE_BONUS = { clasic: 1.25, hibrid: 1.10, liber: 1.0 };
+
+  // ====================== PROGRES PERMANENT ======================
+  var META_KEY = "torchbound.meta";
+  var meta = { shards: 0, totalRooms: 0, bestRoom: 1, up: {} };
+
+  var UPGRADES = [
+    { id: "vigoare",     nm: "Vigoare",      ds: "+12 viață maximă",        max: 5, costs: [40, 70, 110, 160, 220] },
+    { id: "tais",        nm: "Tăiș",         ds: "+8% daună",               max: 5, costs: [50, 85, 130, 190, 260] },
+    { id: "iuteala",     nm: "Iuțeală",      ds: "+5% viteză de mișcare",   max: 4, costs: [45, 80, 125, 180] },
+    { id: "clarviziune", nm: "Clarviziune",  ds: "O carte în plus la nivel", max: 1, costs: [250] },
+    { id: "torta",       nm: "A doua torță", ds: "Te ridici o dată pe rundă", max: 1, costs: [400] }
+  ];
+
+  // Deblocarile ADAUGA lucruri noi - nu ridica restrictii. Camerele curatate se
+  // aduna peste toate rundele, deci progresul nu se pierde niciodata.
+  var UNLOCKS = [
+    { rooms: 8,  id: "ricochet", nm: "Ricoșeu" },
+    { rooms: 20, id: "fire",     nm: "Atac de foc" },
+    { rooms: 36, id: "pierce",   nm: "Săgeți perforante" },
+    { rooms: 60, id: "explode",  nm: "Sfârșit exploziv" }
+  ];
+
+  function loadMeta() {
+    try {
+      var raw = localStorage.getItem(META_KEY);
+      if (raw) {
+        var m = JSON.parse(raw);
+        if (m && typeof m === "object") {
+          meta.shards = Math.max(0, m.shards | 0);
+          meta.totalRooms = Math.max(0, m.totalRooms | 0);
+          meta.bestRoom = Math.max(1, m.bestRoom | 0);
+          meta.up = (m.up && typeof m.up === "object") ? m.up : {};
+        }
+      }
+      var savedMode = localStorage.getItem("torchbound.fireMode");
+      if (savedMode === "clasic" || savedMode === "hibrid" || savedMode === "liber") fireMode = savedMode;
+    } catch (err) { /* stocarea poate fi blocata - ramanem pe valorile implicite */ }
+  }
+
+  function saveMeta() {
+    try { localStorage.setItem(META_KEY, JSON.stringify(meta)); } catch (err) {}
+  }
+
+  function upLevel(id) { return meta.up[id] | 0; }
+
+  function isUnlocked(id) {
+    for (var i = 0; i < UNLOCKS.length; i++) {
+      if (UNLOCKS[i].id === id) return meta.totalRooms >= UNLOCKS[i].rooms;
+    }
+    return true;                        // ce nu e in lista e disponibil din start
+  }
+
+  function nextUnlock() {
+    for (var i = 0; i < UNLOCKS.length; i++) {
+      if (meta.totalRooms < UNLOCKS[i].rooms) return UNLOCKS[i];
+    }
+    return null;
+  }
+
+  loadMeta();
 
   var player = null;
   var enemies = [], pBullets = [], eBullets = [], particles = [], telegraphs = [], orbs = [];
   var room = 1, kills = 0, doorOpen = false, transitioning = false;
+  var runShards = 0;                    // cioburi stranse in runda curenta
   var lastTime = 0, shakeTime = 0, shakeMag = 0;
 
   function newPlayer() {
+    // upgrade-urile permanente cumparate in tabara se aplica aici, o data pe rulare
+    var maxHp = 100 + upLevel("vigoare") * 12;
     return {
       x: VW / 2, y: ROOM.y1 - 90, r: 13,
-      hp: 100, maxHp: 100,
-      speed: 205,
-      damage: 14,
+      hp: maxHp, maxHp: maxHp,
+      speed: Math.round(205 * (1 + upLevel("iuteala") * 0.05)),
+      damage: Math.round(14 * (1 + upLevel("tais") * 0.08) * 10) / 10,
+      cardCount: 3 + upLevel("clarviziune"),
+      revives: upLevel("torta"),
+      explode: 0,
       atkInterval: 420,   // ms
       atkTimer: 0,
       manualCd: 0,        // racire pentru focurile trase manual, din mers
@@ -475,6 +620,7 @@
     enemies.length = 0; pBullets.length = 0; eBullets.length = 0;
     particles.length = 0; telegraphs.length = 0; orbs.length = 0;
     room = 1; kills = 0; doorOpen = false; transitioning = false;
+    runShards = 0;
     buildRoom();
     syncHud();
   }
@@ -665,16 +811,21 @@
       go: function () { player.maxHp += 25; player.hp = player.maxHp; } },
     { id: "heal", glyph: "♥", nm: "Bandaje", ds: "Recuperezi 50% din viață",
       max: function () { return false; },
-      go: function () { player.hp = Math.min(player.maxHp, player.hp + player.maxHp * 0.5); } }
+      go: function () { player.hp = Math.min(player.maxHp, player.hp + player.maxHp * 0.5); } },
+    { id: "explode", glyph: "✺", nm: "Sfârșit exploziv", ds: "Inamicii uciși explodează",
+      max: function () { return player.explode >= 60; },
+      go: function () { player.explode += 15; } }
   ];
 
   function offerPowers() {
     state = S_LEVEL;
     joyUp();
     toastEl.classList.remove("show");   // fara text ramas in spatele cartilor
-    var pool = POWERS.filter(function (p) { return !p.max(); });
+    // doar puterile deblocate intra in pachet - rundele tarzii sunt mai bogate
+    var pool = POWERS.filter(function (p) { return !p.max() && isUnlocked(p.id); });
     var picks = [];
-    while (picks.length < 3 && pool.length) picks.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+    var want = player.cardCount || 3;
+    while (picks.length < want && pool.length) picks.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
 
     var box = document.getElementById("cards");
     box.innerHTML = "";
@@ -849,7 +1000,9 @@
       nextRoom();
     }
 
-    if (player.hp <= 0) gameOver();
+    if (player.hp <= 0) {
+      if (player.revives > 0) revive(); else gameOver();
+    }
     syncHud();
   }
 
@@ -866,6 +1019,9 @@
 
   function nextRoom() {
     transitioning = true;
+    runShards += 8 + room * 2;          // rasplata pentru camera tocmai curatata
+    meta.totalRooms++;                  // progresul spre deblocari nu se pierde niciodata
+    saveMeta();
     room++;
     player.x = VW / 2; player.y = ROOM.y1 - 70;
     player.hp = Math.min(player.maxHp, player.hp + player.maxHp * 0.12); // mica rasplata
@@ -953,7 +1109,22 @@
     orbs.push({ x: e.x, y: e.y, r: 5, xp: e.xp, t: 0 });
     enemies.splice(index, 1);
     kills++;
+    runShards += 1;
     shake(3, 0.12);
+
+    // sfarsit exploziv: mortul raneste ce e in jur (putere deblocabila)
+    if (player && player.explode > 0) {
+      var rad = 78;
+      burst(e.x, e.y, "255,180,84", 12, 240);
+      for (var i = enemies.length - 1; i >= 0; i--) {
+        var o = enemies[i];
+        if (Math.hypot(o.x - e.x, o.y - e.y) < rad) {
+          o.hp -= player.explode;
+          o.flash = 0.12;
+          if (o.hp <= 0) killEnemy(i, o);
+        }
+      }
+    }
   }
 
   function hurtPlayer(dmg) {
@@ -1348,21 +1519,128 @@
     document.getElementById("startOverlay").classList.add("hidden");
     document.getElementById("overOverlay").classList.add("hidden");
     document.getElementById("levelOverlay").classList.add("hidden");
+    document.getElementById("campOverlay").classList.add("hidden");
     resetRun();
     state = S_PLAY;
+  }
+
+  // A doua torta: te ridici o data pe runda, cu jumatate de viata si aer in jur
+  function revive() {
+    player.revives--;
+    player.hp = player.maxHp * 0.5;
+    player.hurtCd = 1.6;
+    burst(player.x, player.y, "255,207,92", 26, 260);
+    shake(11, 0.3);
+    for (var i = enemies.length - 1; i >= 0; i--) {
+      if (Math.hypot(enemies[i].x - player.x, enemies[i].y - player.y) < 140) killEnemy(i, enemies[i]);
+    }
+    eBullets.length = 0;
+    toast("Torța se reaprinde");
   }
 
   function gameOver() {
     state = S_OVER;
     joyUp();
+
+    var earned = Math.round(runShards * (MODE_BONUS[fireMode] || 1));
+    meta.shards += earned;
+    if (room > meta.bestRoom) meta.bestRoom = room;
+    saveMeta();
+
     document.getElementById("fRoom").textContent = String(room);
     document.getElementById("fKills").textContent = String(kills);
     document.getElementById("fLvl").textContent = String(player.level);
+    document.getElementById("fShards").textContent = "+" + earned;
+    document.getElementById("fBonus").textContent =
+      MODE_BONUS[fireMode] > 1
+        ? "inclusiv +" + Math.round((MODE_BONUS[fireMode] - 1) * 100) + "% pentru modul " + fireMode
+        : "fără bonus de mod";
     document.getElementById("overOverlay").classList.remove("hidden");
   }
 
   document.getElementById("startBtn").addEventListener("click", startRun);
   document.getElementById("retryBtn").addEventListener("click", startRun);
+
+  // ---------- tabara: upgrade-uri permanente ----------
+  var campOverlay = document.getElementById("campOverlay");
+  var shopEl = document.getElementById("shop");
+  var cameFrom = "start";               // unde ne intoarcem la Inapoi
+
+  function costOf(u) {
+    var lv = upLevel(u.id);
+    return lv >= u.max ? null : u.costs[lv];
+  }
+
+  function renderCamp() {
+    document.getElementById("purse").textContent = String(meta.shards);
+    document.getElementById("purseStart").textContent = String(meta.shards);
+
+    shopEl.innerHTML = "";
+    UPGRADES.forEach(function (u) {
+      var lv = upLevel(u.id), cost = costOf(u), affordable = cost !== null && meta.shards >= cost;
+
+      var pips = "";
+      for (var i = 0; i < u.max; i++) pips += '<div class="pip' + (i < lv ? " on" : "") + '"></div>';
+
+      var b = document.createElement("button");
+      b.className = "buy"; b.type = "button";
+      b.disabled = cost === null || !affordable;
+      b.innerHTML =
+        '<div class="info"><div class="nm">' + u.nm + '</div>' +
+        '<div class="ds">' + u.ds + '</div>' +
+        '<div class="pips">' + pips + '</div></div>' +
+        '<div class="price ' + (cost === null ? "maxed" : (affordable ? "" : "short")) + '">' +
+        (cost === null ? "MAXIM" : cost) + '</div>';
+
+      b.addEventListener("click", function () {
+        var c = costOf(u);
+        if (c === null || meta.shards < c) return;
+        meta.shards -= c;
+        meta.up[u.id] = upLevel(u.id) + 1;
+        saveMeta();
+        renderCamp();
+      });
+      shopEl.appendChild(b);
+    });
+
+    // traseul de deblocari
+    var nx = nextUnlock();
+    var nameEl = document.getElementById("trackName");
+    var fillEl = document.getElementById("trackFill");
+    var noteEl = document.getElementById("trackNote");
+    if (nx) {
+      var prev = 0;
+      for (var i = 0; i < UNLOCKS.length; i++) {
+        if (UNLOCKS[i].id === nx.id) break;
+        prev = UNLOCKS[i].rooms;
+      }
+      var pct = Math.max(0, Math.min(100, ((meta.totalRooms - prev) / (nx.rooms - prev)) * 100));
+      nameEl.textContent = nx.nm;
+      fillEl.style.width = pct + "%";
+      noteEl.textContent = meta.totalRooms + " / " + nx.rooms + " camere curățate în total · încă " +
+        (nx.rooms - meta.totalRooms);
+    } else {
+      nameEl.textContent = "toate deblocate";
+      fillEl.style.width = "100%";
+      noteEl.textContent = meta.totalRooms + " camere curățate în total. Cel mai departe: camera " + meta.bestRoom + ".";
+    }
+  }
+
+  function openCamp(from) {
+    cameFrom = from;
+    renderCamp();
+    document.getElementById("startOverlay").classList.add("hidden");
+    document.getElementById("overOverlay").classList.add("hidden");
+    campOverlay.classList.remove("hidden");
+  }
+
+  document.getElementById("campBtn").addEventListener("click", function () { openCamp("start"); });
+  document.getElementById("campBtn2").addEventListener("click", function () { openCamp("over"); });
+  document.getElementById("campBack").addEventListener("click", function () {
+    campOverlay.classList.add("hidden");
+    document.getElementById(cameFrom === "over" ? "overOverlay" : "startOverlay").classList.remove("hidden");
+    document.getElementById("purseStart").textContent = String(meta.shards);
+  });
 
   // ---------- selector de mod de tragere ----------
   var modeBtns = Array.prototype.slice.call(document.querySelectorAll(".mode"));
@@ -1398,6 +1676,9 @@
         projCount: player ? player.projCount : 0,
         fireMode: fireMode,
         baseDmg: player ? player.damage : 0,
+        shards: meta.shards, totalRooms: meta.totalRooms, runShards: runShards,
+        revives: player ? player.revives : 0,
+        cardCount: player ? player.cardCount : 0,
         lastDmg: pBullets.length ? pBullets[pBullets.length - 1].dmg : null,
         lastWeak: pBullets.length ? !!pBullets[pBullets.length - 1].weak : null
       };
@@ -1405,6 +1686,14 @@
     start: startRun,
     setMode: setMode,
     tapFire: manualShot,
+    openCamp: openCamp,
+    grantShards: function (n) { meta.shards += n; saveMeta(); renderCamp(); },
+    wipeMeta: function () {
+      meta = { shards: 0, totalRooms: 0, bestRoom: 1, up: {} };
+      saveMeta(); renderCamp();
+    },
+    setTotalRooms: function (n) { meta.totalRooms = n; saveMeta(); renderCamp(); },
+    unlocked: isUnlocked,
     clearRoom: function () { while (enemies.length) killEnemy(enemies.length - 1, enemies[enemies.length - 1]); },
     dropEnemies: function () { enemies.length = 0; },
     collectOrbs: function () { orbs.forEach(function (o) { gainXp(o.xp); }); orbs.length = 0; },
