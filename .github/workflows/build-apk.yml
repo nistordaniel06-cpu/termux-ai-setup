@@ -1,14 +1,12 @@
 name: Build Torchbound APK
 
 # Construieste APK-ul in cloud, ca sa nu fie nevoie de PC.
-# Pornire manuala: tab-ul Actions -> "Build Torchbound APK" -> Run workflow.
+#
+# DOAR MANUAL, intentionat: jocul e inca in dezvoltare, asa ca nu vrem un
+# build la fiecare commit. Cand vine momentul impachetarii:
+#   tab-ul Actions -> "Build Torchbound APK" -> Run workflow.
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - 'games/torchbound/**'
-      - '.github/workflows/build-apk.yml'
 
 jobs:
   apk:
