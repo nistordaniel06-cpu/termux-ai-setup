@@ -14,13 +14,14 @@ if [ ! -d "$PREFIX" ]; then
 fi
 
 echo "📦 Updating packages..."
-pkg update && pkg upgrade -y > /dev/null 2>&1
+pkg update -y && pkg upgrade -y
 
 echo "🐍 Installing Python..."
-pkg install -y python python-dev clang build-essential git nano curl > /dev/null 2>&1
+pkg install -y python clang git nano curl
 
 echo "📥 Installing Python packages..."
-pip install --upgrade pip openai==0.27.8 anthropic requests python-dotenv 2>&1 | grep -v "already" || true
+pip install --upgrade pip
+pip install openai==0.27.8 anthropic requests python-dotenv
 
 echo "📁 Creating workspace..."
 mkdir -p ~/ai-workspace/{chats,generated_code,scripts,config}
