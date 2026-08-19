@@ -124,6 +124,55 @@
     display: none; pointer-events: none;
   }
 
+  /* ---------------- Buton de tragere ---------------- */
+  #fireBtn {
+    position: absolute; z-index: 3;
+    right: max(20px, env(safe-area-inset-right));
+    bottom: max(26px, env(safe-area-inset-bottom));
+    width: 96px; height: 96px; border-radius: 50%;
+    display: none; align-items: center; justify-content: center;
+    border: 2px solid rgba(62,232,255,0.5);
+    background: radial-gradient(circle at 50% 40%, rgba(62,232,255,0.22), rgba(15,125,148,0.14) 60%, rgba(7,11,20,0.3));
+    box-shadow: 0 0 26px rgba(62,232,255,0.28), inset 0 0 20px rgba(62,232,255,0.14);
+    color: var(--cyan);
+    font-family: var(--f-display); font-weight: 700;
+    font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase;
+    pointer-events: none;              /* zona de atingere e tot semiecranul drept */
+    transition: transform 60ms ease, box-shadow 90ms ease, border-color 90ms ease;
+  }
+  #fireBtn.armed { border-color: rgba(62,232,255,0.85); }
+  #fireBtn.kick {
+    transform: scale(0.9);
+    box-shadow: 0 0 40px rgba(62,232,255,0.6), inset 0 0 26px rgba(62,232,255,0.3);
+  }
+  #fireBtn .ring {
+    position: absolute; inset: 9px; border-radius: 50%;
+    border: 1px solid rgba(62,232,255,0.25);
+  }
+
+  /* selector de mod, pe ecranul de start */
+  .modes { display: flex; gap: 7px; width: 100%; }
+  .mode {
+    flex: 1; cursor: pointer;
+    color: var(--text-dim); font-family: var(--f-display);
+    font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+    background: rgba(16,26,44,0.8);
+    border: 1px solid var(--panel-edge); border-radius: 8px;
+    padding: 11px 6px 9px;
+    display: flex; flex-direction: column; gap: 3px; align-items: center;
+  }
+  .mode small {
+    font-family: var(--f-body); font-size: 10px; font-weight: 500;
+    letter-spacing: 0.01em; text-transform: none; color: #63748f; line-height: 1.25;
+  }
+  .mode[aria-pressed="true"] {
+    color: var(--cyan); border-color: var(--cyan);
+    background: rgba(62,232,255,0.09);
+    box-shadow: 0 0 18px rgba(62,232,255,0.18);
+  }
+  .mode[aria-pressed="true"] small { color: var(--text-dim); }
+  .mode:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
   #joyKnob {
     position: absolute; left: 50%; top: 50%;
     width: 50px; height: 50px; margin: -25px 0 0 -25px;
@@ -267,15 +316,21 @@
   </div>
 
   <div id="joyBase"><div id="joyKnob"></div></div>
+  <div id="fireBtn"><div class="ring"></div>Trage</div>
   <div id="toast"></div>
 
   <div id="startOverlay" class="overlay">
     <div class="panel">
       <div class="kicker">action roguelike</div>
       <h1 class="title">Torchbound</h1>
-      <p class="lede">Regula de aur: <b>cât timp te miști nu tragi</b>. Ridică degetul de pe joystick și eroul se oprește, țintește singur cel mai apropiat inamic și trage. Curăță camera, treci prin ușă, alege puteri.</p>
+      <p class="lede">Oprit pe loc, eroul țintește singur și trage cu <b>damage plin</b>. Din mers tragi mai slab — cât de des, depinde de modul ales. Curăță camera, treci prin ușă, alege puteri.</p>
+      <div class="modes" id="modes" role="group" aria-label="Mod de tragere">
+        <button class="mode" type="button" data-mode="clasic" aria-pressed="false">Clasic<small>doar pe loc</small></button>
+        <button class="mode" type="button" data-mode="hibrid" aria-pressed="true">Hibrid<small>apeși în mers</small></button>
+        <button class="mode" type="button" data-mode="liber" aria-pressed="false">Liber<small>tragi mereu</small></button>
+      </div>
       <button class="btn" id="startBtn">Intră în temniță</button>
-      <p class="lede" style="font-size:12px;">Telefon: joystick oriunde pe ecran · PC: WASD / săgeți</p>
+      <p class="lede" style="font-size:12px;">Stânga: joystick · Dreapta: tragi (apasă des, e mai rapid decât ținut) · PC: WASD + Spațiu</p>
     </div>
   </div>
 
@@ -376,6 +431,19 @@
   var S_MENU = "menu", S_PLAY = "play", S_LEVEL = "level", S_OVER = "over";
   var state = S_MENU;
 
+  // O singura regula de echilibru, valabila in toate modurile: un foc tras din
+  // miscare face mai putina dauna. Statul pe loc ramane deci mereu cea mai buna
+  // sursa de damage, indiferent de modul ales.
+  var MOVE_DMG = 0.6;
+  // Tinut apasat trage mai rar decat apasat repetat -> bataia in ecran e rasplatita.
+  var HOLD_MULT = 1.6;
+
+  var fireMode = "hibrid";              // "clasic" | "hibrid" | "liber"
+  try {
+    var saved = localStorage.getItem("torchbound.fireMode");
+    if (saved === "clasic" || saved === "hibrid" || saved === "liber") fireMode = saved;
+  } catch (err) { /* stocarea poate fi blocata - ramanem pe implicit */ }
+
   var player = null;
   var enemies = [], pBullets = [], eBullets = [], particles = [], telegraphs = [], orbs = [];
   var room = 1, kills = 0, doorOpen = false, transitioning = false;
@@ -389,6 +457,7 @@
       damage: 14,
       atkInterval: 420,   // ms
       atkTimer: 0,
+      manualCd: 0,        // racire pentru focurile trase manual, din mers
       settle: 0,          // mica intarziere dupa oprire, ca in Archero
       projSpeed: 620,
       projCount: 1,
@@ -479,6 +548,8 @@
   function joyDown(e) {
     if (state !== S_PLAY) return;
     if (joy.active) return;
+    // in modul hibrid semiecranul drept e rezervat tragerii
+    if (fireMode === "hibrid" && e.clientX - stage.getBoundingClientRect().left > stage.clientWidth * 0.5) return;
     joy.active = true; joy.id = e.pointerId;
     var sr = stage.getBoundingClientRect();
     joy.ox = e.clientX - sr.left; joy.oy = e.clientY - sr.top;
@@ -516,6 +587,41 @@
   stage.addEventListener("pointermove", joyMove);
   window.addEventListener("pointerup", joyUp);
   window.addEventListener("pointercancel", joyUp);
+
+  // ---------- tragere manuala (modul hibrid) ----------
+  // Tot semiecranul drept e buton, ca sa poti bate in ecran fara sa ochesti.
+  var fire = { held: false, id: null, holdT: 0 };
+  var fireBtnEl = document.getElementById("fireBtn");
+
+  function isFireZone(e) {
+    var sr = stage.getBoundingClientRect();
+    return (e.clientX - sr.left) > stage.clientWidth * 0.5;
+  }
+
+  function fireDown(e) {
+    if (state !== S_PLAY || fireMode !== "hibrid") return;
+    if (!isFireZone(e)) return;
+    fire.held = true; fire.id = e.pointerId; fire.holdT = HOLD_MULT * player.atkInterval / 1000;
+    manualShot();
+  }
+
+  function fireUp(e) {
+    if (e && fire.id !== null && e.pointerId !== fire.id) return;
+    fire.held = false; fire.id = null;
+  }
+
+  stage.addEventListener("pointerdown", fireDown);
+  window.addEventListener("pointerup", fireUp);
+  window.addEventListener("pointercancel", fireUp);
+
+  // PC: spatiu declanseaza acelasi foc manual
+  window.addEventListener("keydown", function (e) {
+    if (e.code !== "Space" || e.repeat) return;
+    if (state !== S_PLAY || fireMode !== "hibrid") return;
+    fire.held = true; fire.holdT = HOLD_MULT * player.atkInterval / 1000;
+    manualShot();
+  });
+  window.addEventListener("keyup", function (e) { if (e.code === "Space") fireUp(null); });
 
   function inputVector() {
     var kx = 0, ky = 0;
@@ -631,7 +737,8 @@
     return best;
   }
 
-  function fireAt(target) {
+  function fireAt(target, mult) {
+    var m = mult === undefined ? 1 : mult;
     var base = Math.atan2(target.y - player.y, target.x - player.x);
     player.facing = base;
     var n = player.projCount, spread = 0.14;
@@ -641,12 +748,30 @@
       pBullets.push({
         x: player.x + Math.cos(a) * 16, y: player.y + Math.sin(a) * 16,
         vx: Math.cos(a) * player.projSpeed, vy: Math.sin(a) * player.projSpeed,
-        r: 4.5, dmg: player.damage, life: 2.2,
+        r: m < 1 ? 3.6 : 4.5,          // focurile din mers arata vizibil mai slabe
+        dmg: player.damage * m, life: 2.2,
         pierce: player.pierce, bounces: player.bounces,
-        burn: player.burn, hitIds: [], trail: []
+        burn: player.burn * m, hitIds: [], trail: [], weak: m < 1
       });
     }
-    burst(player.x + Math.cos(base) * 18, player.y + Math.sin(base) * 18, "62,232,255", 3, 90);
+    burst(player.x + Math.cos(base) * 18, player.y + Math.sin(base) * 18, "62,232,255", m < 1 ? 2 : 3, 90);
+  }
+
+  // Un foc manual, tras din miscare. Cadenta maxima e aceeasi cu cea automata,
+  // deci apasatul rapid nu poate depasi ritmul normal - doar il atinge.
+  function manualShot() {
+    if (!player || state !== S_PLAY) return false;
+    if (player.manualCd > 0) return false;
+    // doar din miscare: pe loc tragerea automata acopera deja damage-ul plin,
+    // altfel apasatul s-ar aduna peste ea si ar strica echilibrul
+    if (inputVector().mag <= 0.14) return false;
+    var tgt = nearestEnemy();
+    if (!tgt) return false;
+    fireAt(tgt, MOVE_DMG);
+    player.manualCd = player.atkInterval / 1000;
+    fireBtnEl.classList.add("kick");
+    setTimeout(function () { fireBtnEl.classList.remove("kick"); }, 70);
+    return true;
   }
 
   function enemyShoot(e, tx, ty) {
@@ -663,24 +788,39 @@
     var iv = inputVector();
     var moving = iv.mag > 0.14;
 
-    // --- MECANICA DE BAZA: misti SAU tragi, niciodata amandoua ---
+    // --- MECANICA DE BAZA ---
+    // Statul pe loc da mereu damage plin. Ce se intampla in miscare depinde de mod,
+    // dar orice foc tras din mers e slabit cu MOVE_DMG.
     if (moving) {
       player.x += iv.x * player.speed * iv.mag * dt;
       player.y += iv.y * player.speed * iv.mag * dt;
       player.facing = Math.atan2(iv.y, iv.x);
-      player.settle = 0.12;               // trebuie sa stai nemiscat putin ca sa tragi
+      player.settle = 0.12;               // trebuie sa stai nemiscat putin ca sa tragi automat
       player.atkTimer = Math.min(player.atkTimer, player.atkInterval / 1000);
-    } else {
-      if (player.settle > 0) player.settle -= dt;
-      else {
-        player.atkTimer -= dt;
-        if (player.atkTimer <= 0) {
-          var tgt = nearestEnemy();
-          if (tgt) { fireAt(tgt); player.atkTimer = player.atkInterval / 1000; }
-          else player.atkTimer = 0;
-        }
+    } else if (player.settle > 0) {
+      player.settle -= dt;
+    }
+
+    if (player.manualCd > 0) player.manualCd -= dt;
+
+    // tragere automata: pe loc in orice mod, iar in miscare doar in modul liber
+    var autoFires = moving ? (fireMode === "liber") : (player.settle <= 0);
+    if (autoFires) {
+      player.atkTimer -= dt;
+      if (player.atkTimer <= 0) {
+        var tgt = nearestEnemy();
+        if (tgt) { fireAt(tgt, moving ? MOVE_DMG : 1); player.atkTimer = player.atkInterval / 1000; }
+        else player.atkTimer = 0;
       }
     }
+
+    // tragere manuala tinuta apasat (modul hibrid, doar din miscare)
+    if (fireMode === "hibrid" && moving && fire.held) {
+      fire.holdT -= dt;
+      if (fire.holdT <= 0 && manualShot()) fire.holdT = HOLD_MULT * player.atkInterval / 1000;
+    }
+
+    updateFireBtn(moving);
 
     // limite camera + usa
     clampToRoom(player);
@@ -911,6 +1051,15 @@
       if (t.kind === "line" && t.owner) { t.x = t.owner.x; t.y = t.owner.y; }
       if (t.t <= 0) telegraphs.splice(i, 1);
     }
+  }
+
+  function updateFireBtn(moving) {
+    if (fireMode !== "hibrid") { fireBtnEl.style.display = "none"; return; }
+    fireBtnEl.style.display = "flex";
+    // aprins doar cand apasatul chiar face ceva: in miscare, cu tinta, fara racire
+    var armed = moving && player.manualCd <= 0 && enemies.length > 0;
+    fireBtnEl.classList.toggle("armed", armed);
+    fireBtnEl.style.opacity = moving ? "1" : "0.45";
   }
 
   // ====================== HUD ======================
@@ -1215,6 +1364,23 @@
   document.getElementById("startBtn").addEventListener("click", startRun);
   document.getElementById("retryBtn").addEventListener("click", startRun);
 
+  // ---------- selector de mod de tragere ----------
+  var modeBtns = Array.prototype.slice.call(document.querySelectorAll(".mode"));
+
+  function setMode(m) {
+    fireMode = m;
+    try { localStorage.setItem("torchbound.fireMode", m); } catch (err) {}
+    modeBtns.forEach(function (b) {
+      b.setAttribute("aria-pressed", String(b.dataset.mode === m));
+    });
+    if (fireBtnEl) fireBtnEl.style.display = (m === "hibrid") ? "flex" : "none";
+  }
+
+  modeBtns.forEach(function (b) {
+    b.addEventListener("click", function () { setMode(b.dataset.mode); });
+  });
+  setMode(fireMode);
+
   resize();
   player = newPlayer();      // exista de la primul frame, ca render-ul sa nu cada
   lastTime = performance.now();
@@ -1229,10 +1395,16 @@
         enemies: enemies.length, pBullets: pBullets.length, eBullets: eBullets.length,
         doorOpen: doorOpen, kills: kills, xp: player ? player.xp : 0,
         px: player ? Math.round(player.x) : 0, py: player ? Math.round(player.y) : 0,
-        projCount: player ? player.projCount : 0
+        projCount: player ? player.projCount : 0,
+        fireMode: fireMode,
+        baseDmg: player ? player.damage : 0,
+        lastDmg: pBullets.length ? pBullets[pBullets.length - 1].dmg : null,
+        lastWeak: pBullets.length ? !!pBullets[pBullets.length - 1].weak : null
       };
     },
     start: startRun,
+    setMode: setMode,
+    tapFire: manualShot,
     clearRoom: function () { while (enemies.length) killEnemy(enemies.length - 1, enemies[enemies.length - 1]); },
     dropEnemies: function () { enemies.length = 0; },
     collectOrbs: function () { orbs.forEach(function (o) { gainXp(o.xp); }); orbs.length = 0; },

@@ -31,7 +31,8 @@ function assert(cond, msg) { if (!cond) throw new Error("ASSERT FAILED: " + msg)
   ok(`state=play, camera 1, ${s.enemies} inamici`);
 
   // ---------- 2. MECANICA CHEIE: nu trage in miscare ----------
-  console.log("\n[2] Regula Archero: miscare => fara tragere");
+  console.log("\n[2] Regula Archero: miscare => fara tragere (mod clasic)");
+  await page.evaluate(() => window.__game.setMode("clasic"));
   // golim orice proiectil existent lasand jucatorul sa stea, apoi ne miscam continuu
   await page.keyboard.down("a");
   await page.waitForTimeout(150); // lasam proiectilele vechi sa dispara
@@ -56,6 +57,51 @@ function assert(cond, msg) { if (!cond) throw new Error("ASSERT FAILED: " + msg)
   }
   assert(firedAfterStop > 0, "dupa oprire trebuie sa apara proiectile");
   ok(`proiectile emise dupa oprire: ${firedAfterStop}`);
+
+  // ---------- 3b. modurile de tragere ----------
+  console.log("\n[3b] Mod HIBRID: apasarea trage din mers, cu dauna redusa");
+  await page.evaluate(() => window.__game.setMode("hibrid"));
+  await page.keyboard.down("a");
+  await page.waitForTimeout(220);
+  // fara apasare nu trebuie sa iasa niciun foc, desi ne miscam
+  let idleWhileMoving = 0;
+  for (let i = 0; i < 6; i++) { await page.waitForTimeout(90); idleWhileMoving = Math.max(idleWhileMoving, (await snap()).pBullets); }
+  assert(idleWhileMoving === 0, `hibrid fara apasare nu trage, dar am vazut ${idleWhileMoving}`);
+  ok("in mers, fara apasare: 0 focuri");
+
+  // citim rezultatul in aceeasi evaluare, altfel proiectilul poate lovi un
+  // inamic apropiat inainte de urmatorul snapshot si dispare din lista
+  const shot = await page.evaluate(() => {
+    const fired = window.__game.tapFire();
+    const s = window.__game.snap();
+    return { fired, dmg: s.lastDmg, weak: s.lastWeak, base: s.baseDmg, count: s.pBullets };
+  });
+  await page.keyboard.up("a");
+  assert(shot.fired === true && shot.count > 0, "apasarea in mers trebuie sa traga");
+  assert(shot.weak === true, "focul din mers trebuie marcat ca slabit");
+  const expected = shot.base * 0.6;
+  assert(Math.abs(shot.dmg - expected) < 0.01, `dauna din mers ${shot.dmg} trebuie sa fie 60% din ${shot.base} (=${expected})`);
+  ok(`apasare in mers => ${shot.dmg} dauna, exact 60% din ${shot.base} de pe loc`);
+
+  // apasatul repetat trebuie sa fie limitat de racire, nu infinit
+  const spam = await page.evaluate(() => {
+    let fired = 0;
+    for (let i = 0; i < 10; i++) if (window.__game.tapFire()) fired++;
+    return fired;
+  });
+  assert(spam === 0, `apasarea imediat repetata e blocata de racire, dar au trecut ${spam} focuri`);
+  ok("apasatul repetat e limitat de racire (fara damage infinit)");
+
+  console.log("\n[3c] Mod LIBER: trage automat si in mers");
+  await page.evaluate(() => window.__game.setMode("liber"));
+  await page.keyboard.down("a");
+  let freeFired = 0;
+  for (let i = 0; i < 10; i++) { await page.waitForTimeout(100); freeFired = Math.max(freeFired, (await snap()).pBullets); }
+  await page.keyboard.up("a");
+  assert(freeFired > 0, "modul liber trebuie sa traga si in miscare");
+  ok(`in mers, automat: ${freeFired} focuri`);
+
+  await page.evaluate(() => window.__game.setMode("hibrid"));
 
   // ---------- 4. miscarea chiar deplaseaza jucatorul ----------
   console.log("\n[4] Miscare pe taste");
