@@ -1,0 +1,20 @@
+{
+  "name": "torchbound",
+  "version": "1.0.0",
+  "description": "Torchbound - action roguelike top-down, empachetat pentru Android cu Capacitor",
+  "private": true,
+  "scripts": {
+    "test": "node test.js",
+    "android:add": "cap add android",
+    "android:sync": "cap sync android",
+    "android:build": "cd android && ./gradlew assembleDebug"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.0.0",
+    "@capacitor/core": "^7.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.0.0",
+    "playwright": "^1.56.1"
+  }
+}

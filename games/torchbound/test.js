@@ -15,7 +15,7 @@ function assert(cond, msg) { if (!cond) throw new Error("ASSERT FAILED: " + msg)
   page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
   page.on("pageerror", (e) => errors.push("pageerror: " + e.message));
 
-  await page.goto("file://" + path.join(__dirname, "index.html"));
+  await page.goto("file://" + path.join(__dirname, "www", "index.html"));
   await page.waitForTimeout(400);
 
   const snap = () => page.evaluate(() => window.__game.snap());

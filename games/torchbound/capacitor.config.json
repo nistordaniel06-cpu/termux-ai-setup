@@ -1,0 +1,11 @@
+{
+  "appId": "com.torchbound.game",
+  "appName": "Torchbound",
+  "webDir": "www",
+  "android": {
+    "backgroundColor": "#070b14"
+  },
+  "server": {
+    "androidScheme": "https"
+  }
+}
