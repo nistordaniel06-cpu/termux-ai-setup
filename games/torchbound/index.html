@@ -1,0 +1,924 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<title>Torchbound</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Manrope:wght@500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #14101c;
+    --bg-deep: #0b0813;
+    --panel: #1e1830;
+    --panel-border: #382a54;
+    --text: #f1ecf9;
+    --text-muted: #a89bc4;
+    --accent: #ffb454;
+    --accent-dim: #7a5a2a;
+    --danger: #ff4d6d;
+    --danger-dim: #5c2230;
+    --heal: #6de3b0;
+    --violet: #8f7bef;
+    --font-display: "Cinzel", Georgia, "Times New Roman", serif;
+    --font-body: "Manrope", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--bg-deep);
+    color: var(--text);
+    font-family: var(--font-body);
+    overflow: hidden;
+    overscroll-behavior: none;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  #stage {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+    background:
+      radial-gradient(ellipse 90% 60% at 50% 0%, #241a38 0%, var(--bg) 55%, var(--bg-deep) 100%);
+  }
+
+  canvas#game {
+    position: absolute;
+    inset: 0;
+    display: block;
+    touch-action: none;
+  }
+
+  /* ---------- HUD ---------- */
+  #hud {
+    position: absolute;
+    top: max(14px, env(safe-area-inset-top));
+    left: 0;
+    right: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 0 16px;
+    pointer-events: none;
+    z-index: 5;
+  }
+
+  #hpRow {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: min(420px, 92vw);
+  }
+
+  #hpBarOuter {
+    flex: 1;
+    height: 16px;
+    border-radius: 999px;
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    overflow: hidden;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);
+  }
+
+  #hpBarInner {
+    height: 100%;
+    width: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--danger), #ff8969);
+    transition: width 160ms ease-out;
+  }
+
+  #hpLabel {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--text);
+    min-width: 62px;
+    text-align: right;
+    letter-spacing: 0.02em;
+  }
+
+  #waveLabel {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 14px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    text-shadow: 0 0 12px rgba(255,180,84,0.35);
+  }
+
+  #waveLabel span {
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-weight: 500;
+    letter-spacing: 0.02em;
+  }
+
+  /* ---------- Joystick ---------- */
+  #joyZone {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 46vw;
+    height: 46vw;
+    max-width: 260px;
+    max-height: 260px;
+    z-index: 5;
+  }
+
+  #joyBase {
+    position: absolute;
+    width: 108px;
+    height: 108px;
+    border-radius: 50%;
+    background: rgba(30, 24, 48, 0.55);
+    border: 1px solid var(--panel-border);
+    backdrop-filter: blur(2px);
+    display: none;
+  }
+
+  #joyStick {
+    position: absolute;
+    width: 46px;
+    height: 46px;
+    margin: -23px 0 0 -23px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #ffd9a3, var(--accent) 60%, var(--accent-dim) 100%);
+    box-shadow: 0 0 16px rgba(255,180,84,0.45);
+  }
+
+  /* ---------- Overlays ---------- */
+  .overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: radial-gradient(ellipse 100% 70% at 50% 20%, rgba(36,26,56,0.92), rgba(11,8,19,0.96));
+    z-index: 10;
+  }
+
+  .hidden { display: none !important; }
+
+  .panel {
+    width: min(420px, 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+    text-align: center;
+  }
+
+  .kicker {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  h1.title {
+    font-family: var(--font-display);
+    font-size: clamp(38px, 11vw, 56px);
+    font-weight: 700;
+    margin: 0;
+    letter-spacing: 0.04em;
+    background: linear-gradient(180deg, #ffe7bd, var(--accent) 55%, #c97f2e);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-shadow: 0 0 34px rgba(255,180,84,0.28);
+    text-wrap: balance;
+  }
+
+  .subtitle {
+    color: var(--text-muted);
+    font-size: 14.5px;
+    line-height: 1.6;
+    max-width: 340px;
+  }
+
+  .btn {
+    font-family: var(--font-body);
+    font-weight: 800;
+    font-size: 15px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--bg-deep);
+    background: linear-gradient(180deg, #ffd28a, var(--accent));
+    border: none;
+    border-radius: 14px;
+    padding: 15px 34px;
+    cursor: pointer;
+    box-shadow: 0 10px 24px -8px rgba(255,180,84,0.55), inset 0 1px 0 rgba(255,255,255,0.4);
+    pointer-events: auto;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .btn:active { transform: translateY(1px) scale(0.98); }
+
+  .btn.secondary {
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--panel-border);
+    box-shadow: none;
+  }
+
+  .statRow {
+    display: flex;
+    gap: 28px;
+    font-family: var(--font-mono);
+  }
+
+  .stat { display: flex; flex-direction: column; gap: 2px; }
+  .stat b { font-size: 22px; color: var(--accent); }
+  .stat span { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-muted); }
+
+  /* Upgrade cards */
+  #upgradeOverlay .panel { width: min(520px, 100%); }
+
+  #upgradeCards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    width: 100%;
+    pointer-events: auto;
+  }
+
+  .card {
+    background: linear-gradient(180deg, var(--panel), #170f26);
+    border: 1px solid var(--panel-border);
+    border-radius: 16px;
+    padding: 18px 14px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    transition: border-color 140ms ease, transform 140ms ease;
+  }
+
+  .card:active { transform: scale(0.96); }
+  .card:hover { border-color: var(--accent); }
+
+  .card .icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    background: rgba(255,180,84,0.12);
+    border: 1px solid var(--accent-dim);
+  }
+
+  .card .name {
+    font-weight: 800;
+    font-size: 14px;
+  }
+
+  .card .desc {
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.4;
+  }
+
+  #waveFlash {
+    position: absolute;
+    top: 40%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-family: var(--font-display);
+    font-size: clamp(30px, 9vw, 46px);
+    color: var(--accent);
+    text-shadow: 0 0 30px rgba(255,180,84,0.5);
+    letter-spacing: 0.1em;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 6;
+    text-transform: uppercase;
+  }
+
+  #waveFlash.show {
+    animation: waveFlashAnim 1100ms ease-out forwards;
+  }
+
+  @keyframes waveFlashAnim {
+    0% { opacity: 0; transform: translate(-50%, -46%) scale(0.9); }
+    18% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    75% { opacity: 1; }
+    100% { opacity: 0; transform: translate(-50%, -54%) scale(1.02); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    #waveFlash.show { animation: none; opacity: 1; }
+    .card { transition: none; }
+  }
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="game"></canvas>
+
+  <div id="hud">
+    <div id="hpRow">
+      <div id="hpBarOuter"><div id="hpBarInner"></div></div>
+      <div id="hpLabel"><span id="hpVal">100</span>/<span id="hpMax">100</span></div>
+    </div>
+    <div id="waveLabel">Valul <span id="waveNum">1</span></div>
+  </div>
+
+  <div id="joyZone">
+    <div id="joyBase"><div id="joyStick"></div></div>
+  </div>
+
+  <div id="waveFlash"></div>
+
+  <div id="startOverlay" class="overlay">
+    <div class="panel">
+      <div class="kicker">un roguelite de supraviețuire</div>
+      <h1 class="title">Torchbound</h1>
+      <p class="subtitle">Ține torța aprinsă. Mișcă-te ca să eviți inamicii — tragi automat spre cel mai apropiat. Curăță valul, alege un upgrade, mergi mai departe.</p>
+      <button class="btn" id="startBtn">Începe</button>
+      <p class="subtitle" style="font-size:12.5px;">Mobil: joystick jos-stânga · Desktop: WASD / săgeți</p>
+    </div>
+  </div>
+
+  <div id="upgradeOverlay" class="overlay hidden">
+    <div class="panel">
+      <div class="kicker">valul curățat</div>
+      <h1 class="title" style="font-size:clamp(26px,7vw,34px);">Alege un dar</h1>
+      <div id="upgradeCards"></div>
+    </div>
+  </div>
+
+  <div id="gameOverOverlay" class="overlay hidden">
+    <div class="panel">
+      <div class="kicker">torța s-a stins</div>
+      <h1 class="title" style="font-size:clamp(32px,9vw,46px);">Ai căzut</h1>
+      <div class="statRow">
+        <div class="stat"><b id="finalWave">1</b><span>Val atins</span></div>
+        <div class="stat"><b id="finalKills">0</b><span>Inamici uciși</span></div>
+      </div>
+      <button class="btn" id="restartBtn">Reîncepe</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var canvas = document.getElementById("game");
+  var ctx = canvas.getContext("2d");
+  var stage = document.getElementById("stage");
+
+  var startOverlay = document.getElementById("startOverlay");
+  var upgradeOverlay = document.getElementById("upgradeOverlay");
+  var gameOverOverlay = document.getElementById("gameOverOverlay");
+  var waveFlashEl = document.getElementById("waveFlash");
+  var hpBarInner = document.getElementById("hpBarInner");
+  var hpValEl = document.getElementById("hpVal");
+  var hpMaxEl = document.getElementById("hpMax");
+  var waveNumEl = document.getElementById("waveNum");
+  var upgradeCardsEl = document.getElementById("upgradeCards");
+  var finalWaveEl = document.getElementById("finalWave");
+  var finalKillsEl = document.getElementById("finalKills");
+
+  var W = 0, H = 0, DPR = 1;
+
+  function resize() {
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    W = stage.clientWidth;
+    H = stage.clientHeight;
+    canvas.width = Math.floor(W * DPR);
+    canvas.height = Math.floor(H * DPR);
+    canvas.style.width = W + "px";
+    canvas.style.height = H + "px";
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  }
+  window.addEventListener("resize", resize);
+  resize();
+
+  // ---------------- state ----------------
+  var STATE_START = "start", STATE_PLAY = "play", STATE_UPGRADE = "upgrade", STATE_OVER = "over";
+  var state = STATE_START;
+
+  var player = null;
+  var enemies = [], projectiles = [], particles = [];
+  var wave = 1, killCount = 0, enemiesToSpawn = 0, spawnTimer = 0;
+  var lastTime = 0;
+  var rafId = null;
+
+  function freshPlayer() {
+    return {
+      x: 0, y: 0, r: 16,
+      hp: 100, maxHp: 100,
+      speed: 220,
+      damage: 18,
+      attackInterval: 460,
+      lastShot: -9999,
+      projSpeed: 560,
+      projRadius: 5,
+      projCount: 1,
+      range: 620,
+      hitFlash: 0
+    };
+  }
+
+  function resetGame() {
+    player = freshPlayer();
+    player.x = W / 2;
+    player.y = H / 2;
+    enemies = [];
+    projectiles = [];
+    particles = [];
+    wave = 0;
+    killCount = 0;
+    enemiesToSpawn = 0;
+    spawnTimer = 0;
+    startWave(1);
+  }
+
+  function startWave(n) {
+    wave = n;
+    waveNumEl.textContent = String(wave);
+    enemiesToSpawn = Math.min(3 + wave * 2, 24);
+    spawnTimer = 0;
+    flashWave("Valul " + wave);
+  }
+
+  function flashWave(text) {
+    waveFlashEl.textContent = text;
+    waveFlashEl.classList.remove("show");
+    void waveFlashEl.offsetWidth;
+    waveFlashEl.classList.add("show");
+  }
+
+  // ---------------- input ----------------
+  var move = { x: 0, y: 0 };
+  var keys = {};
+
+  window.addEventListener("keydown", function (e) {
+    keys[e.key.toLowerCase()] = true;
+  });
+  window.addEventListener("keyup", function (e) {
+    keys[e.key.toLowerCase()] = false;
+  });
+
+  function keyboardVector() {
+    var x = 0, y = 0;
+    if (keys["arrowleft"] || keys["a"]) x -= 1;
+    if (keys["arrowright"] || keys["d"]) x += 1;
+    if (keys["arrowup"] || keys["w"]) y -= 1;
+    if (keys["arrowdown"] || keys["s"]) y += 1;
+    if (x !== 0 || y !== 0) {
+      var len = Math.hypot(x, y);
+      return { x: x / len, y: y / len };
+    }
+    return null;
+  }
+
+  // joystick
+  var joyZone = document.getElementById("joyZone");
+  var joyBase = document.getElementById("joyBase");
+  var joyStick = document.getElementById("joyStick");
+  var joyActive = false;
+  var joyOrigin = { x: 0, y: 0 };
+  var joyVec = { x: 0, y: 0 };
+  var JOY_RADIUS = 46;
+
+  function joyStart(clientX, clientY) {
+    joyActive = true;
+    var rect = joyZone.getBoundingClientRect();
+    var ox = Math.min(Math.max(clientX - rect.left, 30), rect.width - 30);
+    var oy = Math.min(Math.max(clientY - rect.top, 30), rect.height - 30);
+    joyOrigin = { x: ox, y: oy };
+    joyBase.style.left = (ox - 54) + "px";
+    joyBase.style.top = (oy - 54) + "px";
+    joyBase.style.display = "block";
+    joyStick.style.left = "50%";
+    joyStick.style.top = "50%";
+  }
+
+  function joyMove(clientX, clientY) {
+    if (!joyActive) return;
+    var rect = joyZone.getBoundingClientRect();
+    var dx = (clientX - rect.left) - joyOrigin.x;
+    var dy = (clientY - rect.top) - joyOrigin.y;
+    var dist = Math.hypot(dx, dy);
+    var clamped = Math.min(dist, JOY_RADIUS);
+    var angle = Math.atan2(dy, dx);
+    var sx = Math.cos(angle) * clamped;
+    var sy = Math.sin(angle) * clamped;
+    joyStick.style.left = (54 + sx) + "px";
+    joyStick.style.top = (54 + sy) + "px";
+    if (dist > 6) {
+      joyVec = { x: dx / dist, y: dy / dist, mag: clamped / JOY_RADIUS };
+    } else {
+      joyVec = { x: 0, y: 0, mag: 0 };
+    }
+  }
+
+  function joyEnd() {
+    joyActive = false;
+    joyBase.style.display = "none";
+    joyVec = { x: 0, y: 0, mag: 0 };
+  }
+
+  joyZone.addEventListener("pointerdown", function (e) {
+    joyZone.setPointerCapture(e.pointerId);
+    joyStart(e.clientX, e.clientY);
+  });
+  joyZone.addEventListener("pointermove", function (e) {
+    if (joyActive) joyMove(e.clientX, e.clientY);
+  });
+  window.addEventListener("pointerup", joyEnd);
+  window.addEventListener("pointercancel", joyEnd);
+
+  // ---------------- spawning ----------------
+  function spawnEnemy() {
+    var margin = 40;
+    var side = Math.floor(Math.random() * 4);
+    var x, y;
+    if (side === 0) { x = -margin; y = Math.random() * H; }
+    else if (side === 1) { x = W + margin; y = Math.random() * H; }
+    else if (side === 2) { x = Math.random() * W; y = -margin; }
+    else { x = Math.random() * W; y = H + margin; }
+
+    var hp = 30 + wave * 8;
+    enemies.push({
+      x: x, y: y, r: 14,
+      hp: hp, maxHp: hp,
+      speed: Math.min(70 + wave * 4, 150),
+      damage: 8 + Math.floor(wave * 0.8),
+      lastHitPlayer: -9999,
+      hue: 340 + Math.random() * 20 - 10
+    });
+  }
+
+  function nearestEnemy(x, y) {
+    var best = null, bestD = Infinity;
+    for (var i = 0; i < enemies.length; i++) {
+      var e = enemies[i];
+      var d = (e.x - x) * (e.x - x) + (e.y - y) * (e.y - y);
+      if (d < bestD) { bestD = d; best = e; }
+    }
+    return best;
+  }
+
+  function spawnProjectiles(target) {
+    var baseAngle = Math.atan2(target.y - player.y, target.x - player.x);
+    var count = player.projCount;
+    var spread = 0.16;
+    for (var i = 0; i < count; i++) {
+      var offset = count === 1 ? 0 : (i - (count - 1) / 2) * spread;
+      var a = baseAngle + offset;
+      projectiles.push({
+        x: player.x, y: player.y,
+        vx: Math.cos(a) * player.projSpeed,
+        vy: Math.sin(a) * player.projSpeed,
+        r: player.projRadius,
+        damage: player.damage,
+        life: player.range / player.projSpeed
+      });
+    }
+  }
+
+  function spawnParticles(x, y, color, n) {
+    for (var i = 0; i < n; i++) {
+      var a = Math.random() * Math.PI * 2;
+      var speed = 60 + Math.random() * 120;
+      particles.push({
+        x: x, y: y,
+        vx: Math.cos(a) * speed,
+        vy: Math.sin(a) * speed,
+        life: 0.35 + Math.random() * 0.25,
+        maxLife: 0.6,
+        color: color,
+        r: 2 + Math.random() * 2.5
+      });
+    }
+  }
+
+  // ---------------- upgrades ----------------
+  var UPGRADE_POOL = [
+    {
+      id: "damage", icon: "⚔", name: "Lovitură puternică",
+      desc: "+25% daună",
+      apply: function () { player.damage = Math.round(player.damage * 1.25); }
+    },
+    {
+      id: "speed", icon: "⚡", name: "Reflexe rapide",
+      desc: "+12% viteză atac",
+      apply: function () { player.attackInterval = Math.max(140, Math.round(player.attackInterval * 0.88)); }
+    },
+    {
+      id: "move", icon: "\u{1F45F}", name: "Picioare iuți",
+      desc: "+15% viteză mișcare",
+      apply: function () { player.speed = Math.round(player.speed * 1.15); }
+    },
+    {
+      id: "vitality", icon: "❤", name: "Vitalitate",
+      desc: "+20 viață maximă, vindecare completă",
+      apply: function () { player.maxHp += 20; player.hp = player.maxHp; }
+    },
+    {
+      id: "multishot", icon: "✳", name: "Tir dublu",
+      desc: "+1 proiectil pe atac",
+      apply: function () { player.projCount = Math.min(4, player.projCount + 1); }
+    }
+  ];
+
+  function pickUpgrades(n) {
+    var pool = UPGRADE_POOL.slice();
+    var picks = [];
+    while (picks.length < n && pool.length > 0) {
+      var idx = Math.floor(Math.random() * pool.length);
+      picks.push(pool.splice(idx, 1)[0]);
+    }
+    return picks;
+  }
+
+  function showUpgradeOverlay() {
+    state = STATE_UPGRADE;
+    upgradeCardsEl.innerHTML = "";
+    var picks = pickUpgrades(3);
+    picks.forEach(function (u) {
+      var card = document.createElement("div");
+      card.className = "card";
+      card.innerHTML =
+        '<div class="icon">' + u.icon + '</div>' +
+        '<div class="name">' + u.name + '</div>' +
+        '<div class="desc">' + u.desc + '</div>';
+      card.addEventListener("click", function () {
+        u.apply();
+        upgradeOverlay.classList.add("hidden");
+        state = STATE_PLAY;
+        startWave(wave + 1);
+      });
+      upgradeCardsEl.appendChild(card);
+    });
+    upgradeOverlay.classList.remove("hidden");
+  }
+
+  // ---------------- update / render ----------------
+  function update(dt) {
+    if (state !== STATE_PLAY) return;
+
+    var dir = keyboardVector();
+    if (!dir && joyVec.mag) dir = { x: joyVec.x, y: joyVec.y, mag: joyVec.mag };
+    var mag = dir ? (dir.mag !== undefined ? dir.mag : 1) : 0;
+
+    if (dir && mag > 0) {
+      player.x += dir.x * player.speed * mag * dt;
+      player.y += dir.y * player.speed * mag * dt;
+    }
+    player.x = Math.max(player.r, Math.min(W - player.r, player.x));
+    player.y = Math.max(player.r, Math.min(H - player.r, player.y));
+    if (player.hitFlash > 0) player.hitFlash -= dt;
+
+    // spawning
+    if (enemiesToSpawn > 0) {
+      spawnTimer -= dt;
+      if (spawnTimer <= 0) {
+        spawnEnemy();
+        enemiesToSpawn--;
+        spawnTimer = 0.28;
+      }
+    }
+
+    // auto attack
+    var target = nearestEnemy(player.x, player.y);
+    if (target) {
+      var now = performance.now();
+      if (now - player.lastShot >= player.attackInterval) {
+        player.lastShot = now;
+        spawnProjectiles(target);
+      }
+    }
+
+    // projectiles
+    for (var i = projectiles.length - 1; i >= 0; i--) {
+      var p = projectiles[i];
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.life -= dt;
+      var hit = false;
+      for (var j = enemies.length - 1; j >= 0; j--) {
+        var e = enemies[j];
+        var d = Math.hypot(e.x - p.x, e.y - p.y);
+        if (d < e.r + p.r) {
+          e.hp -= p.damage;
+          spawnParticles(p.x, p.y, "255,180,84", 4);
+          hit = true;
+          if (e.hp <= 0) {
+            spawnParticles(e.x, e.y, "255,77,109", 14);
+            enemies.splice(j, 1);
+            killCount++;
+          }
+          break;
+        }
+      }
+      if (hit || p.life <= 0 || p.x < -40 || p.x > W + 40 || p.y < -40 || p.y > H + 40) {
+        projectiles.splice(i, 1);
+      }
+    }
+
+    // enemies
+    var now2 = performance.now();
+    for (var k = 0; k < enemies.length; k++) {
+      var en = enemies[k];
+      var dx = player.x - en.x, dy = player.y - en.y;
+      var dist = Math.hypot(dx, dy) || 1;
+      en.x += (dx / dist) * en.speed * dt;
+      en.y += (dy / dist) * en.speed * dt;
+
+      if (dist < en.r + player.r && now2 - en.lastHitPlayer > 550) {
+        en.lastHitPlayer = now2;
+        player.hp -= en.damage;
+        player.hitFlash = 0.25;
+        spawnParticles(player.x, player.y, "255,77,109", 8);
+        var pushA = Math.atan2(-dy, -dx);
+        player.x += Math.cos(pushA) * 10;
+        player.y += Math.sin(pushA) * 10;
+      }
+    }
+
+    // particles
+    for (var m = particles.length - 1; m >= 0; m--) {
+      var pt = particles[m];
+      pt.x += pt.vx * dt;
+      pt.y += pt.vy * dt;
+      pt.vx *= 0.92;
+      pt.vy *= 0.92;
+      pt.life -= dt;
+      if (pt.life <= 0) particles.splice(m, 1);
+    }
+
+    updateHud();
+
+    if (player.hp <= 0) {
+      endGame();
+      return;
+    }
+
+    if (enemiesToSpawn === 0 && enemies.length === 0) {
+      showUpgradeOverlay();
+    }
+  }
+
+  function updateHud() {
+    var pct = Math.max(0, player.hp / player.maxHp) * 100;
+    hpBarInner.style.width = pct + "%";
+    hpValEl.textContent = String(Math.max(0, Math.round(player.hp)));
+    hpMaxEl.textContent = String(player.maxHp);
+  }
+
+  function endGame() {
+    state = STATE_OVER;
+    finalWaveEl.textContent = String(wave);
+    finalKillsEl.textContent = String(killCount);
+    gameOverOverlay.classList.remove("hidden");
+  }
+
+  function render() {
+    ctx.clearRect(0, 0, W, H);
+
+    // arena grid
+    ctx.save();
+    ctx.strokeStyle = "rgba(143,123,239,0.06)";
+    ctx.lineWidth = 1;
+    var grid = 46;
+    for (var gx = 0; gx < W; gx += grid) {
+      ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, H); ctx.stroke();
+    }
+    for (var gy = 0; gy < H; gy += grid) {
+      ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(W, gy); ctx.stroke();
+    }
+    ctx.restore();
+
+    // particles
+    particles.forEach(function (pt) {
+      var alpha = Math.max(0, pt.life / pt.maxLife);
+      ctx.beginPath();
+      ctx.fillStyle = "rgba(" + pt.color + "," + alpha.toFixed(2) + ")";
+      ctx.arc(pt.x, pt.y, pt.r, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    // projectiles
+    projectiles.forEach(function (p) {
+      ctx.beginPath();
+      var grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 2.4);
+      grad.addColorStop(0, "rgba(255,225,170,0.95)");
+      grad.addColorStop(1, "rgba(255,180,84,0)");
+      ctx.fillStyle = grad;
+      ctx.arc(p.x, p.y, p.r * 2.4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.fillStyle = "#ffe1a8";
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    // enemies
+    enemies.forEach(function (e) {
+      ctx.beginPath();
+      ctx.fillStyle = "hsl(" + e.hue + ",78%,58%)";
+      ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = "rgba(0,0,0,0.35)";
+      ctx.stroke();
+      // hp sliver
+      var w = e.r * 2;
+      var pct = Math.max(0, e.hp / e.maxHp);
+      ctx.fillStyle = "rgba(11,8,19,0.7)";
+      ctx.fillRect(e.x - w / 2, e.y - e.r - 9, w, 4);
+      ctx.fillStyle = "#ff8969";
+      ctx.fillRect(e.x - w / 2, e.y - e.r - 9, w * pct, 4);
+    });
+
+    // player
+    if (player) {
+      var flash = player.hitFlash > 0;
+      ctx.beginPath();
+      var pg = ctx.createRadialGradient(player.x, player.y, 0, player.x, player.y, player.r * 2.6);
+      pg.addColorStop(0, flash ? "rgba(255,90,90,0.55)" : "rgba(255,180,84,0.45)");
+      pg.addColorStop(1, "rgba(255,180,84,0)");
+      ctx.fillStyle = pg;
+      ctx.arc(player.x, player.y, player.r * 2.6, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.fillStyle = flash ? "#ff8a8a" : "#ffd9a3";
+      ctx.arc(player.x, player.y, player.r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.lineWidth = 2.5;
+      ctx.strokeStyle = "#ffb454";
+      ctx.stroke();
+    }
+  }
+
+  function loop(ts) {
+    var dt = Math.min((ts - lastTime) / 1000, 0.05);
+    lastTime = ts;
+    update(dt);
+    render();
+    rafId = requestAnimationFrame(loop);
+  }
+
+  // ---------------- boot ----------------
+  document.getElementById("startBtn").addEventListener("click", function () {
+    startOverlay.classList.add("hidden");
+    state = STATE_PLAY;
+    resetGame();
+    state = STATE_PLAY;
+  });
+
+  document.getElementById("restartBtn").addEventListener("click", function () {
+    gameOverOverlay.classList.add("hidden");
+    resetGame();
+    state = STATE_PLAY;
+  });
+
+  lastTime = performance.now();
+  rafId = requestAnimationFrame(loop);
+
+  // expose minimal hook for automated testing
+  window.__torchbound = {
+    getState: function () {
+      return {
+        state: state,
+        wave: wave,
+        hp: player ? player.hp : null,
+        maxHp: player ? player.maxHp : null,
+        enemies: enemies ? enemies.length : 0,
+        kills: killCount
+      };
+    },
+    forceStart: function () {
+      startOverlay.classList.add("hidden");
+      resetGame();
+      state = STATE_PLAY;
+    }
+  };
+})();
+</script>
+</body>
+</html>
