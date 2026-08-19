@@ -6,17 +6,16 @@ Ruleaza: copilot 'describe your code'
 
 import os
 import sys
-import openai
+import requests
 import click
 
 API_KEY = os.getenv('OPENAI_API_KEY')
+AI_MODEL = os.getenv('AI_MODEL', 'gpt-3.5-turbo')
 
 if not API_KEY or API_KEY == "sk-your-api-key-here":
     print("❌ OPENAI_API_KEY not set!")
     print("📝 Run: nano ~/ai-workspace/config/ai.conf")
     exit(1)
-
-openai.api_key = API_KEY
 
 @click.command()
 @click.argument('prompt', nargs=-1)
@@ -36,23 +35,32 @@ def copilot(prompt):
     click.secho("\n🤖 Copilot thinking...\n", fg='yellow')
     
     try:
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {
-                    "role": "system",
-                    "content": "You are GitHub Copilot running on Termux. Generate concise, production-ready code with comments."
-                },
-                {
-                    "role": "user",
-                    "content": user_input
-                }
-            ],
-            temperature=0.7,
-            max_tokens=1500
+        response = requests.post(
+            "https://api.openai.com/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {API_KEY}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": AI_MODEL,
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": "You are GitHub Copilot running on Termux. Generate concise, production-ready code with comments."
+                    },
+                    {
+                        "role": "user",
+                        "content": user_input
+                    }
+                ],
+                "temperature": 0.7,
+                "max_tokens": 1500,
+            },
+            timeout=60,
         )
-        
-        code = response['choices'][0]['message']['content']
+        response.raise_for_status()
+
+        code = response.json()['choices'][0]['message']['content']
         
         click.secho("✅ Generated Code:\n", fg='green', bold=True)
         click.echo("─" * 50)

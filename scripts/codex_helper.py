@@ -5,18 +5,17 @@ Ruleaza: python ~/ai-workspace/scripts/codex_helper.py
 """
 
 import os
-import openai
+import requests
 from pathlib import Path
 
 API_KEY = os.getenv('OPENAI_API_KEY')
+AI_MODEL = os.getenv('AI_MODEL', 'gpt-3.5-turbo')
 CODE_DIR = Path.home() / 'ai-workspace' / 'generated_code'
 
 if not API_KEY or API_KEY == "sk-your-api-key-here":
     print("❌ API_KEY not set!")
     print("📝 Run: nano ~/ai-workspace/config/ai.conf")
     exit(1)
-
-openai.api_key = API_KEY
 
 class CodexHelper:
     def __init__(self):
@@ -25,17 +24,27 @@ class CodexHelper:
     def generate_code(self, prompt, language='python'):
         """Genereaza cod din descriere"""
         try:
-            response = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo",
-                messages=[
-                    {"role": "system", "content": f"You are an expert {language} developer. Generate clean, well-documented code."},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.7,
-                max_tokens=2000
+            response = requests.post(
+                "https://api.openai.com/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {API_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": AI_MODEL,
+                    "messages": [
+                        {"role": "system", "content": f"You are an expert {language} developer. Generate clean, well-documented code."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    "temperature": 0.7,
+                    "max_tokens": 2000,
+                },
+                timeout=60,
             )
-
-            return response['choices'][0]['message']['content']
+            response.raise_for_status()
+            return response.json()['choices'][0]['message']['content']
+        except requests.exceptions.HTTPError:
+            return f"❌ Eroare API ({response.status_code}): {response.text[:300]}"
         except Exception as e:
             return f"❌ Error: {e}"
 

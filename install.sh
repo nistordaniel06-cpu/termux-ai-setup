@@ -20,8 +20,7 @@ echo "🐍 Installing Python..."
 pkg install -y python clang git nano curl
 
 echo "📥 Installing Python packages..."
-pip install --upgrade pip
-pip install openai==0.27.8 anthropic requests python-dotenv
+pip install requests python-dotenv
 
 echo "📁 Creating workspace..."
 mkdir -p ~/ai-workspace/{chats,generated_code,scripts,config}

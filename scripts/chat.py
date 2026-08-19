@@ -5,13 +5,14 @@ Ruleaza: python ~/ai-workspace/scripts/chat.py
 """
 
 import os
-import openai
+import requests
 import json
 from datetime import datetime
 from pathlib import Path
 
 # Config
 API_KEY = os.getenv('OPENAI_API_KEY')
+AI_MODEL = os.getenv('AI_MODEL', 'gpt-3.5-turbo')
 CHAT_HISTORY_DIR = Path.home() / 'ai-workspace' / 'chats'
 CURRENT_CHAT_FILE = CHAT_HISTORY_DIR / f"chat_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
 
@@ -21,8 +22,6 @@ if not API_KEY or API_KEY == "sk-your-api-key-here":
     print("   OPENAI_API_KEY='sk-your-actual-key'")
     print("🔄 Reload: source ~/.bashrc")
     exit(1)
-
-openai.api_key = API_KEY
 
 class TermuxAIChat:
     def __init__(self):
@@ -40,23 +39,35 @@ class TermuxAIChat:
 
     def get_ai_response(self, user_input):
         """Primeste raspuns de la AI"""
+        self.messages.append({"role": "user", "content": user_input})
+
         try:
-            self.messages.append({"role": "user", "content": user_input})
-
-            response = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo",
-                messages=self.messages,
-                temperature=0.7,
-                max_tokens=1000
+            response = requests.post(
+                "https://api.openai.com/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {API_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": AI_MODEL,
+                    "messages": self.messages,
+                    "temperature": 0.7,
+                    "max_tokens": 1000,
+                },
+                timeout=60,
             )
-
-            assistant_message = response['choices'][0]['message']['content']
+            response.raise_for_status()
+            assistant_message = response.json()['choices'][0]['message']['content']
             self.messages.append({"role": "assistant", "content": assistant_message})
 
             self.save_chat()
             return assistant_message
 
+        except requests.exceptions.HTTPError:
+            self.messages.pop()
+            return f"❌ Eroare API ({response.status_code}): {response.text[:300]}"
         except Exception as e:
+            self.messages.pop()
             return f"❌ Eroare: {str(e)}"
 
     def show_help(self):
