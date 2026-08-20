@@ -8,6 +8,10 @@ extends RefCounted
 ## doar anunta ca s-a golit. Cine decide urmatorul pas e DungeonProgress.
 
 signal enemy_died(enemy: Enemy)
+## Un inamic tocmai a intrat in arbore, cu tipul si pozitia asezate. Cine
+## asculta poate inca sa-i ajusteze statisticile (ex. scalarea dupa
+## dificultatea aleasa de jucator) inainte sa apuce sa faca ceva.
+signal enemy_spawned(enemy: Enemy)
 signal cleared
 
 var alive: int = 0
@@ -62,6 +66,7 @@ func spawn(type: EnemyType, tier: int, min_distance: float, max_distance: float)
 	enemy.global_position = _pick_spawn_point(min_distance, max_distance)
 	enemy.died.connect(_on_enemy_died)
 	alive += 1
+	enemy_spawned.emit(enemy)
 	return enemy
 
 

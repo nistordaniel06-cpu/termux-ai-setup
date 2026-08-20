@@ -1,11 +1,6 @@
 class_name HeroCombat
 extends Node2D
 
-## Tintirea automata si tragerea eroului.
-##
-## Nu decide singur DACA are voie sa traga - Hero ii spune prin `set_can_attack()`,
-## dupa regula "te misti sau ataci". Aici se rezolva doar pe cine si cu ce.
-
 signal fired(target: Node2D)
 signal ability_gained(ability: Ability)
 signal abilities_fused(a: Ability, b: Ability, result: Ability)
@@ -13,44 +8,55 @@ signal abilities_fused(a: Ability, b: Ability, result: Ability)
 @export var projectile_scene: PackedScene
 
 var abilities: Array[Ability] = []
-## Tinta pe care e fixat eroul acum, sau null. Citita si de Hero, ca sa deseneze
-## sageata de tintire si intre doua trageri, nu doar in clipa lovirii.
 var current_target: Node2D = null
-## Nodul in care ajung proiectilele plecate. Arena il aseaza in `_ready`; trebuie
-## sa fie un nod care sta pe loc, altfel sagetile s-ar misca odata cu eroul.
 var projectile_container: Node = null
 
 var _hero: Hero
 var _stats: HeroStats
 var _can_attack: bool = false
 var _cooldown: float = 0.0
-
+var _manual_aim: Vector2 = Vector2.ZERO
+var _attack_once: bool = false
 
 func setup(hero: Hero, stats: HeroStats) -> void:
 	_hero = hero
 	_stats = stats
 
-
 func set_can_attack(value: bool) -> void:
 	_can_attack = value
 
+func set_manual_aim(direction: Vector2) -> void:
+	_manual_aim = direction
+
+func request_attack_once() -> void:
+	_attack_once = true
 
 func _physics_process(delta: float) -> void:
 	if _stats == null:
 		return
 
 	_cooldown = maxf(0.0, _cooldown - delta)
-	current_target = find_nearest_enemy() if _can_attack else null
+	current_target = find_nearest_enemy()
 
-	if not _can_attack or _cooldown > 0.0 or current_target == null:
+	if _attack_once:
+		_attack_once = false
+		if _cooldown <= 0.0 and current_target != null:
+			_fire_at(current_target)
+			_cooldown = _stats.attack_interval()
 		return
 
-	_fire_at(current_target)
+	if not _can_attack or _cooldown > 0.0:
+		return
+
+	if _manual_aim.length() > 0.15:
+		_fire_direction(_manual_aim.normalized(), current_target)
+	else:
+		if current_target == null:
+			return
+		_fire_at(current_target)
+
 	_cooldown = _stats.attack_interval()
 
-
-## Cel mai apropiat inamic aflat in raza de atac, sau null.
-## Compar distantele la patrat: acelasi rezultat, fara radical pe fiecare inamic.
 func find_nearest_enemy() -> Node2D:
 	var best: Node2D = null
 	var best_distance := _stats.attack_range * _stats.attack_range
@@ -66,8 +72,16 @@ func find_nearest_enemy() -> Node2D:
 
 	return best
 
-
 func _fire_at(target: Node2D) -> void:
+	if target == null or not is_instance_valid(target):
+		return
+	var direction := global_position.direction_to(target.global_position)
+	_spawn_projectiles(direction, target)
+
+func _fire_direction(direction: Vector2, target: Node2D = null) -> void:
+	_spawn_projectiles(direction.normalized(), target)
+
+func _spawn_projectiles(direction: Vector2, target: Node2D = null) -> void:
 	if projectile_scene == null:
 		push_warning("HeroCombat fara projectile_scene - nu am ce trage.")
 		return
@@ -77,7 +91,7 @@ func _fire_at(target: Node2D) -> void:
 		push_warning("HeroCombat fara loc unde sa lase proiectilele.")
 		return
 
-	var base_angle := global_position.angle_to_point(target.global_position)
+	var base_angle := direction.angle()
 	var count := maxi(1, _stats.projectile_count)
 	var spread := 0.14
 
@@ -91,23 +105,17 @@ func _fire_at(target: Node2D) -> void:
 
 	fired.emit(target)
 
-
-## Arena spune unde merg proiectilele. Daca nimeni n-a spus, parintele eroului e
-## o rezerva buna: sta pe loc si traieste cat camera.
 func _projectile_container() -> Node:
 	if projectile_container != null and is_instance_valid(projectile_container):
 		return projectile_container
 	return _hero.get_parent() if _hero != null else null
 
-
-## Efectele care se aplica la impact, stranse din abilitatile luate.
 func _collect_hit_effects() -> Dictionary:
 	var effects := {"burn_dps": 0.0, "explosion_radius": 0.0}
 	for ability in abilities:
 		effects["burn_dps"] += ability.burn_dps
 		effects["explosion_radius"] = maxf(effects["explosion_radius"], ability.explosion_radius)
 	return effects
-
 
 ## Efectele compozabile (Frost, Lightning Chain, Vampirism...) purtate de toate
 ## abilitatile luate, intr-un singur vector. Dauna se aplica inainte in

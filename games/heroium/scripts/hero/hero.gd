@@ -1,16 +1,6 @@
 class_name Hero
 extends CharacterBody2D
 
-## Eroul controlat de jucator.
-##
-## Regula centrala a genului: te MISTI sau ATACI, niciodata amandoua. Cand ridici
-## degetul de pe joystick eroul se opreste, isi cauta singur cea mai apropiata
-## tinta si incepe sa traga. Miscarea e deci mereu o alegere: eviti lovituri, dar
-## renunti la dauna.
-##
-## Nodul asta nu contine si lupta si viata - le tine in componente-copil
-## (HeroCombat, HeroHealth), ca fiecare bucata sa poata fi testata separat.
-
 signal died
 signal stats_changed(stats: HeroStats)
 signal moving_changed(is_moving: bool)
@@ -19,27 +9,27 @@ signal xp_changed(level: int, current: float, needed: float)
 signal leveled_up(level: int)
 signal ability_gained(ability: Ability)
 signal abilities_fused(a: Ability, b: Ability, result: Ability)
+signal control_mode_changed(mode: HeroControl.Mode)
 
-## Sub aceasta valoare joystick-ul e considerat neatins.
 const MOVE_DEADZONE := 0.15
-## Cat trebuie sa stea nemiscat inainte sa porneasca tragerea. Fara pauza asta
-## jucatorul ar putea trage la fiecare pas ciupind joystick-ul.
 const SETTLE_TIME := 0.12
-## Raza inelului care arata daca eroul e in stare sa traga.
 const RING_RADIUS := 27.0
 
 @export var hero_class: HeroClass
-## Joystick-ul virtual din HUD. Lasat gol, eroul merge doar pe taste.
 @export var joystick_path: NodePath
+@export var attack_joystick_path: NodePath
+@export var control_mode: HeroControl.Mode = HeroControl.DEFAULT_MODE
 
 var stats: HeroStats
 var is_moving: bool = false
-## Adevarat doar cand eroul chiar sta pe loc - atunci ii merg atacurile.
 var can_attack: bool = false
 
 var _settle_timer: float = 0.0
 var _joystick: Node = null
+var _attack_joystick: Node = null
+var _manual_attack_held: bool = false
 var _facing: Vector2 = Vector2.DOWN
+var _attack_facing: Vector2 = Vector2.RIGHT
 var _accent: Color = Color("f0b45a")
 
 @onready var _combat: HeroCombat = $Combat
@@ -47,15 +37,14 @@ var _accent: Color = Color("f0b45a")
 @onready var _xp: HeroXp = $Xp
 @onready var _body: CharacterBodyView = $Body
 
-
 func _ready() -> void:
 	add_to_group(&"hero")
 
 	if joystick_path != NodePath():
 		_joystick = get_node_or_null(joystick_path)
+	if attack_joystick_path != NodePath():
+		_attack_joystick = get_node_or_null(attack_joystick_path)
 
-	# Clasa aleasa in meniu bate pe cea pusa in scena. Cea din scena ramane ca
-	# rezerva, ca sa poti apasa Play direct pe scena de joc si sa functioneze.
 	var chosen := GameState.selected_hero_class()
 	if chosen != null:
 		hero_class = chosen
@@ -75,8 +64,6 @@ func _ready() -> void:
 	_xp.leveled_up.connect(func(level: int) -> void: leveled_up.emit(level))
 
 	_combat.setup(self, stats)
-	# Partea de viata a unei abilitati nu e o statistica, deci n-o rezolva
-	# `apply_to`. O prindem aici, si la fel pentru rezultatul unei fuziuni.
 	_combat.ability_gained.connect(_absorb_vitality)
 	_combat.ability_gained.connect(func(a: Ability) -> void: ability_gained.emit(a))
 	_combat.abilities_fused.connect(
@@ -90,8 +77,6 @@ func _ready() -> void:
 		if hero_class.starting_ability != null:
 			grant_ability(hero_class.starting_ability)
 
-	# Infatisarea aleasa bate culoarea clasei. Atat schimba un cosmetic - daca ar
-	# atinge si o statistica, alegerea n-ar mai fi despre cum vrei sa arati.
 	var skin := GameState.selected_skin_resource()
 	if skin != null:
 		_accent = skin.color
@@ -105,7 +90,6 @@ func _ready() -> void:
 	look = look.duplicate()
 	look.tint = _accent
 	_body.apply(look, RING_RADIUS - 9.0)
-
 
 func _physics_process(delta: float) -> void:
 	var direction := _read_input()
@@ -121,43 +105,55 @@ func _physics_process(delta: float) -> void:
 		_settle_timer = SETTLE_TIME
 		_face(direction)
 	else:
-		# oprire scurta in loc de frana brusca, ca sa nu para lipit de podea
 		velocity = velocity.move_toward(Vector2.ZERO, stats.move_speed * 8.0 * delta)
 		_settle_timer = maxf(0.0, _settle_timer - delta)
 
 	move_and_slide()
 
-	# Aici se aplica regula: atacul merge doar cand chiar stai pe loc.
-	can_attack = not is_moving and is_zero_approx(_settle_timer)
+	var stationary := not is_moving and is_zero_approx(_settle_timer)
+	var attack_direction := _read_attack_input()
+
+	match control_mode:
+		HeroControl.Mode.AUTO:
+			can_attack = true
+			_combat.set_manual_aim(Vector2.ZERO)
+		HeroControl.Mode.STOP_TO_FIRE:
+			can_attack = stationary
+			_combat.set_manual_aim(Vector2.ZERO)
+		HeroControl.Mode.HOLD_TO_FIRE:
+			can_attack = _manual_attack_held
+			_combat.set_manual_aim(Vector2.ZERO)
+		HeroControl.Mode.TAP_TO_FIRE:
+			can_attack = false
+			_combat.set_manual_aim(Vector2.ZERO)
+		HeroControl.Mode.DUAL_STICK:
+			can_attack = attack_direction.length() > MOVE_DEADZONE
+			_combat.set_manual_aim(attack_direction)
+
 	_combat.set_can_attack(can_attack)
 	queue_redraw()
 
-
-## Inelul si sageata de tintire. Sunt singurul mod prin care jucatorul vede
-## regula genului fara sa i-o explice cineva: aprins = stai si faci dauna,
-## stins = te misti si nu faci.
 func _draw() -> void:
 	var ring := _accent
 	ring.a = 0.85 if can_attack else 0.16
 	draw_arc(Vector2.ZERO, RING_RADIUS, 0.0, TAU, 32, ring, 2.5, true)
 
 	if not can_attack:
-		# Cand se misca, un varf mic arata incotro merge.
 		draw_line(_facing * 20.0, _facing * 27.0, Color(1, 1, 1, 0.35), 3.0, true)
 		return
 
 	var target := _combat.current_target
+	if control_mode == HeroControl.Mode.DUAL_STICK:
+		if _attack_facing.length() > MOVE_DEADZONE:
+			draw_line(_attack_facing * (RING_RADIUS + 3.0), _attack_facing * (RING_RADIUS + 18.0), ring, 3.0, true)
+		return
+
 	if target == null or not is_instance_valid(target):
 		return
 
 	var aim := global_position.direction_to(target.global_position)
 	draw_line(aim * (RING_RADIUS + 3.0), aim * (RING_RADIUS + 14.0), ring, 3.0, true)
 
-
-## Citeste directia din joystick sau de la tastatura, oricare e activa.
-## Addonul poate alimenta chiar el actiunile de input, deci `Input.get_vector`
-## acopera de obicei ambele; joystick-ul e citit direct ca sa mearga si cand
-## optiunea aceea e oprita.
 func _read_input() -> Vector2:
 	if _joystick != null and _joystick.get(&"is_pressed"):
 		var output: Vector2 = _joystick.get(&"output")
@@ -165,10 +161,49 @@ func _read_input() -> Vector2:
 			return output.limit_length(1.0)
 	return Input.get_vector(&"move_left", &"move_right", &"move_up", &"move_down")
 
+func _read_attack_input() -> Vector2:
+	if _attack_joystick != null and _attack_joystick.get(&"is_pressed"):
+		var output: Vector2 = _attack_joystick.get(&"output")
+		if output.length() > MOVE_DEADZONE:
+			_attack_facing = output.normalized()
+			return output.limit_length(1.0)
+	return Vector2.ZERO
 
 func _face(direction: Vector2) -> void:
 	_facing = direction.normalized()
 
+func set_control_mode(mode: HeroControl.Mode) -> void:
+	if control_mode == mode:
+		return
+	control_mode = mode
+	_manual_attack_held = false
+	_combat.set_manual_aim(Vector2.ZERO)
+	_combat.set_can_attack(false)
+	control_mode_changed.emit(control_mode)
+	queue_redraw()
+
+func cycle_control_mode() -> void:
+	var next := int(control_mode) + 1
+	if next > int(HeroControl.Mode.DUAL_STICK):
+		next = int(HeroControl.Mode.AUTO)
+	set_control_mode(next as HeroControl.Mode)
+
+func get_control_mode_name() -> String:
+	return HeroControl.name_for(control_mode)
+
+func get_control_description() -> String:
+	return HeroControl.description_for(control_mode)
+
+func get_enemy_difficulty_multiplier() -> float:
+	return HeroControl.difficulty_multiplier(control_mode)
+
+func set_attack_button_down(value: bool) -> void:
+	_manual_attack_held = value
+
+func tap_attack() -> void:
+	if control_mode != HeroControl.Mode.TAP_TO_FIRE:
+		return
+	_combat.request_attack_once()
 
 func _setup_stats() -> void:
 	var base: HeroStats = null
@@ -180,7 +215,6 @@ func _setup_stats() -> void:
 
 	stats = base.duplicate_for_run()
 
-	# Talentele permanente (Calea Legendară) se aplica peste baza clasei.
 	if Engine.has_singleton(&"GameState") or GameState != null:
 		GameState.apply_talents(stats)
 
@@ -188,21 +222,14 @@ func _setup_stats() -> void:
 	stats.changed.connect(func() -> void: stats_changed.emit(stats))
 	stats_changed.emit(stats)
 
-
-## Unde sa astepte proiectilele plecate - un nod care nu se misca odata cu eroul.
 func set_projectile_container(node: Node) -> void:
 	_combat.projectile_container = node
 
-
-## Adauga o abilitate rularii curente, fuzionand-o daca e cazul.
 func grant_ability(ability: Ability) -> void:
 	_combat.add_ability(ability)
 
-
-## Abilitatile deja luate in rularea curenta.
 func get_abilities() -> Array[Ability]:
 	return _combat.abilities
-
 
 func _absorb_vitality(ability: Ability) -> void:
 	if ability == null:
@@ -212,26 +239,20 @@ func _absorb_vitality(ability: Ability) -> void:
 	if ability.heal_fraction > 0.0:
 		_health.heal(_health.maximum * ability.heal_fraction)
 
-
 func gain_xp(amount: float) -> void:
 	_xp.add(amount)
-
 
 func get_level() -> int:
 	return _xp.level
 
-
 func take_damage(amount: float) -> void:
 	_health.take_damage(amount)
-
 
 func heal(amount: float) -> void:
 	_health.heal(amount)
 
-
 func get_health() -> float:
 	return _health.current
-
 
 func get_max_health() -> float:
 	return _health.maximum

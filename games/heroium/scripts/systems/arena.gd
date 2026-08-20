@@ -14,25 +14,18 @@ signal room_started(room: int, is_boss: bool)
 signal room_cleared(room: int)
 signal location_entered(location: Location)
 signal run_ended(rooms_cleared: int, coins_earned: int)
-## Campania a fost dusa pana la capat. Doar Campanie se poate castiga.
 signal run_won(rooms_cleared: int, coins_earned: int)
-## Un sef a intrat in camera. HUD-ul ii pune bara mare sus.
 signal boss_spawned(enemy: Enemy)
 
 @export var enemy_scene: PackedScene
 @export var xp_orb_scene: PackedScene
-## Cat de departe de erou pot aparea inamicii.
 @export var spawn_radius: float = 420.0
-## Cat de aproape de erou are voie sa apara un inamic.
 @export var min_spawn_distance: float = 260.0
-## Ragazul dintre doua camere, cat sa vezi ca ai scapat.
 @export var breather: float = 1.3
 
 var location: Location = null
 var location_index: int = 0
-## A cata camera din locatia curenta.
 var room: int = 1
-## Cate camere ai curatat in rularea asta - tot ea e treapta de dificultate.
 var rooms_cleared: int = 0
 var coins_earned: int = 0
 var is_over: bool = false
@@ -45,14 +38,9 @@ var _advancing: bool = false
 @onready var _floor: ArenaFloor = $Floor
 @onready var _camera: Camera2D = $Hero/Camera2D
 
-
 func _ready() -> void:
 	randomize()
-
-	# Autoloadul supravietuieste reincarcarii scenei, dar nodurile spre care
-	# arata nu: de aceea se leaga din nou la fiecare rulare.
 	Fx.setup(_world, _camera)
-
 	_hero.died.connect(_on_hero_died)
 	_hero.set_projectile_container(_world)
 
@@ -61,12 +49,10 @@ func _ready() -> void:
 	_wave.spawn_radius = spawn_radius
 	_wave.setup(enemy_scene, xp_orb_scene, _world, _hero, _floor.room_rect)
 	_wave.enemy_died.connect(_on_enemy_died)
+	_wave.enemy_spawned.connect(_on_enemy_spawned)
 	_wave.cleared.connect(_on_room_cleared)
 
 	_enter_location(0)
-
-
-# ====================== LOCATII ======================
 
 func _enter_location(index: int) -> void:
 	location_index = index
@@ -82,9 +68,6 @@ func _enter_location(index: int) -> void:
 	location_entered.emit(location)
 	Fx.toast(location.display_name)
 	build_room()
-
-
-# ====================== CAMERE ======================
 
 func build_room() -> void:
 	if location == null or enemy_scene == null:
@@ -105,6 +88,18 @@ func build_room() -> void:
 
 	room_started.emit(room, is_boss)
 
+## Controlul ales de jucator devine parte din risc/recompensa: cu cat jocul e
+## mai automatizat, cu atat adversarii primesc mai multa putere. RoomWave
+## anunta fiecare inamic nou-nascut (camera obisnuita, boss, sau ajutor de
+## faza a doua) si aici li se aplica scalarea - un singur loc, nu trei.
+func _on_enemy_spawned(enemy: Enemy) -> void:
+	var difficulty := clampf(_hero.get_enemy_difficulty_multiplier(), 1.0, 1.50)
+	if difficulty <= 1.0:
+		return
+	enemy.max_health *= difficulty
+	enemy.health = enemy.max_health
+	enemy.contact_damage *= lerpf(1.0, difficulty, 0.75)
+	enemy.move_speed *= lerpf(1.0, difficulty, 0.35)
 
 ## Seful s-a infuriat. Ajutoarele le aduce arena, nu el: el n-are de unde sti
 ## unde e loc liber, iar RoomWave trebuie sa le numere ca sa nu se incheie
@@ -120,33 +115,30 @@ func _on_boss_phase(enemy: Enemy, phase: int) -> void:
 	for i in enemy.type.summon_count:
 		_wave.spawn.call_deferred(summons, rooms_cleared, min_spawn_distance, spawn_radius)
 
-
-# ====================== SFARSIT DE CAMERA ======================
-
 func _on_enemy_died(enemy: Enemy) -> void:
 	coins_earned += enemy.coin_reward
 	GameState.add_coins(enemy.coin_reward)
 	_drop_orb(enemy.global_position, enemy.xp_reward)
 
-
 func _drop_orb(at: Vector2, xp: int) -> void:
 	if xp_orb_scene == null:
 		return
+	# Inamicul moare in mijlocul unei interogari de fizica (l-a lovit o
+	# sageata, iar coliziunea aia inca se rezolva) - serverul nu accepta
+	# noduri noi in arbore chiar atunci. Pool.acquire() adauga nodul pe loc,
+	# deci trebuie amanata pana cand fizica termina de rezolvat cadrul.
+	_spawn_orb.call_deferred(at, xp)
 
+func _spawn_orb(at: Vector2, xp: int) -> void:
 	var orb: XpOrb = Pool.acquire(xp_orb_scene, _world) as XpOrb
 	orb.xp = xp
 	orb.global_position = at
-	# Inamicul moare in mijlocul unei interogari de fizica (l-a lovit o sageata),
-	# iar acolo serverul nu accepta zone noi. Ciobul intra la capatul cadrului.
-	# Pool.acquire() deja l-a adaugat in arbore; doar sa-i setam datele.
-
 
 func _on_room_cleared() -> void:
 	if _advancing or is_over:
 		return
 	_advancing = true
 	_advance_room()
-
 
 func _advance_room() -> void:
 	rooms_cleared += 1
@@ -157,14 +149,9 @@ func _advance_room() -> void:
 	if is_over or not is_inside_tree():
 		return
 
-	# Ce a ramas pe jos vine singur la tine. Altfel ultima treaba dintr-o camera
-	# curatata ar fi sa maturi podeaua, exact opusul a ce cere jocul. Se face
-	# dupa ragaz, nu in clipa ultimei morti, ca sa nu stearga zone din fizica
-	# chiar in mijlocul pasului care le-a omorat.
 	_collect_remaining_orbs()
 	_advancing = false
 	_go_to_next_room()
-
 
 ## Unde ajunge jucatorul dupa ce a curatat camera. DungeonProgress decide DUPA
 ## regimul ales; Arena doar executa decizia si emite ce trebuie.
@@ -179,10 +166,8 @@ func _go_to_next_room() -> void:
 			room += 1
 			build_room()
 
-
 func _is_last_location() -> bool:
 	return DungeonProgress.is_last_location(location_index)
-
 
 func _win_run() -> void:
 	if is_over:
@@ -195,16 +180,12 @@ func _win_run() -> void:
 	run_won.emit(rooms_cleared, coins_earned)
 	get_tree().paused = true
 
-
 func _collect_remaining_orbs() -> void:
 	for node in _world.get_children():
 		if node is XpOrb:
 			_hero.gain_xp(node.xp)
 			Fx.burst(node.global_position, Color("5ef0b6"), 4, 90.0)
 			Pool.release(node)
-
-
-# ====================== SFARSIT DE RULARE ======================
 
 func _on_hero_died() -> void:
 	if is_over:
@@ -214,7 +195,4 @@ func _on_hero_died() -> void:
 	Fx.shake(9.0, 0.5)
 	GameState.register_run_result(rooms_cleared)
 	run_ended.emit(rooms_cleared, coins_earned)
-
-	# Ingheata camera. Ecranele de interfata ruleaza mai departe
-	# (process_mode "always") si preiau ce alege jucatorul.
 	get_tree().paused = true

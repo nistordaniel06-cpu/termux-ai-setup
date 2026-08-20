@@ -59,8 +59,17 @@ var _hero: Node2D = null
 @onready var _collider: CollisionShape2D = $CollisionShape2D
 
 
-## De chemat inainte de add_child: aseaza doar datele, iar `_ready` le pune in
-## practica. Asa ordinea e mereu aceeasi, indiferent cine creeaza inamicul.
+## Singurul loc care aseaza datele unui inamic nou (sau reincarnarea unuia
+## luat din bazin) - de aceea reseteaza si tot ce ar putea supravietui unei
+## morti anterioare (faza de sef, arsura, inghet), nu doar statisticile de
+## baza. Un inamic refolosit fara reset ar putea porni deja in flacari, sau
+## un sef nou ar putea sari peste faza a doua fiindca predecesorul din bazin
+## a murit deja in ea.
+##
+## Poate fi chemata inainte sau dupa intrarea in arbore, dupa cine creeaza
+## inamicul: RoomWave/Pool intra intai in arbore, testele instantiaza intai
+## si adauga in arbore mai tarziu. `is_inside_tree()` alege ce se poate face
+## acum - restul il termina `_ready()` la vremea lui.
 func setup(enemy_type: EnemyType, tier: int) -> void:
 	type = enemy_type
 	max_health = enemy_type.health_at(tier)
@@ -72,6 +81,30 @@ func setup(enemy_type: EnemyType, tier: int) -> void:
 	coin_reward = enemy_type.coin_reward
 	radius = enemy_type.radius
 
+	phase = 1
+	_phase_time = 0.0
+	_aim_point = Vector2.ZERO
+	_dash_velocity = Vector2.ZERO
+	_contact_cooldown = 0.0
+	_burn_dps = 0.0
+	_burn_time = 0.0
+	_frost_dps = 0.0
+	_frost_time = 0.0
+	_frost_slow = 0.0
+
+	if is_inside_tree():
+		_apply_visual()
+
+
+func _apply_visual() -> void:
+	_body.apply(type.visual, radius)
+	# Forma vine din scena, deci e aceeasi pentru toate instantele: fara
+	# copie, un sef mare ar umfla si scheletele.
+	var shape: CircleShape2D = _collider.shape.duplicate()
+	shape.radius = radius
+	_collider.shape = shape
+	_phase = _initial_phase()
+
 
 func _ready() -> void:
 	add_to_group(&"enemy")
@@ -80,13 +113,7 @@ func _ready() -> void:
 	if type == null:
 		push_warning("Enemy fara EnemyType - ramane pe valorile implicite.")
 	else:
-		_body.apply(type.visual, radius)
-		# Forma vine din scena, deci e aceeasi pentru toate instantele: fara
-		# copie, un sef mare ar umfla si scheletele.
-		var shape: CircleShape2D = _collider.shape.duplicate()
-		shape.radius = radius
-		_collider.shape = shape
-		_phase = _initial_phase()
+		_apply_visual()
 
 	health = max_health
 
