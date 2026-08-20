@@ -30,12 +30,12 @@ mkdir -p ~/ai-workspace/{chats,generated_code,scripts,config,github}
 echo "⬇️  Downloading scripts..."
 GITHUB_RAW="https://raw.githubusercontent.com/nistordaniel06-cpu/termux-ai-setup/main/scripts"
 
-for script in chat.py copilot.py codex_helper.py termux_pro_hub.py ai_menu.py; do
+for script in chat.py copilot.py codex_helper.py termux_pro_hub.py ai_menu.py games.sh; do
     echo "  → $script"
     curl -fsSL "${GITHUB_RAW}/$script" -o ~/ai-workspace/scripts/$script 2>/dev/null || true
 done
 
-chmod +x ~/ai-workspace/scripts/*.py 2>/dev/null || true
+chmod +x ~/ai-workspace/scripts/*.py ~/ai-workspace/scripts/*.sh 2>/dev/null || true
 
 echo "⚙️  Creating config..."
 cat > ~/ai-workspace/config/ai.conf << 'CONF'
@@ -58,6 +58,7 @@ alias ai='python $AI_WORKSPACE/scripts/termux_pro_hub.py'
 alias chat='python $AI_WORKSPACE/scripts/chat.py'
 alias copilot='python $AI_WORKSPACE/scripts/copilot.py'
 alias cop='python $AI_WORKSPACE/scripts/copilot.py'
+alias games='bash $AI_WORKSPACE/scripts/games.sh'
 alias gs='git status'
 alias ga='git add .'
 alias gc='git commit -m'
@@ -84,5 +85,6 @@ echo "🚀 START:"
 echo "  tp  or  ai      → Main Hub"
 echo "  chat             → Chat AI"
 echo "  copilot/cop      → Code Generator"
+echo "  games            → Open Torchbound / Heroium"
 echo "  gs, ga, gp       → Git commands"
 echo ""
