@@ -38,6 +38,7 @@ func _initialize() -> void:
 	await _test_boss_phases(state)
 	await _test_game_modes(state)
 	await _test_touch_reaches_buttons()
+	await _test_looks(state)
 
 	state.wipe()
 
@@ -409,3 +410,51 @@ func _test_touch_reaches_buttons() -> void:
 
 	check("atingerea devine apăsare (altfel butoanele sunt moarte pe telefon)", from_touch)
 	check("mouse-ul trece drept atingere (joystick-ul merge și pe desktop)", from_mouse)
+
+
+func _test_looks(state: Node) -> void:
+	print("\n[12] CUM ARATĂ")
+
+	# Fiecare fel de inamic trebuie să se deosebească dintr-o privire. Culoarea
+	# singură nu ajunge - un schelet și un demon roșu ar fi două buline.
+	var seen := {}
+	for path in [
+		"res://resources/enemies/skeleton.tres", "res://resources/enemies/bat.tres",
+		"res://resources/enemies/cultist.tres", "res://resources/enemies/demon.tres",
+		"res://resources/enemies/dread_knight.tres", "res://resources/enemies/bone_colossus.tres",
+		"res://resources/enemies/fallen_king.tres",
+	]:
+		var type: EnemyType = load(path)
+		seen[type.silhouette] = true
+	check("cele șapte feluri au siluete distincte", seen.size() == 7, "%d siluete" % seen.size())
+
+	# Skinuri
+	state.wipe()
+	check("pornești cu o singură înfățișare", state.unlocked_skins.size() == 1,
+		"%d deblocate" % state.unlocked_skins.size())
+	check("cea de start e purtată", state.selected_skin_resource().id == &"classic")
+
+	var void_skin: HeroSkin = state.skin_by_id(&"void")
+	check("Umbra Regelui e blocată", not state.is_skin_unlocked(&"void"))
+	check("fără monede nu se cumpără", not state.unlock_skin(&"void", void_skin.cost))
+
+	state.add_coins(void_skin.cost)
+	check("cu monede se cumpără", state.unlock_skin(&"void", void_skin.cost))
+	state.select_skin(&"void")
+	check("devine purtată", state.selected_skin_resource().id == &"void")
+
+	var run := await _open_run()
+	var hero := get_first_node_in_group(&"hero")
+	var body = hero.get_node("Body")
+	check("eroul chiar poartă culoarea aleasă",
+		body.fill.is_equal_approx(void_skin.color), str(body.fill))
+	check("eroul are silueta de erou", body.silhouette == 0, "silueta %d" % body.silhouette)
+
+	# Cosmeticul nu are voie sa atinga puterea.
+	var ranger: HeroClass = state.hero_class_by_id(&"ranger")
+	check("înfățișarea nu schimbă nicio statistică",
+		is_equal_approx(hero.stats.attack, ranger.stats.base_attack),
+		"atac %.0f, bază %.0f" % [hero.stats.attack, ranger.stats.base_attack])
+
+	run.free()
+	state.wipe()

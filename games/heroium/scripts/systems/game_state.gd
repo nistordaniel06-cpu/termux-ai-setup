@@ -63,6 +63,15 @@ const ABILITY_PATHS := [
 	"res://resources/abilities/explosive_end.tres",
 ]
 
+## Infatisarile, in ordinea in care apar in meniu.
+const SKIN_PATHS := [
+	"res://resources/skins/classic.tres",
+	"res://resources/skins/ashen.tres",
+	"res://resources/skins/emerald.tres",
+	"res://resources/skins/crimson.tres",
+	"res://resources/skins/void.tres",
+]
+
 ## Clasele de erou, in ordinea in care apar in meniu.
 const HERO_PATHS := [
 	"res://resources/heroes/ranger.tres",
@@ -75,6 +84,9 @@ var abilities: Array[Ability] = []
 var heroes: Array[HeroClass] = []
 var selected_hero: StringName = &"ranger"
 var selected_mode: Mode = Mode.CAMPAIGN
+var skins: Array[HeroSkin] = []
+var selected_skin: StringName = &"classic"
+var unlocked_skins: Array[StringName] = [&"classic"]
 
 ## Calea Legendară din poza: doua ramuri care pornesc din Putere Atac.
 const TALENTS := {
@@ -112,6 +124,13 @@ func _ready() -> void:
 		var hero := load(path) as HeroClass
 		if hero != null:
 			heroes.append(hero)
+
+	for path in SKIN_PATHS:
+		var skin := load(path) as HeroSkin
+		if skin != null:
+			skins.append(skin)
+			if skin.unlocked_by_default and skin.id not in unlocked_skins:
+				unlocked_skins.append(skin.id)
 
 	load_game()
 
@@ -215,6 +234,42 @@ func selected_hero_class() -> HeroClass:
 	return hero_class_by_id(&"ranger")
 
 
+func skin_by_id(id: StringName) -> HeroSkin:
+	for skin in skins:
+		if skin.id == id:
+			return skin
+	return null
+
+
+## Infatisarea purtata acum. Daca alegerea salvata nu mai e deblocata, se cade
+## inapoi pe cea de start, care e mereu a ta.
+func selected_skin_resource() -> HeroSkin:
+	var chosen := skin_by_id(selected_skin)
+	if chosen != null and is_skin_unlocked(chosen.id):
+		return chosen
+	return skin_by_id(&"classic")
+
+
+func is_skin_unlocked(id: StringName) -> bool:
+	return id in unlocked_skins
+
+
+func select_skin(id: StringName) -> void:
+	if not is_skin_unlocked(id):
+		return
+	selected_skin = id
+	save_game()
+
+
+func unlock_skin(id: StringName, cost: int) -> bool:
+	if is_skin_unlocked(id) or coins < cost:
+		return false
+	add_coins(-cost)
+	unlocked_skins.append(id)
+	save_game()
+	return true
+
+
 func select_mode(mode: Mode) -> void:
 	selected_mode = mode
 	save_game()
@@ -255,6 +310,8 @@ func save_game() -> void:
 	config.set_value("progress", "best_run_rooms", best_run_rooms)
 	config.set_value("progress", "selected_hero", String(selected_hero))
 	config.set_value("progress", "selected_mode", int(selected_mode))
+	config.set_value("progress", "selected_skin", String(selected_skin))
+	config.set_value("progress", "unlocked_skins", unlocked_skins)
 	config.save(SAVE_PATH)
 
 
@@ -269,6 +326,9 @@ func load_game() -> void:
 	best_run_rooms = config.get_value("progress", "best_run_rooms", 0)
 	selected_hero = StringName(config.get_value("progress", "selected_hero", "ranger"))
 	selected_mode = int(config.get_value("progress", "selected_mode", Mode.CAMPAIGN)) as Mode
+	selected_skin = StringName(config.get_value("progress", "selected_skin", "classic"))
+	var saved_skins: Array = config.get_value("progress", "unlocked_skins", [&"classic"])
+	unlocked_skins.assign(saved_skins)
 	var saved_heroes: Array = config.get_value("progress", "unlocked_heroes", [&"ranger"])
 	unlocked_heroes.assign(saved_heroes)
 
@@ -282,6 +342,8 @@ func wipe() -> void:
 	talents.clear()
 	selected_hero = &"ranger"
 	selected_mode = Mode.CAMPAIGN
+	selected_skin = &"classic"
+	unlocked_skins = [&"classic"]
 	unlocked_heroes = [&"ranger"]
 	save_game()
 	coins_changed.emit(coins)

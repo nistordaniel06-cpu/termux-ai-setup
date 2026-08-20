@@ -7,6 +7,7 @@ script = ExtResource("1_type")
 id = &"bat"
 display_name = "Liliac"
 behavior = 0
+silhouette = 2
 color = Color(0.55, 0.4, 0.72, 1)
 radius = 11.0
 base_health = 15.0

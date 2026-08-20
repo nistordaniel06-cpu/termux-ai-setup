@@ -116,6 +116,64 @@ func _build_heroes() -> void:
 	for hero in GameState.heroes:
 		_content.add_child(_hero_row(hero))
 
+	var gap := Control.new()
+	gap.custom_minimum_size.y = 10
+	_content.add_child(gap)
+	_content.add_child(UiKit.title("ÎNFĂȚIȘARE", 20))
+	_content.add_child(UiKit.body("Doar culoare. Nicio statistică.", 12))
+
+	for skin in GameState.skins:
+		_content.add_child(_skin_row(skin))
+
+
+func _skin_row(skin: HeroSkin) -> Control:
+	var unlocked := GameState.is_skin_unlocked(skin.id)
+	var worn := GameState.selected_skin_resource()
+	var is_worn := unlocked and worn != null and worn.id == skin.id
+	var border := skin.color if is_worn else UiKit.GOLD_DIM
+
+	var row := Button.new()
+	row.custom_minimum_size.y = 76.0
+	row.focus_mode = Control.FOCUS_NONE
+	row.add_theme_stylebox_override("normal", UiKit.outlined(UiKit.PANEL, border))
+	row.add_theme_stylebox_override("hover", UiKit.outlined(UiKit.PANEL_SOFT, border, 14.0, 3))
+	row.add_theme_stylebox_override("pressed", UiKit.outlined(UiKit.INK, border, 14.0, 3))
+	row.pressed.connect(_on_skin_pressed.bind(skin))
+
+	var margin := MarginContainer.new()
+	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
+	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	margin.add_theme_constant_override("margin_left", 16)
+	margin.add_theme_constant_override("margin_right", 16)
+	margin.add_theme_constant_override("margin_top", 10)
+	margin.add_theme_constant_override("margin_bottom", 10)
+	row.add_child(margin)
+
+	var rows := VBoxContainer.new()
+	rows.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	rows.add_theme_constant_override("separation", 3)
+	margin.add_child(rows)
+
+	var heading := skin.display_name
+	if is_worn:
+		heading += "   ✓ purtat"
+	elif not unlocked:
+		heading += "   🔒 %d monede" % skin.cost
+	rows.add_child(_line(heading, 18, skin.color if unlocked else UiKit.MUTED))
+	rows.add_child(_line(skin.description, 12, UiKit.MUTED, true))
+	return row
+
+
+func _on_skin_pressed(skin: HeroSkin) -> void:
+	if GameState.is_skin_unlocked(skin.id):
+		GameState.select_skin(skin.id)
+	else:
+		GameState.unlock_skin(skin.id, skin.cost)
+		# Cumparat acum inseamna si purtat acum - altfel ar cere doua apasari.
+		if GameState.is_skin_unlocked(skin.id):
+			GameState.select_skin(skin.id)
+	_refresh()
+
 
 func _hero_row(hero: HeroClass) -> Control:
 	var unlocked := GameState.is_hero_unlocked(hero.id)

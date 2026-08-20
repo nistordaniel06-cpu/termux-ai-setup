@@ -7,6 +7,7 @@ script = ExtResource("1_type")
 id = &"demon"
 display_name = "Demon"
 behavior = 2
+silhouette = 4
 color = Color(0.87, 0.28, 0.24, 1)
 radius = 18.0
 base_health = 40.0

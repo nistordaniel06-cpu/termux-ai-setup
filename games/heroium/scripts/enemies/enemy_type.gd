@@ -18,6 +18,9 @@ enum Behavior {
 @export var behavior: Behavior = Behavior.CHASER
 
 @export_group("Vizual")
+## Cum arata: schelet, liliac, cultist... Culoarea singura nu deosebeste un
+## schelet de un demon; silueta o face.
+@export var silhouette: CharacterArt.Silhouette = CharacterArt.Silhouette.SKELETON
 @export var color: Color = Color("d9464f")
 @export var radius: float = 16.0
 

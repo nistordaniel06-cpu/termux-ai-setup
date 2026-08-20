@@ -102,7 +102,7 @@ games/heroium/
 │   ├── abilities/             pachetul de cărți + evoluția
 │   ├── enemies/               felurile de inamic și cei doi șefi
 │   └── locations/             cele patru locații
-└── tests/run_tests.gd         61 de verificări, rulate fără interfață
+└── tests/run_tests.gd         73 de verificări, rulate fără interfață
 ```
 
 ## Cum sunt împărțite statisticile
@@ -132,15 +132,33 @@ Sunt valori de **bază**, la nivel 1 fără talente. Cifrele din conceptul vizua
 (ATK 1250 / HP 4500 / DEF 850) corespund unui erou echipat, la câteva zeci de
 niveluri de talente — nu valorilor de pornire.
 
-## De ce e totul desenat în cod
+## Cum arată, și de ce e desenat în cod
 
-Nu există fișiere de artă. Corpurile, podeaua, semnele de avertizare, scânteile
+Nu există fișiere de artă. Personajele, podeaua, semnele de avertizare, scânteile
 și toată interfața sunt desenate din GDScript.
 
-Asta nu e o preferință de stil, e o alegere de siguranță: un `Sprite2D` fără
-textură **nu desenează nimic și nu se plânge**, iar jocul a stat odată complet
-gri exact din motivul ăsta. Formele desenate se văd întotdeauna. Când apare artă
-adevărată, `Blob` se înlocuiește cu un `Sprite2D` și restul rămâne cum e.
+Fiecare fel de inamic are **silueta lui**, nu doar altă culoare: scheletul are
+craniu și coaste, liliacul bate din aripi, cultistul poartă glugă cu ochi care
+pulsează, demonul are coarne, cavalerul un coif cu o singură fantă, iar Bătrânul
+Rege Căzut o coroană. Culoarea singură n-ar ajunge — un schelet și un demon roșu
+ar rămâne două buline.
+
+Siluetele se desenează în spațiu normalizat (`-1..1`) înmulțit cu raza, deci un
+șef de trei ori mai mare folosește exact același desen.
+
+Că totul e desenat nu e o preferință de stil, e o alegere de siguranță: un
+`Sprite2D` fără textură **nu desenează nimic și nu se plânge**, iar jocul a stat
+odată complet gri exact din motivul ăsta. Când apare artă adevărată,
+`CharacterArt` se înlocuiește cu un `Sprite2D` și restul rămâne cum e.
+
+## Înfățișări
+
+Cinci culori, cumpărate cu monede: Straiul de Drum (din start), Cenușiu,
+Verde Pădure, Stacojiu, Umbra Regelui.
+
+Nu ating nicio statistică, și asta e o decizie. Din clipa în care o culoare ar da
+și putere, alegerea n-ar mai fi despre cum vrei să arăți, ci despre ce ești
+obligat să porți. Există un test care păzește exact asta.
 
 ## Teste
 
@@ -148,7 +166,7 @@ adevărată, `Blob` se înlocuiește cu un `Sprite2D` și restul rămâne cum e.
 godot --headless --path games/heroium --script res://tests/run_tests.gd
 ```
 
-Cele **61 de verificări** ies cu cod 1 dacă vreuna pică, și rulează în CI
+Cele **73 de verificări** ies cu cod 1 dacă vreuna pică, și rulează în CI
 **înaintea** exportului — un export reușit nu înseamnă un joc care merge, iar
 asta s-a văzut deja o dată.
 
@@ -172,8 +190,8 @@ ajunge în `games/heroium/play/`, de unde îl servește GitHub Pages.
 ## Ce nu e făcut
 
 Din conceptul vizual lipsesc, intenționat, părțile care cer un backend sau
-magazin, nu cod de joc: Battle Pass, skin-uri, pachete cu monede, reclame, clan
-și War Chest. La fel grila de echipament — sistemul de statistici o suportă
+magazin, nu cod de joc: Battle Pass, pachete cu monede, reclame, clan și
+War Chest. La fel grila de echipament — sistemul de statistici o suportă
 (stratul 3), dar nu există încă obiecte.
 
 ## Licență addon
