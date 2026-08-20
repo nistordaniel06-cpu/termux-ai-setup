@@ -37,6 +37,7 @@ func _initialize() -> void:
 	await _test_heroes(state)
 	await _test_boss_phases(state)
 	await _test_game_modes(state)
+	await _test_touch_reaches_buttons()
 
 	state.wipe()
 
@@ -388,3 +389,23 @@ func _test_game_modes(state: Node) -> void:
 	check("Supraviețuire continuă după ultima locație", not endless.is_over)
 	endless.free()
 	state.select_mode(state.Mode.CAMPAIGN)
+
+
+func _test_touch_reaches_buttons() -> void:
+	print("\n[11] ATINGEREA POATE AJUNGE LA BUTOANE")
+	# Butoanele (Control) reactioneaza la evenimente de MOUSE. Pe telefon, o
+	# atingere devine apasare doar daca emularea e pornita; cu ea oprita, niciun
+	# buton din joc nu mai poate fi folosit - si exact asa a fost livrat odata.
+	#
+	# Lantul de input nu se poate incerca aici: fara afisaj, interfata nu
+	# primeste nici macar evenimente de mouse, deci o atingere simulata ar pica
+	# la fel si cand totul e in regula. Ce se poate pazi e setarea insasi, si
+	# tocmai ea a fost schimbata gresit - dupa un printerr al addonului de
+	# joystick, care e o sugestie, nu o cerinta.
+	var from_touch: bool = ProjectSettings.get_setting(
+		"input_devices/pointing/emulate_mouse_from_touch")
+	var from_mouse: bool = ProjectSettings.get_setting(
+		"input_devices/pointing/emulate_touch_from_mouse")
+
+	check("atingerea devine apăsare (altfel butoanele sunt moarte pe telefon)", from_touch)
+	check("mouse-ul trece drept atingere (joystick-ul merge și pe desktop)", from_mouse)
