@@ -50,7 +50,7 @@ class TermuxProHub:
 [bold cyan]│[/]  [bold yellow]4[/]  📊 [bold]Statistics[/bold]                           [bold cyan]│[/]
 [bold cyan]│[/]  [bold yellow]5[/]  🔧 [bold]Settings[/bold]                             [bold cyan]│[/]
 [bold cyan]│[/]  [bold yellow]6[/]  ℹ️  [bold]Help[/bold]                                 [bold cyan]│[/]
-[bold cyan]│[/]  [bold yellow]7[/]  🎮 [bold]Games (Torchbound/Heroium)[/bold]           [bold cyan]│[/]
+[bold cyan]│[/]  [bold yellow]7[/]  🎮 [bold]Games (Heroium)[/bold]           [bold cyan]│[/]
 [bold cyan]│[/]  [bold yellow]0[/]  🚪 [bold]Exit[/bold]                                [bold cyan]│[/]
 [bold cyan]└─────────────────────────────────────────────────────────────┘[/]
         """
@@ -120,7 +120,7 @@ class TermuxProHub:
             os.system('nano $HOME/ai-workspace/config/ai.conf')
     
     def option_6(self):
-        help_text = """[bold cyan]QUICK REFERENCE\n\nCommands:\n  tp/ai       Main hub\n  chat        Chat AI\n  copilot/cop Code gen\n  games       Open Torchbound/Heroium\n  gs, ga, gp  Git shortcuts\n\nFiles:\n  Config: ~/ai-workspace/config/ai.conf\n  Chats: ~/ai-workspace/chats/[/]"""
+        help_text = """[bold cyan]QUICK REFERENCE\n\nCommands:\n  tp/ai       Main hub\n  chat        Chat AI\n  copilot/cop Code gen\n  games       Open Heroium (Web/Godot)\n  gs, ga, gp  Git shortcuts\n\nFiles:\n  Config: ~/ai-workspace/config/ai.conf\n  Chats: ~/ai-workspace/chats/[/]"""
         console.print(Panel(help_text, border_style="cyan"))
         input("\n[cyan]Press Enter...[/]")
 
