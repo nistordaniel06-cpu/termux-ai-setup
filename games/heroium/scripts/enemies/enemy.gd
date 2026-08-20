@@ -22,6 +22,8 @@ var _burn_time: float = 0.0
 var _contact_cooldown: float = 0.0
 var _hero: Node2D = null
 
+@onready var _body: Blob = $Body
+
 
 func _ready() -> void:
 	add_to_group(&"enemy")
@@ -55,8 +57,23 @@ func take_damage(amount: float, _is_crit: bool = false) -> void:
 	if health <= 0.0:
 		return
 	health -= amount
+	_body.flash()
+	queue_redraw()
 	if health <= 0.0:
 		_die()
+
+
+## Bara de viata apare abia dupa prima lovitura, ca o camera plina de inamici
+## nedeteriorati sa nu fie un zid de bare.
+func _draw() -> void:
+	if health >= max_health or health <= 0.0:
+		return
+
+	var width := 34.0
+	var corner := Vector2(-width * 0.5, -30.0)
+	var fraction := clampf(health / max_health, 0.0, 1.0)
+	draw_rect(Rect2(corner, Vector2(width, 5.0)), Color(0.0, 0.0, 0.0, 0.55))
+	draw_rect(Rect2(corner, Vector2(width * fraction, 5.0)), Color(0.95, 0.34, 0.34))
 
 
 func apply_burn(dps: float, duration: float) -> void:

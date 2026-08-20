@@ -11,7 +11,9 @@ extends Resource
 ## Nimic nu scrie direct in valorile finale - se recalculeaza din straturi cu
 ## `recalculate()`, ca sa nu ramana bonusuri fantoma dupa ce expira un efect.
 
-signal changed
+## Nu declara aici un semnal "changed": Resource are deja unul nativ, iar
+## redefinirea lui e eroare de parsare - adica scriptul nu compileaza deloc si
+## cade cu el tot ce-l importa. Se anunta cu `emit_changed()`.
 
 @export_group("Bază")
 @export var base_attack: float = 100.0
@@ -75,7 +77,7 @@ func recalculate() -> void:
 	crit_multiplier = base_crit_multiplier
 	attack_range = base_range
 	move_speed = (base_move_speed + bonus_move_speed) * mult_move_speed
-	changed.emit()
+	emit_changed()
 
 
 ## Secundele dintre doua atacuri.

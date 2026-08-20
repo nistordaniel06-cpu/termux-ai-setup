@@ -12,8 +12,3 @@ script = ExtResource("1_projectile")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 shape = SubResource("CircleShape2D_proj")
-
-[node name="Trail" type="GPUParticles2D" parent="."]
-emitting = false
-amount = 12
-lifetime = 0.35
