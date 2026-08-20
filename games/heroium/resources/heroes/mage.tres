@@ -1,7 +1,8 @@
-[gd_resource type="Resource" script_class="HeroClass" load_steps=4 format=3]
+[gd_resource type="Resource" script_class="HeroClass" load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://scripts/hero/hero_class.gd" id="1_class"]
 [ext_resource type="Script" path="res://scripts/hero/hero_stats.gd" id="2_stats"]
+[ext_resource type="Script" path="res://scripts/visual/character_visual.gd" id="3_visual"]
 
 [sub_resource type="Resource" id="Resource_mage_stats"]
 script = ExtResource("2_stats")
@@ -14,6 +15,12 @@ base_crit_multiplier = 2.5
 base_range = 620.0
 base_move_speed = 250.0
 
+[sub_resource type="Resource" id="Resource_look"]
+script = ExtResource("3_visual")
+silhouette = 0
+tint = Color(0.66, 0.45, 0.92, 1)
+art_scale = 1.0
+
 [resource]
 script = ExtResource("1_class")
 id = &"mage"
@@ -21,6 +28,7 @@ display_name = "Mage"
 description = "Cea mai mare daună și cea mai puțină viață. O greșeală de poziționare îl costă runda."
 archetype = 2
 accent_color = Color(0.66, 0.45, 0.92, 1)
+visual = SubResource("Resource_look")
 stats = SubResource("Resource_mage_stats")
 unlocked_by_default = false
 unlock_cost = 2500

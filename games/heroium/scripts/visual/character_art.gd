@@ -21,6 +21,9 @@ enum Silhouette {
 	KNIGHT,     ## coif cu viziera si umeri lati
 	COLOSSUS,   ## schelet urias, cu coarne de os
 	KING,       ## coroana si pelerina - seful final
+	SKELETON_ARCHER,  ## schelet cu arc
+	SKELETON_MAGE,    ## schelet cu toiag
+	NECROMANCER,      ## roba, toiag si cranii care plutesc
 }
 
 ## Cat tine licarirea alba de la o lovitura.
@@ -99,6 +102,14 @@ func _draw() -> void:
 			_draw_skeleton(true)
 		Silhouette.KING:
 			_draw_king()
+		Silhouette.SKELETON_ARCHER:
+			_draw_skeleton(false)
+			_draw_bow()
+		Silhouette.SKELETON_MAGE:
+			_draw_skeleton(false)
+			_draw_staff()
+		Silhouette.NECROMANCER:
+			_draw_necromancer()
 		_:
 			_draw_skeleton(false)
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
@@ -261,3 +272,45 @@ func _draw_king() -> void:
 		Vector2(0.0, -1.10), Vector2(0.20, -0.84), Vector2(0.40, -1.02),
 		Vector2(0.40, -0.72),
 	]), gold)
+
+
+## Arcul din mana scheletului arcas. Doua trasaturi, si silueta se schimba destul
+## cat sa nu-l mai confunzi cu un razboinic la trei metri distanta.
+func _draw_bow() -> void:
+	var wood := _body_color().darkened(0.35)
+	draw_arc(Vector2(0.62, 0.06) * radius, 0.46 * radius, -1.15, 1.15, 14, wood, outline_width * 1.4, true)
+	draw_line(Vector2(0.44, -0.36) * radius, Vector2(0.44, 0.48) * radius,
+		Color(1, 1, 1, 0.45), outline_width * 0.6, true)
+
+
+## Toiagul magului, cu piatra aprinsa in varf.
+func _draw_staff() -> void:
+	var wood := _body_color().darkened(0.4)
+	draw_line(Vector2(0.56, 0.66) * radius, Vector2(0.66, -0.72) * radius, wood, outline_width * 1.5, true)
+	var pulse := 0.7 + sin(_age * 5.0 + _offset) * 0.3
+	var orb := Color(0.66, 0.42, 1.0, pulse)
+	draw_circle(Vector2(0.66, -0.78) * radius, 0.20 * radius, Color(orb.r, orb.g, orb.b, 0.28))
+	draw_circle(Vector2(0.66, -0.78) * radius, 0.11 * radius, orb)
+
+
+func _draw_necromancer() -> void:
+	var robe := _body_color()
+	# Roba lunga, mai lata decat a cultistului - e stapanul lor, nu unul dintre ei.
+	_poly(PackedVector2Array([
+		Vector2(-0.40, -0.30), Vector2(0.40, -0.30),
+		Vector2(0.78, 0.90), Vector2(-0.78, 0.90),
+	]), robe.darkened(0.34))
+	_poly(PackedVector2Array([
+		Vector2(-0.44, -0.24), Vector2(0.0, -1.04), Vector2(0.44, -0.24),
+	]), robe)
+	draw_circle(Vector2(0.0, -0.40) * radius, 0.24 * radius, Color(0.03, 0.02, 0.06))
+	var glow := 0.7 + sin(_age * 3.4 + _offset) * 0.3
+	_eyes(-0.42, 0.11, 0.055, Color(0.55, 1.0, 0.75, glow))
+
+	# Doua cranii care se rotesc in jurul lui: semnul ca aduce mortii inapoi.
+	for i in 2:
+		var angle := _age * 1.5 + _offset + float(i) * PI
+		var at := Vector2(cos(angle) * 0.95, -0.30 + sin(angle) * 0.24)
+		draw_circle(at * radius, 0.15 * radius, Color(0.86, 0.84, 0.78))
+		draw_circle((at + Vector2(-0.05, -0.02)) * radius, 0.04 * radius, Color(0.05, 0.03, 0.08))
+		draw_circle((at + Vector2(0.05, -0.02)) * radius, 0.04 * radius, Color(0.05, 0.03, 0.08))

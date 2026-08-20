@@ -1,9 +1,9 @@
 [gd_resource type="Resource" script_class="Location" load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://scripts/systems/location.gd" id="1_location"]
-[ext_resource type="Resource" path="res://resources/enemies/skeleton.tres" id="2_skeleton"]
-[ext_resource type="Resource" path="res://resources/enemies/bat.tres" id="3_bat"]
-[ext_resource type="Resource" path="res://resources/enemies/bone_colossus.tres" id="4_colossus"]
+[ext_resource type="Resource" path="res://resources/enemies/lord_of_the_dead.tres" id="2_boss"]
+[ext_resource type="Resource" path="res://resources/enemies/skeleton_warrior.tres" id="3_e"]
+[ext_resource type="Resource" path="res://resources/enemies/bat.tres" id="4_e"]
 
 [resource]
 script = ExtResource("1_location")
@@ -14,8 +14,8 @@ rooms = 8
 floor_color = Color(0.09, 0.14, 0.1, 1)
 grid_color = Color(0.15, 0.22, 0.16, 1)
 border_color = Color(0.51, 0.79, 0.42, 1)
-enemy_types = Array[Resource]([ExtResource("2_skeleton"), ExtResource("3_bat")])
-boss = ExtResource("4_colossus")
+enemy_types = Array[Resource]([ ExtResource("3_e"), ExtResource("4_e"), ])
+boss = ExtResource("2_boss")
 base_enemy_count = 4
-enemies_per_room = 1.0
-max_enemy_count = 11
+enemies_per_room = 1.1
+max_enemy_count = 12

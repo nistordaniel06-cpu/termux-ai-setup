@@ -52,7 +52,7 @@ var _burn_time: float = 0.0
 var _contact_cooldown: float = 0.0
 var _hero: Node2D = null
 
-@onready var _body: CharacterArt = $Body
+@onready var _body: CharacterBodyView = $Body
 @onready var _collider: CollisionShape2D = $CollisionShape2D
 
 
@@ -77,9 +77,7 @@ func _ready() -> void:
 	if type == null:
 		push_warning("Enemy fara EnemyType - ramane pe valorile implicite.")
 	else:
-		_body.radius = radius
-		_body.fill = type.color
-		_body.silhouette = type.silhouette
+		_body.apply(type.visual, radius)
 		# Forma vine din scena, deci e aceeasi pentru toate instantele: fara
 		# copie, un sef mare ar umfla si scheletele.
 		var shape: CircleShape2D = _collider.shape.duplicate()
@@ -249,7 +247,7 @@ func _apply_damage(amount: float) -> void:
 
 
 func _tint() -> Color:
-	return type.color if type != null else Color("d9464f")
+	return type.tint() if type != null else Color("d9464f")
 
 
 ## Seful nu moare la jumatate - se infurie. Devine mai iute si loveste mai tare,
@@ -264,7 +262,7 @@ func _maybe_enter_phase_two() -> void:
 	phase = 2
 	contact_damage *= type.phase_two_damage_multiplier
 	move_speed *= type.phase_two_speed_multiplier
-	_body.fill = _tint().lightened(0.25)
+	_body.set_tint(_tint().lightened(0.25))
 
 	Fx.shake(7.0, 0.45)
 	Fx.burst(global_position, _tint(), 28, 260.0)

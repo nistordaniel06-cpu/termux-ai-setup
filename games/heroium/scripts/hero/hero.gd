@@ -45,7 +45,7 @@ var _accent: Color = Color("f0b45a")
 @onready var _combat: HeroCombat = $Combat
 @onready var _health: HeroHealth = $Health
 @onready var _xp: HeroXp = $Xp
-@onready var _body: CharacterArt = $Body
+@onready var _body: CharacterBodyView = $Body
 
 
 func _ready() -> void:
@@ -95,8 +95,16 @@ func _ready() -> void:
 	var skin := GameState.selected_skin_resource()
 	if skin != null:
 		_accent = skin.color
-	_body.fill = _accent
-	_body.silhouette = CharacterArt.Silhouette.HERO
+
+	var look: CharacterVisual = hero_class.visual if hero_class != null else null
+	if look == null:
+		push_warning("HeroClass fara CharacterVisual - eroul ar ramane nevazut.")
+		look = CharacterVisual.new()
+		look.silhouette = CharacterArt.Silhouette.HERO
+	# Copie, ca schimbarea de culoare sa nu se scrie in resursa comuna a clasei.
+	look = look.duplicate()
+	look.tint = _accent
+	_body.apply(look, RING_RADIUS - 9.0)
 
 
 func _physics_process(delta: float) -> void:
@@ -105,6 +113,7 @@ func _physics_process(delta: float) -> void:
 
 	if wants_to_move != is_moving:
 		is_moving = wants_to_move
+		_body.set_moving(is_moving)
 		moving_changed.emit(is_moving)
 
 	if is_moving:

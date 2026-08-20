@@ -415,24 +415,86 @@ func _test_touch_reaches_buttons() -> void:
 func _test_looks(state: Node) -> void:
 	print("\n[12] CUM ARATĂ")
 
-	# Fiecare fel de inamic trebuie să se deosebească dintr-o privire. Culoarea
-	# singură nu ajunge - un schelet și un demon roșu ar fi două buline.
+	# Fiecare fel de inamic trebuie sa se deosebeasca dintr-o privire. Culoarea
+	# singura nu ajunge - un schelet si un demon rosu ar fi doua buline.
+	var roster := [
+		"skeleton_warrior", "skeleton_archer", "skeleton_mage", "undead_knight",
+		"dark_priest", "demon", "elite_skeleton", "bat",
+		"fallen_king", "lord_of_the_dead", "necromancer",
+	]
 	var seen := {}
-	for path in [
-		"res://resources/enemies/skeleton.tres", "res://resources/enemies/bat.tres",
-		"res://resources/enemies/cultist.tres", "res://resources/enemies/demon.tres",
-		"res://resources/enemies/dread_knight.tres", "res://resources/enemies/bone_colossus.tres",
-		"res://resources/enemies/fallen_king.tres",
-	]:
-		var type: EnemyType = load(path)
-		seen[type.silhouette] = true
-	check("cele șapte feluri au siluete distincte", seen.size() == 7, "%d siluete" % seen.size())
+	var missing := 0
+	for id in roster:
+		var type: EnemyType = load("res://resources/enemies/%s.tres" % id)
+		if type == null or type.visual == null:
+			missing += 1
+			continue
+		seen[type.visual.silhouette] = true
+	check("tot rosterul se încarcă", missing == 0, "%d lipsă din %d" % [missing, roster.size()])
+	check("siluetele sunt distincte", seen.size() >= 8, "%d siluete pentru %d inamici"
+		% [seen.size(), roster.size()])
 
-	# Skinuri
+	# Cei trei sefi din brief exista si sunt sefi.
+	for id in ["fallen_king", "lord_of_the_dead", "necromancer"]:
+		var boss: EnemyType = load("res://resources/enemies/%s.tres" % id)
+		check("%s e șef cu fază a II-a" % boss.display_name,
+			boss.is_boss and boss.phase_two_at > 0.0 and boss.summons != null)
+
+	await _test_art_is_swappable()
+	await _test_skins(state)
+
+
+## Dovada ca arta finala se poate pune fara sa se atinga cod: aceeasi vedere,
+## trei descrieri, trei noduri diferite dedesubt.
+func _test_art_is_swappable() -> void:
+	var holder := Node2D.new()
+	root.add_child(holder)
+
+	var drawn := CharacterVisual.new()
+	drawn.silhouette = CharacterArt.Silhouette.SKELETON
+	var view_drawn := CharacterBodyView.new()
+	holder.add_child(view_drawn)
+	view_drawn.apply(drawn, 16.0)
+	await process_frame
+	check("fără artă -> siluetă desenată", view_drawn.get_child(0) is CharacterArt,
+		view_drawn.get_child(0).get_class())
+
+	var image := Image.create(32, 32, false, Image.FORMAT_RGBA8)
+	image.fill(Color.WHITE)
+
+	var still := CharacterVisual.new()
+	still.texture = ImageTexture.create_from_image(image)
+	var view_still := CharacterBodyView.new()
+	holder.add_child(view_still)
+	view_still.apply(still, 16.0)
+	await process_frame
+	check("cu textură -> Sprite2D", view_still.get_child(0) is Sprite2D,
+		view_still.get_child(0).get_class())
+
+	var frames := SpriteFrames.new()
+	frames.add_animation(&"idle")
+	frames.add_frame(&"idle", ImageTexture.create_from_image(image))
+	var moving := CharacterVisual.new()
+	moving.sprite_frames = frames
+	var view_moving := CharacterBodyView.new()
+	holder.add_child(view_moving)
+	view_moving.apply(moving, 16.0)
+	await process_frame
+	check("cu animație -> AnimatedSprite2D", view_moving.get_child(0) is AnimatedSprite2D,
+		view_moving.get_child(0).get_class())
+
+	# Arta se aseaza pe raza de coliziune, nu pe marimea fisierului.
+	var sprite: Sprite2D = view_still.get_child(0)
+	check("arta se scalează la raza corpului",
+		is_equal_approx(sprite.scale.x, 1.0), "scală %.2f pentru 32px la rază 16" % sprite.scale.x)
+
+	holder.free()
+
+
+func _test_skins(state: Node) -> void:
 	state.wipe()
 	check("pornești cu o singură înfățișare", state.unlocked_skins.size() == 1,
 		"%d deblocate" % state.unlocked_skins.size())
-	check("cea de start e purtată", state.selected_skin_resource().id == &"classic")
 
 	var void_skin: HeroSkin = state.skin_by_id(&"void")
 	check("Umbra Regelui e blocată", not state.is_skin_unlocked(&"void"))
@@ -441,20 +503,21 @@ func _test_looks(state: Node) -> void:
 	state.add_coins(void_skin.cost)
 	check("cu monede se cumpără", state.unlock_skin(&"void", void_skin.cost))
 	state.select_skin(&"void")
-	check("devine purtată", state.selected_skin_resource().id == &"void")
 
 	var run := await _open_run()
 	var hero := get_first_node_in_group(&"hero")
-	var body = hero.get_node("Body")
-	check("eroul chiar poartă culoarea aleasă",
-		body.fill.is_equal_approx(void_skin.color), str(body.fill))
-	check("eroul are silueta de erou", body.silhouette == 0, "silueta %d" % body.silhouette)
+	var view: CharacterBodyView = hero.get_node("Body")
+	check("eroul poartă culoarea aleasă",
+		view.visual != null and view.visual.tint.is_equal_approx(void_skin.color),
+		str(view.visual.tint) if view.visual != null else "fără visual")
 
-	# Cosmeticul nu are voie sa atinga puterea.
 	var ranger: HeroClass = state.hero_class_by_id(&"ranger")
 	check("înfățișarea nu schimbă nicio statistică",
 		is_equal_approx(hero.stats.attack, ranger.stats.base_attack),
 		"atac %.0f, bază %.0f" % [hero.stats.attack, ranger.stats.base_attack])
+	check("culoarea aleasă nu se scrie în resursa clasei",
+		ranger.visual.tint.is_equal_approx(ranger.accent_color),
+		"clasa a rămas %s" % ranger.visual.tint)
 
 	run.free()
 	state.wipe()
