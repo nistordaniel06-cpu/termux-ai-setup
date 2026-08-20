@@ -1,7 +1,7 @@
 import os, sys, json, requests
 
 # Directorul de destinație din structura jocului HEROIUM
-TARGET_DIR = os.path.join("games", "heroium-web", "www", "assets", "skins")
+TARGET_DIR = os.path.join("games", "heroium", "www", "assets", "skins")
 MANIFEST_PATH = os.path.join(TARGET_DIR, "skins.json")
 
 def init_env():

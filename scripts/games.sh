@@ -6,8 +6,7 @@
 # de GitHub Pages. Scriptul doar deschide link-ul corect, ca sa nu-l mai
 # cauti/copiezi de fiecare data. Se actualizeaza singur la fiecare push.
 
-HEROIUM_WEB_URL="https://nistordaniel06-cpu.github.io/termux-ai-setup/"
-HEROIUM_GODOT_URL="https://nistordaniel06-cpu.github.io/termux-ai-setup/games/heroium/play/"
+HEROIUM_URL="https://nistordaniel06-cpu.github.io/termux-ai-setup/"
 
 open_url() {
     local url="$1"
@@ -29,17 +28,13 @@ echo "╔═══════════════════════�
 echo "║  🎮 GAMES - Jocurile tale, direct din browser              ║"
 echo "╚════════════════════════════════════════════════════════════╝"
 echo ""
-echo "1  🔥 Heroium (Web)     (action-roguelike, browser HTML/Canvas)"
-echo "2  ⚔️  Heroium (Godot)   (export Web, Godot 4)"
-echo "3  🎮 Ambele"
+echo "1  🔥 Heroium     (action-roguelike, browser HTML/Canvas)"
 echo "0  🚪 Iesire"
 echo ""
-read -p "Alege (0-3): " choice
+read -p "Alege (0-1): " choice
 
 case "$choice" in
-    1) open_url "$HEROIUM_WEB_URL" ;;
-    2) open_url "$HEROIUM_GODOT_URL" ;;
-    3) open_url "$HEROIUM_WEB_URL"; open_url "$HEROIUM_GODOT_URL" ;;
+    1) open_url "$HEROIUM_URL" ;;
     0) exit 0 ;;
     *) echo "Optiune invalida." ;;
 esac
