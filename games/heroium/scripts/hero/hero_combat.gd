@@ -83,8 +83,7 @@ func _fire_at(target: Node2D) -> void:
 
 	for i in count:
 		var offset := 0.0 if count == 1 else (float(i) - (count - 1) * 0.5) * spread
-		var projectile := projectile_scene.instantiate()
-		container.add_child(projectile)
+		var projectile := Pool.acquire(projectile_scene, container) as Projectile
 		projectile.global_position = global_position
 		projectile.launch(
 			Vector2.RIGHT.rotated(base_angle + offset), _stats,

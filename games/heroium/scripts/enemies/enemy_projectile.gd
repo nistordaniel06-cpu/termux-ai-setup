@@ -20,11 +20,26 @@ func _ready() -> void:
 	body_entered.connect(_on_body_entered)
 
 
+## Chemat de Pool cand o sageata lasata deoparte e data din nou.
+func pool_activate() -> void:
+	monitoring = true
+	monitorable = true
+
+
+## Chemat de Pool cand sageata e lasata deoparte, in loc sa fie stearsa.
+func pool_deactivate() -> void:
+	monitoring = false
+	monitorable = false
+
+
 func launch(direction: Vector2, hit_damage: float, tint: Color) -> void:
 	_direction = direction.normalized()
 	rotation = _direction.angle()
 	damage = hit_damage
 	color = tint
+	# O sageata refolosita din bazin poarta varsta rulării ei de dinainte -
+	# fara resetul asta, ar putea disparea imediat (varsta veche > lifetime).
+	_age = 0.0
 	queue_redraw()
 
 
@@ -32,7 +47,7 @@ func _physics_process(delta: float) -> void:
 	global_position += _direction * speed * delta
 	_age += delta
 	if _age >= lifetime:
-		queue_free()
+		Pool.release(self)
 
 
 func _on_body_entered(body: Node) -> void:
@@ -41,7 +56,7 @@ func _on_body_entered(body: Node) -> void:
 	if body.has_method(&"take_damage"):
 		body.take_damage(damage)
 	Fx.burst(global_position, color, 6, 120.0)
-	queue_free()
+	Pool.release(self)
 
 
 func _draw() -> void:

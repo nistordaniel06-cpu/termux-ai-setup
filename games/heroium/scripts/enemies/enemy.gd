@@ -198,10 +198,10 @@ func _act_charger(delta: float, direction: Vector2, distance: float) -> void:
 
 
 func _shoot_at(point: Vector2) -> void:
-	if projectile_scene == null:
+	var world := get_parent()
+	if projectile_scene == null or world == null:
 		return
-	var projectile := projectile_scene.instantiate()
-	_spawn(projectile)
+	var projectile := Pool.acquire(projectile_scene, world) as EnemyProjectile
 	projectile.global_position = global_position
 	projectile.launch(global_position.direction_to(point), contact_damage, _tint())
 

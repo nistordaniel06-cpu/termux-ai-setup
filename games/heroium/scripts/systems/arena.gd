@@ -3,10 +3,10 @@ extends Node2D
 
 ## Rularea in sine: camere una dupa alta, prin locatii, pana cazi.
 ##
-## O camera se incheie cand ultimul inamic a murit. Cand se termina camerele unei
-## locatii vine seful ei, iar dupa el urmatoarea locatie. Dupa ultima locatie
-## campania nu se opreste: se reia ultima, dar treapta de dificultate creste mai
-## departe, deci "endless" nu inseamna "la nesfarsit la fel de usor".
+## Arena orchestreaza, nu face treaba cu mainile ei: cine apare intr-o camera e
+## treaba lui RoomWave, ce cameră vine dupa e treaba lui DungeonProgress. Aici
+## ramane doar starea rularii (locatia, camera, monedele) si legatura dintre
+## semnalele lor si ce vede jucatorul.
 ##
 ## Nimic din ce e aici nu stie ce fel de inamici exista - asta scrie in Location.
 
@@ -37,7 +37,7 @@ var rooms_cleared: int = 0
 var coins_earned: int = 0
 var is_over: bool = false
 
-var _alive: int = 0
+var _wave: RoomWave = null
 var _advancing: bool = false
 
 @onready var _hero: Hero = $Hero
@@ -55,6 +55,13 @@ func _ready() -> void:
 
 	_hero.died.connect(_on_hero_died)
 	_hero.set_projectile_container(_world)
+
+	_wave = RoomWave.new()
+	_wave.min_spawn_distance = min_spawn_distance
+	_wave.spawn_radius = spawn_radius
+	_wave.setup(enemy_scene, xp_orb_scene, _world, _hero, _floor.room_rect)
+	_wave.enemy_died.connect(_on_enemy_died)
+	_wave.cleared.connect(_on_room_cleared)
 
 	_enter_location(0)
 
@@ -83,58 +90,25 @@ func build_room() -> void:
 	if location == null or enemy_scene == null:
 		return
 
-	_clear_leftovers()
-	_alive = 0
+	_wave.clear_leftovers()
 
-	var is_boss := _is_boss_room()
+	var is_boss := DungeonProgress.is_boss_room(location, room, GameState.selected_mode)
 	if is_boss:
-		_spawn_enemy(location.boss)
+		var boss := _wave.spawn_boss_room(location, rooms_cleared)
+		if boss != null:
+			boss.phase_changed.connect(_on_boss_phase)
+			boss_spawned.emit(boss)
 		Fx.toast(location.boss.display_name)
 		Fx.shake(6.0, 0.4)
 	else:
-		for i in location.enemy_count_for(room):
-			_spawn_enemy(_pick_type())
+		_wave.spawn_normal_room(location, room, rooms_cleared)
 
 	room_started.emit(room, is_boss)
 
 
-## In Boss Rush fiecare camera e a unui sef; in rest doar ultima din locatie.
-func _is_boss_room() -> bool:
-	if location == null or location.boss == null:
-		return false
-	if GameState.selected_mode == GameState.Mode.BOSS_RUSH:
-		return true
-	return location.is_boss_room(room)
-
-
-## Un fel de inamic din cei pe care camera asta ii poate aduce.
-func _pick_type() -> EnemyType:
-	var pool := location.available_types(room)
-	if pool.is_empty():
-		return null
-	return pool[randi() % pool.size()]
-
-
-func _spawn_enemy(type: EnemyType) -> void:
-	if type == null:
-		return
-
-	var enemy: Enemy = enemy_scene.instantiate()
-	# Datele intra inainte de intrarea in arbore, ca `_ready` sa le gaseasca gata.
-	enemy.setup(type, rooms_cleared)
-	_world.add_child(enemy)
-	enemy.global_position = _pick_spawn_point()
-	enemy.died.connect(_on_enemy_died)
-	_alive += 1
-
-	if type.is_boss:
-		enemy.phase_changed.connect(_on_boss_phase)
-		boss_spawned.emit(enemy)
-
-
 ## Seful s-a infuriat. Ajutoarele le aduce arena, nu el: el n-are de unde sti
-## unde e loc liber, iar `_alive` trebuie sa le numere ca sa nu se incheie camera
-## cat inca misca ceva.
+## unde e loc liber, iar RoomWave trebuie sa le numere ca sa nu se incheie
+## camera cat inca misca ceva.
 func _on_boss_phase(enemy: Enemy, phase: int) -> void:
 	if phase < 2 or enemy.type == null:
 		return
@@ -144,40 +118,7 @@ func _on_boss_phase(enemy: Enemy, phase: int) -> void:
 	if summons == null or enemy.type.summon_count <= 0:
 		return
 	for i in enemy.type.summon_count:
-		_spawn_enemy.call_deferred(summons)
-
-
-## Punct la distanta de erou, dar tot inauntrul camerei - altfel inamicii ar
-## aparea dincolo de pereti si n-ar mai avea cum sa ajunga la el.
-func _pick_spawn_point() -> Vector2:
-	var bounds := _floor.room_rect().grow(-60.0)
-
-	for attempt in 24:
-		var angle := randf() * TAU
-		var distance := randf_range(min_spawn_distance, spawn_radius)
-		var point := _hero.global_position + Vector2.RIGHT.rotated(angle) * distance
-		if bounds.has_point(point):
-			return point
-
-	# Camera e prea stramta pentru inelul cerut: pune-l oriunde inauntru.
-	return Vector2(
-		randf_range(bounds.position.x, bounds.end.x),
-		randf_range(bounds.position.y, bounds.end.y),
-	)
-
-
-## Goleste camera inainte sa fie construita cea noua.
-##
-## In mersul normal al jocului n-a mai ramas niciun inamic aici - camera se
-## incheie tocmai cand moare ultimul. Ii stergem oricum, ca o camera "noua" sa
-## fie mereu chiar noua: altfel un salt de locatie s-ar aseza peste ce era si
-## numaratoarea `_alive` n-ar mai corespunde cu ce e pe ecran.
-##
-## Cioburile de experienta NU se sterg aici - pe acelea le culege eroul.
-func _clear_leftovers() -> void:
-	for node in _world.get_children():
-		if node is Enemy or node is Projectile or node is EnemyProjectile or node is Telegraph:
-			node.queue_free()
+		_wave.spawn.call_deferred(summons, rooms_cleared, min_spawn_distance, spawn_radius)
 
 
 # ====================== SFARSIT DE CAMERA ======================
@@ -186,13 +127,6 @@ func _on_enemy_died(enemy: Enemy) -> void:
 	coins_earned += enemy.coin_reward
 	GameState.add_coins(enemy.coin_reward)
 	_drop_orb(enemy.global_position, enemy.xp_reward)
-
-	_alive -= 1
-	if _alive > 0 or _advancing or is_over:
-		return
-
-	_advancing = true
-	_advance_room()
 
 
 func _drop_orb(at: Vector2, xp: int) -> void:
@@ -205,6 +139,13 @@ func _drop_orb(at: Vector2, xp: int) -> void:
 	# Inamicul moare in mijlocul unei interogari de fizica (l-a lovit o sageata),
 	# iar acolo serverul nu accepta zone noi. Ciobul intra la capatul cadrului.
 	_world.add_child.call_deferred(orb)
+
+
+func _on_room_cleared() -> void:
+	if _advancing or is_over:
+		return
+	_advancing = true
+	_advance_room()
 
 
 func _advance_room() -> void:
@@ -225,31 +166,22 @@ func _advance_room() -> void:
 	_go_to_next_room()
 
 
-## Unde ajunge jucatorul dupa ce a curatat camera. Singurul loc din arena unde
-## regimul ales chiar schimba ceva.
+## Unde ajunge jucatorul dupa ce a curatat camera. DungeonProgress decide DUPA
+## regimul ales; Arena doar executa decizia si emite ce trebuie.
 func _go_to_next_room() -> void:
-	if GameState.selected_mode == GameState.Mode.BOSS_RUSH:
-		# Fiecare camera e a unui sef, deci trecem prin locatii ca sa nu fie
-		# mereu acelasi; treapta creste oricum cu numarul de camere.
-		_enter_location(location_index + 1)
-		return
-
-	if room < location.rooms:
-		room += 1
-		build_room()
-		return
-
-	# Locatia s-a incheiat. In Campanie, ultima inseamna ca ai terminat jocul;
-	# in Supraviețuire se reia ultima locatie, cu inamici tot mai grei.
-	if GameState.selected_mode == GameState.Mode.CAMPAIGN and _is_last_location():
-		_win_run()
-		return
-
-	_enter_location(location_index + 1)
+	var outcome := DungeonProgress.after_clear(location, location_index, room, GameState.selected_mode)
+	match outcome:
+		DungeonProgress.Outcome.NEXT_LOCATION:
+			_enter_location(location_index + 1)
+		DungeonProgress.Outcome.VICTORY:
+			_win_run()
+		_:
+			room += 1
+			build_room()
 
 
 func _is_last_location() -> bool:
-	return location_index >= GameState.locations.size() - 1
+	return DungeonProgress.is_last_location(location_index)
 
 
 func _win_run() -> void:
