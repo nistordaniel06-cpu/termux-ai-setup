@@ -31,10 +31,16 @@ enabled=PackedStringArray("res://addons/virtual_joystick/plugin.cfg")
 
 [input_devices]
 
-; Cerute de addonul de joystick virtual: atingerile nu trebuie dublate ca
-; evenimente de mouse, iar mouse-ul trebuie sa treaca drept atingere - asa
-; jocul se poate incerca si cu mouse-ul, in browser pe desktop.
-pointing/emulate_mouse_from_touch=false
+; Butoanele (Control) reactioneaza la evenimente de MOUSE. Fara emularea de mai
+; jos, o atingere cu degetul nu devine niciodata apasare, si atunci niciun buton
+; din joc nu poate fi folosit pe telefon - meniu, carti de nivel, pauza, tot.
+;
+; Addonul de joystick cere in consola exact pe dos ("should be set to False"),
+; dar acela e un printerr, nu o cerinta: joystick-ul citeste singur
+; InputEventScreenTouch in `_input`, care ii ajunge oricum. Urmand acel
+; avertisment am livrat un joc in care nu se putea apasa nimic.
+pointing/emulate_mouse_from_touch=true
+; Mouse-ul trece drept atingere, ca joystick-ul sa mearga si in browser pe desktop.
 pointing/emulate_touch_from_mouse=true
 
 [input]
