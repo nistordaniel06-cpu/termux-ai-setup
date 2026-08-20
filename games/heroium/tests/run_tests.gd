@@ -610,38 +610,45 @@ func _test_composable_effects(state: Node) -> void:
 
 
 ## Verifica ca Pool refoloseste nodurile si nu le distruge cand sunt eliberate.
+##
+## `run_tests.gd` e chiar scriptul de intrare (--script), deci Godot il
+## compileaza inaintea oricarui alt fisier - inclusiv inaintea momentului in
+## care Pool exista ca identificator global. "Pool.xxx" scris direct in text
+## ar pica exact ca in projectile.gd; root.get_node("Pool") e o cautare la
+## rulare, imuna la asta (la fel cum testul deja face pentru GameState).
 func _test_pooling() -> void:
 	print("[13] TEST POOLING")
-	var start_idle := Pool.idle_count(preload("res://scenes/abilities/projectile.tscn"))
+	var pool := root.get_node("Pool")
+	var start_idle := pool.idle_count(preload("res://scenes/abilities/projectile.tscn"))
 	print("  Idle projectiles at start: ", start_idle)
 
 	# Acquire and release a projectile
 	var parent := Node2D.new()
 	root.add_child(parent)
-	var projectile: Projectile = Pool.acquire(preload("res://scenes/abilities/projectile.tscn"), parent) as Projectile
+	var projectile: Projectile = pool.acquire(preload("res://scenes/abilities/projectile.tscn"), parent) as Projectile
 	check("acquire returns Projectile", projectile != null)
 	check("acquired projectile is in parent", projectile.get_parent() == parent)
 
 	# At this point, idle count should not have increased (we took one out)
-	var idle_after_acquire := Pool.idle_count(preload("res://scenes/abilities/projectile.tscn"))
+	var idle_after_acquire := pool.idle_count(preload("res://scenes/abilities/projectile.tscn"))
 	check("idle count unchanged by acquire", idle_after_acquire == start_idle)
 
 	# Release it
-	Pool.release(projectile)
-	var idle_after_release := Pool.idle_count(preload("res://scenes/abilities/projectile.tscn"))
+	pool.release(projectile)
+	var idle_after_release := pool.idle_count(preload("res://scenes/abilities/projectile.tscn"))
 	check("idle count increased after release", idle_after_release == start_idle + 1, "was %d now %d" % [start_idle, idle_after_release])
 
 	# Acquire again should reuse the same node
-	var projectile2: Projectile = Pool.acquire(preload("res://scenes/abilities/projectile.tscn"), parent) as Projectile
+	var projectile2: Projectile = pool.acquire(preload("res://scenes/abilities/projectile.tscn"), parent) as Projectile
 	check("reacquire returns same Projectile", projectile2 == projectile, "first: %s, second: %s" % [projectile, projectile2])
 
-	idle_after_acquire = Pool.idle_count(preload("res://scenes/abilities/projectile.tscn"))
+	idle_after_acquire = pool.idle_count(preload("res://scenes/abilities/projectile.tscn"))
 	check("idle count back down after reacquire", idle_after_acquire == start_idle)
 
 	# Test release is idempotent
-	Pool.release(projectile2)
-	Pool.release(projectile2)  # Second call should be no-op
-	var idle_after_double_release := Pool.idle_count(preload("res://scenes/abilities/projectile.tscn"))
+	pool.release(projectile2)
+	pool.release(projectile2)  # Second call should be no-op
+	var idle_after_double_release := pool.idle_count(preload("res://scenes/abilities/projectile.tscn"))
 	check("double release is safe", idle_after_double_release == start_idle + 1)
 
 	parent.queue_free()
