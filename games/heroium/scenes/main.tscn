@@ -1,0 +1,36 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/hero/hero.tscn" id="1_hero"]
+[ext_resource type="PackedScene" path="res://addons/virtual_joystick/virtual_joystick_scene.tscn" id="2_joystick"]
+[ext_resource type="Script" path="res://scripts/systems/arena.gd" id="3_arena"]
+
+[node name="Main" type="Node2D"]
+script = ExtResource("3_arena")
+
+[node name="Arena" type="Node2D" parent="."]
+
+[node name="Hero" parent="." instance=ExtResource("1_hero")]
+position = Vector2(360, 900)
+joystick_path = NodePath("../HUD/VirtualJoystick")
+
+[node name="Camera2D" type="Camera2D" parent="Hero"]
+position_smoothing_enabled = true
+position_smoothing_speed = 8.0
+
+[node name="HUD" type="CanvasLayer" parent="."]
+
+[node name="VirtualJoystick" parent="HUD" instance=ExtResource("2_joystick")]
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 60.0
+offset_top = -320.0
+offset_right = 260.0
+offset_bottom = -120.0
+joystick_mode = 1
+visibility_mode = 1
+use_input_actions = true
+action_left = "move_left"
+action_right = "move_right"
+action_up = "move_up"
+action_down = "move_down"

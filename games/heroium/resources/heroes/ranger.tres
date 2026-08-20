@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="HeroClass" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/hero/hero_class.gd" id="1_class"]
+[ext_resource type="Script" path="res://scripts/hero/hero_stats.gd" id="2_stats"]
+
+[sub_resource type="Resource" id="Resource_ranger_stats"]
+script = ExtResource("2_stats")
+base_attack = 125.0
+base_health = 550.0
+base_defense = 35.0
+base_attack_speed = 1.8
+base_crit_chance = 0.08
+base_crit_multiplier = 2.0
+base_range = 560.0
+base_move_speed = 275.0
+
+[resource]
+script = ExtResource("1_class")
+id = &"ranger"
+display_name = "Ranger"
+description = "Arcaș iute și fragil. Cadență mare, șansă critică bună, dar cade repede dacă e prins."
+archetype = 0
+accent_color = Color(0.94, 0.71, 0.35, 1)
+stats = SubResource("Resource_ranger_stats")
+unlocked_by_default = true
+unlock_cost = 0

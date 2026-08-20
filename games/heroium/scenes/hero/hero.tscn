@@ -1,0 +1,29 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/hero/hero.gd" id="1_hero"]
+[ext_resource type="Script" path="res://scripts/hero/hero_combat.gd" id="2_combat"]
+[ext_resource type="Script" path="res://scripts/hero/hero_health.gd" id="3_health"]
+[ext_resource type="PackedScene" path="res://scenes/abilities/projectile.tscn" id="4_projectile"]
+[ext_resource type="Resource" path="res://resources/heroes/ranger.tres" id="5_ranger"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_body"]
+radius = 18.0
+
+[node name="Hero" type="CharacterBody2D"]
+collision_layer = 2
+collision_mask = 1
+motion_mode = 1
+script = ExtResource("1_hero")
+hero_class = ExtResource("5_ranger")
+
+[node name="Sprite" type="Sprite2D" parent="."]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_body")
+
+[node name="Combat" type="Node2D" parent="."]
+script = ExtResource("2_combat")
+projectile_scene = ExtResource("4_projectile")
+
+[node name="Health" type="Node" parent="."]
+script = ExtResource("3_health")
