@@ -175,8 +175,8 @@ func set_control_mode(mode: HeroControl.Mode) -> void:
 
 func cycle_control_mode() -> void:
 	var next := int(control_mode) + 1
-	if next >= HeroControl.Mode.size():
-		next = 0
+	if next > int(HeroControl.Mode.DUAL_STICK):
+		next = int(HeroControl.Mode.AUTO)
 	set_control_mode(next as HeroControl.Mode)
 
 func get_control_mode_name() -> String:
