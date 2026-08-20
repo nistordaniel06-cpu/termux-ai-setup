@@ -1,7 +1,7 @@
 {
-  "name": "torchbound",
+  "name": "heroium",
   "version": "1.0.0",
-  "description": "Torchbound - action roguelike top-down, empachetat pentru Android cu Capacitor",
+  "description": "Heroium - action roguelike top-down, empachetat pentru Android cu Capacitor",
   "private": true,
   "scripts": {
     "test": "node test.js",

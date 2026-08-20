@@ -1,6 +1,6 @@
 {
-  "appId": "com.torchbound.game",
-  "appName": "Torchbound",
+  "appId": "com.heroium.game",
+  "appName": "Heroium",
   "webDir": "www",
   "android": {
     "backgroundColor": "#070b14"

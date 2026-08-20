@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-<title>Torchbound</title>
+<title>Heroium</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=Barlow:wght@500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
@@ -78,7 +78,7 @@
   /* ---------------- HUD ---------------- */
   #hud {
     position: absolute; top: 0; left: 0; right: 0;
-    padding: max(10px, env(safe-area-inset-top)) 14px 8px;
+    padding: max(10px, env(safe-area-inset-top)) calc(14px + 40px + env(safe-area-inset-right)) 8px 14px;
     display: flex; flex-direction: column; gap: 7px;
     pointer-events: none; z-index: 4;
   }
@@ -396,9 +396,9 @@
 
   <div id="startOverlay" class="overlay">
     <div class="panel">
-      <div class="kicker">action roguelike</div>
-      <h1 class="title">Torchbound</h1>
-      <p class="lede">Oprit pe loc, eroul țintește singur și trage cu <b>damage plin</b>. Din mers tragi mai slab — cât de des, depinde de modul ales. Curăță camera, treci prin ușă, alege puteri.</p>
+      <div class="kicker">ultimul erou în picioare</div>
+      <h1 class="title">Heroium</h1>
+      <p class="lede">Tărâmul a fost înghițit de beznă. Scheleți, demoni și creaturi ale nopții năvălesc din toate direcțiile — n-au mai rămas ziduri, n-a mai rămas refugiu, doar tu. Oprit pe loc tragi cu <b>damage plin</b>; din mers, mai slab. Curăță valul, treci mai departe, alege puteri.</p>
       <div class="modes" id="modes" role="group" aria-label="Mod de tragere">
         <button class="mode" type="button" data-mode="clasic" aria-pressed="false">Clasic<small>doar pe loc · +25%</small></button>
         <button class="mode" type="button" data-mode="hibrid" aria-pressed="true">Hibrid<small>apeși în mers · +10%</small></button>
@@ -544,7 +544,7 @@
   // jocului, care traieste intr-un singur HTML. Contextul se creeaza abia
   // la primul gest al utilizatorului, ca politicile de autoplay mobile
   // sa nu blocheze pornirea.
-  var SFX_KEY = "torchbound.muted";
+  var SFX_KEY = "heroium.muted";
   var muted = false;
   try { muted = localStorage.getItem(SFX_KEY) === "1"; } catch (err) {}
 
@@ -609,7 +609,7 @@
   syncMuteBtn();
 
   // ====================== PROGRES PERMANENT ======================
-  var META_KEY = "torchbound.meta";
+  var META_KEY = "heroium.meta";
   var meta = { shards: 0, totalRooms: 0, bestRoom: 1, up: {} };
 
   var UPGRADES = [
@@ -641,7 +641,7 @@
           meta.up = (m.up && typeof m.up === "object") ? m.up : {};
         }
       }
-      var savedMode = localStorage.getItem("torchbound.fireMode");
+      var savedMode = localStorage.getItem("heroium.fireMode");
       if (savedMode === "clasic" || savedMode === "hibrid" || savedMode === "liber") fireMode = savedMode;
     } catch (err) { /* stocarea poate fi blocata - ramanem pe valorile implicite */ }
   }
@@ -1823,7 +1823,7 @@
 
   function setMode(m) {
     fireMode = m;
-    try { localStorage.setItem("torchbound.fireMode", m); } catch (err) {}
+    try { localStorage.setItem("heroium.fireMode", m); } catch (err) {}
     modeBtns.forEach(function (b) {
       b.setAttribute("aria-pressed", String(b.dataset.mode === m));
     });
