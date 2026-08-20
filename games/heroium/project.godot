@@ -20,6 +20,7 @@ config/icon="res://icon.svg"
 ; pica o singura data - si, fiindca resursa incarcata de GameState ramane in
 ; cache, scriptul stricat ramane stricat tot procesul, nu doar acel cadru. Fx
 ; trebuie sa fie inaintea lui GameState.
+Loc="*res://scripts/systems/loc.gd"
 Fx="*res://scripts/systems/fx.gd"
 Pool="*res://scripts/systems/pool.gd"
 GameState="*res://scripts/systems/game_state.gd"
