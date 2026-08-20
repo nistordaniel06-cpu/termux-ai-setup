@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: games/heroium
+        working-directory: games/heroium-web
 
     steps:
       - uses: actions/checkout@v4
@@ -51,5 +51,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: heroium-apk
-          path: games/heroium/android/app/build/outputs/apk/debug/app-debug.apk
+          path: games/heroium-web/android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
