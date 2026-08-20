@@ -672,7 +672,7 @@ func _test_difficulty_scaling() -> void:
 	await process_frame
 
 	var auto_enemies := get_nodes_in_group(&"enemy")
-	var expected := auto_enemies[0].type.health_at(run.rooms_cleared) * 1.45 if auto_enemies.size() > 0 else 0.0
+	var expected: float = auto_enemies[0].type.health_at(run.rooms_cleared) * 1.45 if auto_enemies.size() > 0 else 0.0
 	check("modul automat întărește inamicii", auto_enemies.size() > 0
 		and absf(auto_enemies[0].max_health - expected) < 0.5,
 		"%.0f viață, așteptam %.0f" % [auto_enemies[0].max_health, expected] if auto_enemies.size() > 0 else "-")

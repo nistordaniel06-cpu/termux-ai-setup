@@ -131,16 +131,19 @@ func _initial_phase() -> StringName:
 
 ## Chemat de Pool cand inamicul lasat deoparte e dat din nou.
 func pool_activate() -> void:
-	monitoring = true
-	monitorable = true
+	_collider.disabled = false
 	process_mode = Node.PROCESS_MODE_INHERIT
 	visible = true
 
 
 ## Chemat de Pool cand inamicul e lasat deoparte, in loc sa fie sters.
+##
+## Enemy e CharacterBody2D, nu Area2D - nu are monitoring/monitorable. Fara
+## coliziunea oprita explicit, un inamic "ascuns" tot ar putea fi lovit de
+## proiectile (forma lui de coliziune ramane activa la nivel de fizica,
+## indiferent de vizibilitate sau de process_mode).
 func pool_deactivate() -> void:
-	monitoring = false
-	monitorable = false
+	_collider.disabled = true
 	process_mode = Node.PROCESS_MODE_DISABLED
 	visible = false
 
