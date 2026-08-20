@@ -241,6 +241,24 @@ function assert(cond, msg) { if (!cond) throw new Error("ASSERT FAILED: " + msg)
   assert(s.maxHp === 112, `Vigoare trebuie sa dea 112 viață maximă, got ${s.maxHp}`);
   ok(`upgrade-ul se aplică pe runda următoare: ${s.maxHp} viață maximă`);
 
+  // ---------- 12. camera de gardian ----------
+  console.log("\n[12] Camera de gardian, la fiecare 5 camere");
+  await page.evaluate(() => window.__game.buildRoomAt(5));
+  await page.waitForTimeout(150);
+  s = await snap();
+  assert(s.enemies === 1, `camera de gardian trebuie sa aiba un singur inamic, got ${s.enemies}`);
+  assert(s.enemyType === "boss", `inamicul trebuie sa fie de tip boss, got ${s.enemyType}`);
+  ok("camera 5: un singur gardian pe hartă");
+
+  await page.screenshot({ path: path.join(__dirname, "shot_boss.png") });
+
+  const purseBeforeBoss = (await snap()).runShards;
+  await page.evaluate(() => window.__game.clearRoom());
+  await page.waitForTimeout(150);
+  s = await snap();
+  assert(s.runShards > purseBeforeBoss + 20, `moartea gardianului trebuie sa dea un bonus mare de cioburi, got ${s.runShards - purseBeforeBoss}`);
+  ok(`gardian învins: +${s.runShards - purseBeforeBoss} cioburi în rundă (bonus de boss aplicat)`);
+
   const real = errors.filter((e) => !/ERR_CONNECTION_RESET|net::ERR|fonts\.googleapis/.test(e));
   if (real.length) { console.log("\nERORI:", real); throw new Error("erori in consola: " + real.join(" | ")); }
 
