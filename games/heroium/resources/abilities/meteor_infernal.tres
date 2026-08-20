@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="Ability" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/abilities/ability.gd" id="1_ability"]
+
+[resource]
+script = ExtResource("1_ability")
+id = &"meteor_infernal"
+display_name = "Meteor Infernal"
+description = "Săgețile aprind ținta. Arde încă două secunde și jumătate după lovitură."
+kind = 1
+rarity = 2
+stars = 4
+burn_dps = 9.0
+unlock_at_total_rooms = 15

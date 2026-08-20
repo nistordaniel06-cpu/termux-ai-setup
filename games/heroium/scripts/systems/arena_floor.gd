@@ -23,6 +23,17 @@ func _ready() -> void:
 	_build_walls()
 
 
+## Imbraca podeaua in culorile locatiei. Padurea si Taramul Umbrelor sunt
+## aceeasi camera; ce le deosebeste la prima vedere e exact asta.
+func apply_location(location: Location) -> void:
+	if location == null:
+		return
+	floor_color = location.floor_color
+	grid_color = location.grid_color
+	border_color = location.border_color
+	queue_redraw()
+
+
 ## Dreptunghiul jucabil, in coordonate globale.
 func room_rect() -> Rect2:
 	return Rect2(global_position - room_size * 0.5, room_size)

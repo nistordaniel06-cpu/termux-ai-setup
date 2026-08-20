@@ -15,6 +15,10 @@ signal died
 signal stats_changed(stats: HeroStats)
 signal moving_changed(is_moving: bool)
 signal health_changed(current: float, maximum: float)
+signal xp_changed(level: int, current: float, needed: float)
+signal leveled_up(level: int)
+signal ability_gained(ability: Ability)
+signal abilities_fused(a: Ability, b: Ability, result: Ability)
 
 ## Sub aceasta valoare joystick-ul e considerat neatins.
 const MOVE_DEADZONE := 0.15
@@ -40,6 +44,7 @@ var _accent: Color = Color("f0b45a")
 
 @onready var _combat: HeroCombat = $Combat
 @onready var _health: HeroHealth = $Health
+@onready var _xp: HeroXp = $Xp
 @onready var _body: Blob = $Body
 
 
@@ -49,6 +54,12 @@ func _ready() -> void:
 	if joystick_path != NodePath():
 		_joystick = get_node_or_null(joystick_path)
 
+	# Clasa aleasa in meniu bate pe cea pusa in scena. Cea din scena ramane ca
+	# rezerva, ca sa poti apasa Play direct pe scena de joc si sa functioneze.
+	var chosen := GameState.selected_hero_class()
+	if chosen != null:
+		hero_class = chosen
+
 	_setup_stats()
 
 	_health.died.connect(func() -> void: died.emit())
@@ -57,7 +68,22 @@ func _ready() -> void:
 	)
 	_health.setup(stats.max_health)
 
+	_xp.changed.connect(
+		func(level: int, current: float, needed: float) -> void:
+			xp_changed.emit(level, current, needed)
+	)
+	_xp.leveled_up.connect(func(level: int) -> void: leveled_up.emit(level))
+
 	_combat.setup(self, stats)
+	# Partea de viata a unei abilitati nu e o statistica, deci n-o rezolva
+	# `apply_to`. O prindem aici, si la fel pentru rezultatul unei fuziuni.
+	_combat.ability_gained.connect(_absorb_vitality)
+	_combat.ability_gained.connect(func(a: Ability) -> void: ability_gained.emit(a))
+	_combat.abilities_fused.connect(
+		func(a: Ability, b: Ability, result: Ability) -> void:
+			_absorb_vitality(result)
+			abilities_fused.emit(a, b, result)
+	)
 
 	if hero_class != null:
 		_accent = hero_class.accent_color
@@ -155,6 +181,28 @@ func set_projectile_container(node: Node) -> void:
 ## Adauga o abilitate rularii curente, fuzionand-o daca e cazul.
 func grant_ability(ability: Ability) -> void:
 	_combat.add_ability(ability)
+
+
+## Abilitatile deja luate in rularea curenta.
+func get_abilities() -> Array[Ability]:
+	return _combat.abilities
+
+
+func _absorb_vitality(ability: Ability) -> void:
+	if ability == null:
+		return
+	if ability.bonus_max_health > 0.0:
+		_health.increase_maximum(ability.bonus_max_health)
+	if ability.heal_fraction > 0.0:
+		_health.heal(_health.maximum * ability.heal_fraction)
+
+
+func gain_xp(amount: float) -> void:
+	_xp.add(amount)
+
+
+func get_level() -> int:
+	return _xp.level
 
 
 func take_damage(amount: float) -> void:
