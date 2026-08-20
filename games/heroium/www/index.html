@@ -399,6 +399,11 @@
       <div class="kicker">ultimul erou în picioare</div>
       <h1 class="title">Heroium</h1>
       <p class="lede">Tărâmul a fost înghițit de beznă. Scheleți, demoni și creaturi ale nopții năvălesc din toate direcțiile — n-au mai rămas ziduri, n-a mai rămas refugiu, doar tu. Oprit pe loc tragi cu <b>damage plin</b>; din mers, mai slab. Curăță valul, treci mai departe, alege puteri.</p>
+      <div class="modes" id="classes" role="group" aria-label="Clasă">
+        <button class="mode" type="button" data-class="ranger" aria-pressed="true">Ranger<small>iute · tir dublu</small></button>
+        <button class="mode" type="button" data-class="knight" aria-pressed="false">Knight<small>corp la corp · tanc</small></button>
+        <button class="mode" type="button" data-class="mage" aria-pressed="false">Mage<small>vrăji grele · ardere</small></button>
+      </div>
       <div class="modes" id="modes" role="group" aria-label="Mod de tragere">
         <button class="mode" type="button" data-mode="clasic" aria-pressed="false">Clasic<small>doar pe loc · +25%</small></button>
         <button class="mode" type="button" data-mode="hibrid" aria-pressed="true">Hibrid<small>apeși în mers · +10%</small></button>
@@ -514,6 +519,7 @@
   var GLOW_RED = makeGlow("255,51,85");
   var GLOW_GOLD = makeGlow("255,207,92");
   var GLOW_MINT = makeGlow("94,240,182");
+  var GLOW_VIOLET = makeGlow("178,107,255");
 
   function drawGlow(sprite, x, y, radius, alpha) {
     ctx.globalAlpha = alpha === undefined ? 1 : alpha;
@@ -538,6 +544,35 @@
   // preferinta, nu o recompensa. In schimb modul greu plateste mai bine, ca sa
   // fie ales din interes, nu din obligatie.
   var MODE_BONUS = { clasic: 1.25, hibrid: 1.10, liber: 1.0 };
+
+  // ====================== CLASE DE EROU ======================
+  // Ranger ramane aproape de arhetipul original (fara multiplicator de
+  // viata/daune/viteza), ca sa fie clasa implicita si sa nu strice balansul
+  // existent - diferenta lui vine din tirul dublu si cadenta mai mare.
+  // Knight nu trage deloc: loveste corp la corp, in arc, toti inamicii din
+  // raza - un stil complet diferit, nu doar statistici schimbate.
+  var CLASSES = {
+    ranger: {
+      id: "ranger", nm: "Ranger",
+      ds: "Iute și precis, cu tir dublu din start",
+      hpMult: 1, dmgMult: 1, spdMult: 1, atkMult: 0.85,
+      projCount: 2
+    },
+    knight: {
+      id: "knight", nm: "Knight",
+      ds: "Corp la corp, viață multiplicată, lovește în arc",
+      hpMult: 1.55, dmgMult: 1.25, spdMult: 0.86, atkMult: 1.25,
+      meleeRange: 62, meleeArc: Math.PI * 0.8
+    },
+    mage: {
+      id: "mage", nm: "Mage",
+      ds: "Vrăji lente și grele, cu ardere garantată",
+      hpMult: 0.8, dmgMult: 1.55, spdMult: 0.95, atkMult: 1.4,
+      burn: 7
+    }
+  };
+  var HERO_CLASS_KEY = "heroium.heroClass";
+  var heroClass = "ranger";
 
   // ====================== SUNET ======================
   // Sintetizat cu Web Audio, fara fisiere externe - consistent cu restul
@@ -582,6 +617,7 @@
   var sfx = {
     shoot: function () { beep(880, 0.05, "square", 0.16); },
     weakShoot: function () { beep(640, 0.045, "square", 0.11); },
+    swing: function () { beep(200, 0.07, "sawtooth", 0.22, 130); },
     hit: function () { beep(220, 0.035, "square", 0.13); },
     kill: function () { beep(150, 0.11, "sawtooth", 0.2, 60); },
     hurt: function () { beep(120, 0.16, "sawtooth", 0.28, 55); },
@@ -643,6 +679,8 @@
       }
       var savedMode = localStorage.getItem("heroium.fireMode");
       if (savedMode === "clasic" || savedMode === "hibrid" || savedMode === "liber") fireMode = savedMode;
+      var savedClass = localStorage.getItem(HERO_CLASS_KEY);
+      if (CLASSES[savedClass]) heroClass = savedClass;
     } catch (err) { /* stocarea poate fi blocata - ramanem pe valorile implicite */ }
   }
 
@@ -669,31 +707,36 @@
   loadMeta();
 
   var player = null;
-  var enemies = [], pBullets = [], eBullets = [], particles = [], telegraphs = [], orbs = [];
+  var enemies = [], pBullets = [], eBullets = [], particles = [], telegraphs = [], orbs = [], slashes = [];
   var room = 1, kills = 0, doorOpen = false, transitioning = false;
   var runShards = 0;                    // cioburi stranse in runda curenta
   var lastTime = 0, shakeTime = 0, shakeMag = 0;
 
   function newPlayer() {
-    // upgrade-urile permanente cumparate in tabara se aplica aici, o data pe rulare
-    var maxHp = 100 + upLevel("vigoare") * 12;
+    // upgrade-urile permanente cumparate in tabara si multiplicatorii clasei
+    // aleasa se aplica amandoua aici, o data pe rulare
+    var cls = CLASSES[heroClass] || CLASSES.ranger;
+    var maxHp = Math.round((100 + upLevel("vigoare") * 12) * cls.hpMult);
     return {
+      classId: cls.id,
       x: VW / 2, y: ROOM.y1 - 90, r: 13,
       hp: maxHp, maxHp: maxHp,
-      speed: Math.round(205 * (1 + upLevel("iuteala") * 0.05)),
-      damage: Math.round(14 * (1 + upLevel("tais") * 0.08) * 10) / 10,
+      speed: Math.round(205 * (1 + upLevel("iuteala") * 0.05) * cls.spdMult),
+      damage: Math.round(14 * (1 + upLevel("tais") * 0.08) * cls.dmgMult * 10) / 10,
       cardCount: 3 + upLevel("clarviziune"),
       revives: upLevel("torta"),
       explode: 0,
-      atkInterval: 420,   // ms
+      atkInterval: Math.round(420 * cls.atkMult),   // ms
       atkTimer: 0,
       manualCd: 0,        // racire pentru focurile trase manual, din mers
       settle: 0,          // mica intarziere dupa oprire, ca in Archero
       projSpeed: 620,
-      projCount: 1,
+      projCount: cls.projCount || 1,
       pierce: 0,
       bounces: 0,
-      burn: 0,            // damage/sec aplicat pe lovitura
+      burn: cls.burn || 0,        // damage/sec aplicat pe lovitura
+      meleeRange: cls.meleeRange || 0,   // >0 => Knight loveste corp la corp, nu trage
+      meleeArc: cls.meleeArc || 0,
       level: 1, xp: 0, xpNext: 8,
       hurtCd: 0, flash: 0,
       facing: -Math.PI / 2
@@ -703,7 +746,7 @@
   function resetRun() {
     player = newPlayer();
     enemies.length = 0; pBullets.length = 0; eBullets.length = 0;
-    particles.length = 0; telegraphs.length = 0; orbs.length = 0;
+    particles.length = 0; telegraphs.length = 0; orbs.length = 0; slashes.length = 0;
     room = 1; kills = 0; doorOpen = false; transitioning = false;
     runShards = 0;
     buildRoom();
@@ -716,7 +759,7 @@
 
   function buildRoom() {
     enemies.length = 0; pBullets.length = 0; eBullets.length = 0;
-    telegraphs.length = 0; orbs.length = 0;
+    telegraphs.length = 0; orbs.length = 0; slashes.length = 0;
     doorOpen = false;
 
     if (isBossRoom()) {
@@ -898,19 +941,34 @@
   }
 
   // ====================== PUTERI (level-up) ======================
+  // Puterile fara camp "classes" sunt disponibile oricarei clase. Cele legate
+  // strict de proiectile (dublu tir, ricoseu, perforare) nu au sens pentru
+  // Knight, care nu trage deloc - primeste in schimb doua puteri proprii,
+  // legate de arma lui corp la corp.
   var POWERS = [
     { id: "double", glyph: "⇶", nm: "Săgeți duble", ds: "+1 proiectil pe atac",
+      classes: ["ranger", "mage"],
       max: function () { return player.projCount >= 5; },
       go: function () { player.projCount++; } },
     { id: "ricochet", glyph: "◇", nm: "Ricoșeu", ds: "Proiectilele ricoșează din pereți",
+      classes: ["ranger", "mage"],
       max: function () { return player.bounces >= 3; },
       go: function () { player.bounces++; } },
     { id: "fire", glyph: "≈", nm: "Atac de foc", ds: "Inamicii lovit ard în timp",
       max: function () { return player.burn >= 40; },
       go: function () { player.burn += 9; } },
     { id: "pierce", glyph: "→", nm: "Săgeți perforante", ds: "Trec prin încă un inamic",
+      classes: ["ranger", "mage"],
       max: function () { return player.pierce >= 3; },
       go: function () { player.pierce++; } },
+    { id: "wide", glyph: "◠", nm: "Rotire largă", ds: "Arc de atac mai larg",
+      classes: ["knight"],
+      max: function () { return player.meleeArc >= Math.PI * 1.6; },
+      go: function () { player.meleeArc = Math.min(Math.PI * 1.6, player.meleeArc + Math.PI * 0.18); } },
+    { id: "reach", glyph: "↔", nm: "Rază extinsă", ds: "Lovești mai de departe",
+      classes: ["knight"],
+      max: function () { return player.meleeRange >= 110; },
+      go: function () { player.meleeRange += 12; } },
     { id: "dmg", glyph: "✦", nm: "Vârf ascuțit", ds: "+25% daună",
       max: function () { return false; },
       go: function () { player.damage = Math.round(player.damage * 1.25); } },
@@ -936,8 +994,11 @@
     joyUp();
     sfx.levelUp();
     toastEl.classList.remove("show");   // fara text ramas in spatele cartilor
-    // doar puterile deblocate intra in pachet - rundele tarzii sunt mai bogate
-    var pool = POWERS.filter(function (p) { return !p.max() && isUnlocked(p.id); });
+    // doar puterile deblocate si potrivite clasei curente intra in pachet
+    var pool = POWERS.filter(function (p) {
+      if (p.classes && p.classes.indexOf(player.classId) < 0) return false;
+      return !p.max() && isUnlocked(p.id);
+    });
     var picks = [];
     var want = player.cardCount || 3;
     while (picks.length < want && pool.length) picks.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
@@ -1017,15 +1078,51 @@
         r: m < 1 ? 3.6 : 4.5,          // focurile din mers arata vizibil mai slabe
         dmg: player.damage * m, life: 2.2,
         pierce: player.pierce, bounces: player.bounces,
-        burn: player.burn * m, hitIds: [], trail: [], weak: m < 1
+        burn: player.burn * m, hitIds: [], trail: [], weak: m < 1,
+        cls: player.classId
       });
     }
-    burst(player.x + Math.cos(base) * 18, player.y + Math.sin(base) * 18, "62,232,255", m < 1 ? 2 : 3, 90);
+    var rgb = player.classId === "mage" ? "178,107,255" : "62,232,255";
+    burst(player.x + Math.cos(base) * 18, player.y + Math.sin(base) * 18, rgb, m < 1 ? 2 : 3, 90);
     if (m < 1) sfx.weakShoot(); else sfx.shoot();
   }
 
-  // Un foc manual, tras din miscare. Cadenta maxima e aceeasi cu cea automata,
-  // deci apasatul rapid nu poate depasi ritmul normal - doar il atinge.
+  // Knight nu trage - loveste in arc toti inamicii aflati in raza si unghiul
+  // armei, indiferent cati sunt. Foloseste acelasi multiplicator MOVE_DMG ca
+  // tragerea la distanta, ca regula "pe loc = damage plin" sa ramana valabila
+  // pentru toate clasele.
+  function meleeAttack(target, mult) {
+    var m = mult === undefined ? 1 : mult;
+    var base = Math.atan2(target.y - player.y, target.x - player.x);
+    player.facing = base;
+    var range = player.meleeRange, arc = player.meleeArc;
+    for (var i = enemies.length - 1; i >= 0; i--) {
+      var e = enemies[i];
+      var dx = e.x - player.x, dy = e.y - player.y;
+      var dist = Math.hypot(dx, dy);
+      if (dist > range + e.r) continue;
+      var ang = Math.atan2(dy, dx);
+      var diff = Math.abs(Math.atan2(Math.sin(ang - base), Math.cos(ang - base)));
+      if (diff > arc / 2) continue;
+      e.hp -= player.damage * m;
+      e.flash = 0.12;
+      if (player.burn > 0) { e.burnDps = player.burn * m; e.burnT = 2.2; }
+      burst(e.x, e.y, "255,207,92", 4, 110);
+      sfx.hit();
+      if (e.hp <= 0) killEnemy(i, e);
+    }
+    slashes.push({ x: player.x, y: player.y, angle: base, range: range, arc: arc, t: 0.16, max: 0.16 });
+    sfx.swing();
+  }
+
+  // Punct unic de atac: dirijeaza spre tragere la distanta sau lovitura corp
+  // la corp, dupa clasa jucatorului curent.
+  function performAttack(target, mult) {
+    if (player.meleeRange > 0) meleeAttack(target, mult); else fireAt(target, mult);
+  }
+
+  // Un atac manual, declansat din miscare. Cadenta maxima e aceeasi cu cea
+  // automata, deci apasatul rapid nu poate depasi ritmul normal - doar il atinge.
   function manualShot() {
     if (!player || state !== S_PLAY) return false;
     if (player.manualCd > 0) return false;
@@ -1034,7 +1131,7 @@
     if (inputVector().mag <= 0.14) return false;
     var tgt = nearestEnemy();
     if (!tgt) return false;
-    fireAt(tgt, MOVE_DMG);
+    performAttack(tgt, MOVE_DMG);
     player.manualCd = player.atkInterval / 1000;
     fireBtnEl.classList.add("kick");
     setTimeout(function () { fireBtnEl.classList.remove("kick"); }, 70);
@@ -1076,7 +1173,7 @@
       player.atkTimer -= dt;
       if (player.atkTimer <= 0) {
         var tgt = nearestEnemy();
-        if (tgt) { fireAt(tgt, moving ? MOVE_DMG : 1); player.atkTimer = player.atkInterval / 1000; }
+        if (tgt) { performAttack(tgt, moving ? MOVE_DMG : 1); player.atkTimer = player.atkInterval / 1000; }
         else player.atkTimer = 0;
       }
     }
@@ -1100,6 +1197,7 @@
     updateOrbs(dt);
     updateParticles(dt);
     updateTelegraphs(dt);
+    updateSlashes(dt);
 
     if (shakeTime > 0) { shakeTime -= dt; if (shakeTime <= 0) shakeMag = 0; }
 
@@ -1389,6 +1487,13 @@
     }
   }
 
+  function updateSlashes(dt) {
+    for (var i = slashes.length - 1; i >= 0; i--) {
+      slashes[i].t -= dt;
+      if (slashes[i].t <= 0) slashes.splice(i, 1);
+    }
+  }
+
   function updateFireBtn(moving) {
     if (fireMode !== "hibrid") { fireBtnEl.style.display = "none"; return; }
     fireBtnEl.style.display = "flex";
@@ -1442,6 +1547,7 @@
 
     ctx.globalCompositeOperation = "lighter";
     drawBulletHeads();
+    drawSlashes();
     drawParticles();
     ctx.globalCompositeOperation = "source-over";
 
@@ -1549,7 +1655,9 @@
   }
 
   function drawBulletTrails() {
-    for (var i = 0; i < pBullets.length; i++) drawTrail(pBullets[i], "62,232,255");
+    for (var i = 0; i < pBullets.length; i++) {
+      drawTrail(pBullets[i], pBullets[i].cls === "mage" ? "178,107,255" : "62,232,255");
+    }
     for (var j = 0; j < eBullets.length; j++) drawTrail(eBullets[j], "255,51,85");
   }
 
@@ -1570,9 +1678,10 @@
 
   function drawBulletHeads() {
     pBullets.forEach(function (b) {
-      drawGlow(GLOW_CYAN, b.x, b.y, b.r * 3.4, 0.85);
+      var mage = b.cls === "mage";
+      drawGlow(mage ? GLOW_VIOLET : GLOW_CYAN, b.x, b.y, b.r * 3.4, 0.85);
       ctx.globalCompositeOperation = "source-over";
-      ctx.beginPath(); ctx.fillStyle = "#e8fdff";
+      ctx.beginPath(); ctx.fillStyle = mage ? "#f1e0ff" : "#e8fdff";
       ctx.arc(b.x, b.y, b.r * 0.72, 0, Math.PI * 2); ctx.fill();
       ctx.globalCompositeOperation = "lighter";
     });
@@ -1582,6 +1691,20 @@
       ctx.beginPath(); ctx.fillStyle = "#ffdde3";
       ctx.arc(b.x, b.y, b.r * 0.62, 0, Math.PI * 2); ctx.fill();
       ctx.globalCompositeOperation = "lighter";
+    });
+  }
+
+  function drawSlashes() {
+    slashes.forEach(function (s) {
+      var k = Math.max(0, s.t / s.max);
+      ctx.save();
+      ctx.translate(s.x, s.y); ctx.rotate(s.angle);
+      ctx.beginPath();
+      ctx.strokeStyle = "rgba(255,207,92," + (k * 0.9).toFixed(3) + ")";
+      ctx.lineWidth = 4 * k + 1;
+      ctx.arc(0, 0, s.range, -s.arc / 2, s.arc / 2);
+      ctx.stroke();
+      ctx.restore();
     });
   }
 
@@ -1819,7 +1942,9 @@
   });
 
   // ---------- selector de mod de tragere ----------
-  var modeBtns = Array.prototype.slice.call(document.querySelectorAll(".mode"));
+  // scopat la #modes, nu la .mode in general - selectorul de clasa de mai jos
+  // foloseste acelasi stil de buton, dar e un grup separat
+  var modeBtns = Array.prototype.slice.call(document.querySelectorAll("#modes .mode"));
 
   function setMode(m) {
     fireMode = m;
@@ -1834,6 +1959,23 @@
     b.addEventListener("click", function () { setMode(b.dataset.mode); });
   });
   setMode(fireMode);
+
+  // ---------- selector de clasa ----------
+  var classBtns = Array.prototype.slice.call(document.querySelectorAll("#classes .mode"));
+
+  function setClass(c) {
+    if (!CLASSES[c]) return;
+    heroClass = c;
+    try { localStorage.setItem(HERO_CLASS_KEY, c); } catch (err) {}
+    classBtns.forEach(function (b) {
+      b.setAttribute("aria-pressed", String(b.dataset.class === c));
+    });
+  }
+
+  classBtns.forEach(function (b) {
+    b.addEventListener("click", function () { setClass(b.dataset.class); });
+  });
+  setClass(heroClass);
 
   resize();
   player = newPlayer();      // exista de la primul frame, ca render-ul sa nu cada
@@ -1857,12 +1999,18 @@
         cardCount: player ? player.cardCount : 0,
         lastDmg: pBullets.length ? pBullets[pBullets.length - 1].dmg : null,
         lastWeak: pBullets.length ? !!pBullets[pBullets.length - 1].weak : null,
-        enemyType: enemies.length ? enemies[0].type : null
+        enemyType: enemies.length ? enemies[0].type : null,
+        classId: player ? player.classId : null,
+        meleeRange: player ? player.meleeRange : 0,
+        meleeArc: player ? player.meleeArc : 0,
+        burn: player ? player.burn : 0,
+        bulletCls: pBullets.length ? pBullets[pBullets.length - 1].cls : null
       };
     },
     start: startRun,
     buildRoomAt: function (n) { room = n; buildRoom(); syncHud(); },
     setMode: setMode,
+    setClass: setClass,
     tapFire: manualShot,
     openCamp: openCamp,
     grantShards: function (n) { meta.shards += n; saveMeta(); renderCamp(); },
@@ -1872,8 +2020,13 @@
     },
     setTotalRooms: function (n) { meta.totalRooms = n; saveMeta(); renderCamp(); },
     unlocked: isUnlocked,
+    nearestEnemyPos: function () {
+      var e = nearestEnemy();
+      return e ? { x: e.x, y: e.y, hp: e.hp, maxHp: e.maxHp } : null;
+    },
     clearRoom: function () { while (enemies.length) killEnemy(enemies.length - 1, enemies[enemies.length - 1]); },
     dropEnemies: function () { enemies.length = 0; },
+    clearBullets: function () { pBullets.length = 0; eBullets.length = 0; },
     collectOrbs: function () { orbs.forEach(function (o) { gainXp(o.xp); }); orbs.length = 0; },
     setPos: function (x, y) { player.x = x; player.y = y; },
     hurt: function (n) { player.hp -= n; }

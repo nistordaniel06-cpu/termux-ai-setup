@@ -35,7 +35,9 @@ function assert(cond, msg) { if (!cond) throw new Error("ASSERT FAILED: " + msg)
   // ---------- 2. MECANICA CHEIE: nu trage in miscare ----------
   console.log("\n[2] Regula Archero: miscare => fara tragere (mod clasic)");
   await page.evaluate(() => window.__game.setMode("clasic"));
-  // golim orice proiectil existent lasand jucatorul sa stea, apoi ne miscam continuu
+  // golim orice proiectil existent (start()-ul poate fi tras deja o data cat
+  // jucatorul statea pe loc), apoi ne miscam continuu
+  await page.evaluate(() => window.__game.clearBullets());
   await page.keyboard.down("a");
   await page.waitForTimeout(150); // lasam proiectilele vechi sa dispara
   let firedWhileMoving = 0;
@@ -63,6 +65,9 @@ function assert(cond, msg) { if (!cond) throw new Error("ASSERT FAILED: " + msg)
   // ---------- 3b. modurile de tragere ----------
   console.log("\n[3b] Mod HIBRID: apasarea trage din mers, cu dauna redusa");
   await page.evaluate(() => window.__game.setMode("hibrid"));
+  // Ranger porneste cu tir dublu - unul poate rata tinta lovita de celalalt
+  // si ramane in zbor, asa ca golim explicit inainte de verificarea de mai jos
+  await page.evaluate(() => window.__game.clearBullets());
   await page.keyboard.down("a");
   await page.waitForTimeout(220);
   // fara apasare nu trebuie sa iasa niciun foc, desi ne miscam
@@ -268,6 +273,58 @@ function assert(cond, msg) { if (!cond) throw new Error("ASSERT FAILED: " + msg)
   assert(mutedAfter === "true", "click-ul trebuie sa opreasca sunetul");
   ok("comutatorul de sunet schimba starea la click");
   await page.locator("#muteBtn").click();   // il lasam pornit pentru restul rularii
+
+  // ---------- 14. clase de erou ----------
+  console.log("\n[14] Clase de erou");
+  await page.evaluate(() => window.__game.wipeMeta());
+
+  // Ranger e clasa implicita si trebuie sa ramana neschimbata numeric
+  // (fara multiplicator), ca sa nu strice testele care presupun statisticile
+  // de baza - diferenta lui vine din tirul dublu din start.
+  s = await snap();
+  assert(s.classId === "ranger", `clasa implicita trebuie sa fie ranger, got ${s.classId}`);
+  assert(s.projCount === 2, `Ranger trebuie sa porneasca cu tir dublu, got ${s.projCount}`);
+  ok(`Ranger implicit, tir dublu din start (projCount=${s.projCount})`);
+
+  // Knight: viata multiplicata si atac corp la corp, fara proiectile
+  await page.evaluate(() => window.__game.setClass("knight"));
+  await page.evaluate(() => window.__game.start());
+  await page.waitForTimeout(200);
+  s = await snap();
+  assert(s.classId === "knight", `clasa trebuie sa fie knight, got ${s.classId}`);
+  assert(s.maxHp === 155, `Knight trebuie sa aiba 155 viață maximă (100 × 1.55), got ${s.maxHp}`);
+  assert(s.meleeRange > 0, "Knight trebuie sa aiba raza de atac corp la corp > 0");
+  ok(`Knight: ${s.maxHp} viață maximă, atac corp la corp (rază ${s.meleeRange})`);
+
+  const nearest1 = await page.evaluate(() => window.__game.nearestEnemyPos());
+  await page.evaluate((e) => window.__game.setPos(e.x, e.y - 20), nearest1);
+  await page.waitForTimeout(700);
+  const nearest2 = await page.evaluate(() => window.__game.nearestEnemyPos());
+  s = await snap();
+  assert(s.pBullets === 0, `Knight nu trebuie sa traga proiectile, got ${s.pBullets}`);
+  assert(s.kills > 0 || nearest2.hp < nearest1.hp, "atacul corp la corp trebuie sa loveasca inamicul apropiat");
+  ok("Knight lovește corp la corp în arc, fără proiectile");
+
+  // Mage: ardere garantata din start, proiectile marcate distinct (violet)
+  await page.evaluate(() => window.__game.setClass("mage"));
+  await page.evaluate(() => window.__game.start());
+  await page.waitForTimeout(200);
+  s = await snap();
+  assert(s.classId === "mage", `clasa trebuie sa fie mage, got ${s.classId}`);
+  assert(s.burn > 0, `Mage trebuie sa aiba ardere garantata din start, got ${s.burn}`);
+
+  // interogam repetat, nu o singura data dupa o asteptare fixa - proiectilul
+  // poate lovi tinta si disparea chiar in intervalul dintre verificari
+  let mageBulletCls = null;
+  for (let i = 0; i < 12; i++) {
+    await page.waitForTimeout(80);
+    const st = await snap();
+    if (st.bulletCls) { mageBulletCls = st.bulletCls; break; }
+  }
+  assert(mageBulletCls === "mage", `proiectilele Mage trebuie marcate distinct, got ${mageBulletCls}`);
+  ok(`Mage: ardere ${s.burn}/s din start, proiectile marcate corect`);
+
+  await page.evaluate(() => window.__game.setClass("ranger"));   // revenim la clasa implicita
 
   const real = errors.filter((e) => !/ERR_CONNECTION_RESET|net::ERR|fonts\.googleapis/.test(e));
   if (real.length) { console.log("\nERORI:", real); throw new Error("erori in consola: " + real.join(" | ")); }
