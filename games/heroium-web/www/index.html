@@ -1,3211 +1,742 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ro">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-<title>Heroium</title>
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=Barlow:wght@500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
-<style>
-  :root {
-    --void: #070b14;
-    --floor: #0e1626;
-    --wall: #1b2740;
-    --wall-lit: #2c3f66;
-    --cyan: #3ee8ff;
-    --cyan-deep: #0f7d94;
-    --red: #ff3355;
-    --red-deep: #7d1327;
-    --gold: #ffcf5c;
-    --mint: #5ef0b6;
-    --text: #e8f1ff;
-    --text-dim: #8296b8;
-    --panel: #101a2c;
-    --panel-edge: #24354f;
-    --f-display: "Chakra Petch", "Trebuchet MS", sans-serif;
-    --f-body: "Barlow", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    --f-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
-  }
-
-  * { box-sizing: border-box; }
-
-  html, body {
-    margin: 0; padding: 0;
-    width: 100%; height: 100%;
-    background: var(--void);
-    color: var(--text);
-    font-family: var(--f-body);
-    overflow: hidden;
-    overscroll-behavior: none;
-    -webkit-user-select: none; user-select: none;
-    -webkit-touch-callout: none;
-    -webkit-tap-highlight-color: transparent;
-  }
-
-  #stage {
-    position: relative;
-    width: 100vw; height: 100vh; height: 100dvh;
-    background: var(--void);
-    display: flex; align-items: center; justify-content: center;
-    touch-action: none;
-  }
-
-  canvas#game { display: block; touch-action: none; }
-
-  /* vigneta - overlay CSS, gratuit ca performanta */
-  #vignette {
-    position: absolute; inset: 0;
-    pointer-events: none; z-index: 2;
-    background: radial-gradient(ellipse 82% 66% at 50% 52%, transparent 45%, rgba(3,6,12,0.42) 80%, rgba(3,6,12,0.78) 100%);
-  }
-
-  #muteBtn {
-    position: absolute; z-index: 11;
-    top: max(10px, env(safe-area-inset-top));
-    right: max(12px, env(safe-area-inset-right));
-    width: 32px; height: 32px; border-radius: 50%;
-    border: 1px solid var(--panel-edge);
-    background: rgba(16,26,44,0.75);
-    color: var(--text-dim);
-    font-family: var(--f-display); font-size: 14px;
-    display: flex; align-items: center; justify-content: center;
-    cursor: pointer;
-  }
-  #muteBtn[aria-pressed="true"] { color: var(--red); border-color: rgba(255,51,85,0.4); }
-  #muteBtn:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
-
-  /* ---------------- HUD ---------------- */
-  #hud {
-    position: absolute; top: 0; left: 0; right: 0;
-    padding: max(10px, env(safe-area-inset-top)) calc(14px + 40px + env(safe-area-inset-right)) 8px 14px;
-    display: flex; flex-direction: column; gap: 7px;
-    pointer-events: none; z-index: 4;
-  }
-
-  .barRow { display: flex; align-items: center; gap: 9px; }
-
-  .barLabel {
-    font-family: var(--f-display);
-    font-size: 10px; font-weight: 700;
-    letter-spacing: 0.18em; text-transform: uppercase;
-    color: var(--text-dim); width: 34px;
-  }
-
-  .barOuter {
-    flex: 1; height: 13px; border-radius: 3px;
-    background: rgba(7,11,20,0.85);
-    border: 1px solid var(--panel-edge);
-    overflow: hidden;
-  }
-
-  #hpFill {
-    height: 100%; width: 100%;
-    background: linear-gradient(90deg, var(--red), #ff7a5c);
-    box-shadow: 0 0 12px rgba(255,51,85,0.5);
-    transition: width 140ms ease-out;
-  }
-
-  #xpFill {
-    height: 100%; width: 0%;
-    background: linear-gradient(90deg, var(--cyan-deep), var(--cyan));
-    box-shadow: 0 0 12px rgba(62,232,255,0.45);
-    transition: width 160ms ease-out;
-  }
-
-  .barNum {
-    font-family: var(--f-mono); font-size: 11px; font-weight: 700;
-    font-variant-numeric: tabular-nums;
-    color: var(--text); min-width: 54px; text-align: right;
-  }
-
-  #metaRow {
-    display: flex; justify-content: space-between; align-items: baseline;
-    font-family: var(--f-display); font-size: 12px;
-    letter-spacing: 0.14em; text-transform: uppercase;
-  }
-
-  #roomTag { color: var(--gold); }
-  #lvlTag { color: var(--cyan); }
-  #metaRow b { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
-
-  /* sloturile de abilitati - o iconita per putere aleasa in runda curenta */
-  #abilityRow { display: flex; gap: 5px; flex-wrap: wrap; }
-  .abilitySlot {
-    width: 24px; height: 24px; border-radius: 6px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 13px; color: var(--cyan);
-    background: rgba(62,232,255,0.1);
-    border: 1px solid rgba(62,232,255,0.3);
-  }
-
-  /* bara mare de viata a bossului final - separata de HUD-ul normal */
-  #bossBar { margin-top: 2px; }
-  #bossBar #bossNm {
-    font-family: var(--f-display); font-weight: 700; font-size: 13px;
-    letter-spacing: 0.1em; text-transform: uppercase; color: var(--red);
-    text-shadow: 0 0 14px rgba(255,51,85,0.5);
-  }
-  #bossBar #bossPhase {
-    font-family: var(--f-mono); font-size: 10.5px; color: var(--text-dim);
-    margin: 1px 0 4px;
-  }
-  #bossBar .barOuter { height: 10px; }
-  #bossFill {
-    height: 100%; width: 100%;
-    background: linear-gradient(90deg, var(--red), #ff7a5c);
-    box-shadow: 0 0 12px rgba(255,51,85,0.5);
-    transition: width 160ms ease-out;
-  }
-
-  /* ---------------- Joystick ---------------- */
-  #joyBase {
-    position: absolute; z-index: 3;
-    width: 116px; height: 116px; margin: -58px 0 0 -58px;
-    border-radius: 50%;
-    border: 2px solid rgba(62,232,255,0.22);
-    background: radial-gradient(circle, rgba(62,232,255,0.09), rgba(7,11,20,0.15) 70%);
-    display: none; pointer-events: none;
-  }
-
-  /* ---------------- Buton de tragere ---------------- */
-  #fireBtn {
-    position: absolute; z-index: 3;
-    right: max(20px, env(safe-area-inset-right));
-    bottom: max(26px, env(safe-area-inset-bottom));
-    width: 96px; height: 96px; border-radius: 50%;
-    display: none; align-items: center; justify-content: center;
-    border: 2px solid rgba(62,232,255,0.5);
-    background: radial-gradient(circle at 50% 40%, rgba(62,232,255,0.22), rgba(15,125,148,0.14) 60%, rgba(7,11,20,0.3));
-    box-shadow: 0 0 26px rgba(62,232,255,0.28), inset 0 0 20px rgba(62,232,255,0.14);
-    color: var(--cyan);
-    font-family: var(--f-display); font-weight: 700;
-    font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase;
-    pointer-events: none;              /* zona de atingere e tot semiecranul drept */
-    transition: transform 60ms ease, box-shadow 90ms ease, border-color 90ms ease;
-  }
-  #fireBtn.armed { border-color: rgba(62,232,255,0.85); }
-  #fireBtn.kick {
-    transform: scale(0.9);
-    box-shadow: 0 0 40px rgba(62,232,255,0.6), inset 0 0 26px rgba(62,232,255,0.3);
-  }
-  #fireBtn .ring {
-    position: absolute; inset: 9px; border-radius: 50%;
-    border: 1px solid rgba(62,232,255,0.25);
-  }
-
-  /* selector de mod, pe ecranul de start */
-  .modes { display: flex; gap: 7px; width: 100%; }
-  .mode {
-    flex: 1; cursor: pointer;
-    color: var(--text-dim); font-family: var(--f-display);
-    font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
-    background: rgba(16,26,44,0.8);
-    border: 1px solid var(--panel-edge); border-radius: 8px;
-    padding: 11px 6px 9px;
-    display: flex; flex-direction: column; gap: 3px; align-items: center;
-  }
-  .mode small {
-    font-family: var(--f-body); font-size: 10px; font-weight: 500;
-    letter-spacing: 0.01em; text-transform: none; color: #63748f; line-height: 1.25;
-  }
-  .mode[aria-pressed="true"] {
-    color: var(--cyan); border-color: var(--cyan);
-    background: rgba(62,232,255,0.09);
-    box-shadow: 0 0 18px rgba(62,232,255,0.18);
-  }
-  .mode[aria-pressed="true"] small { color: var(--text-dim); }
-  .mode:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
-
-  #joyKnob {
-    position: absolute; left: 50%; top: 50%;
-    width: 50px; height: 50px; margin: -25px 0 0 -25px;
-    border-radius: 50%;
-    background: radial-gradient(circle at 36% 30%, #b9f7ff, var(--cyan) 55%, var(--cyan-deep));
-    box-shadow: 0 0 20px rgba(62,232,255,0.6);
-  }
-
-  /* ---------------- Overlays ---------------- */
-  .overlay {
-    position: absolute; inset: 0; z-index: 10;
-    display: flex; align-items: center; justify-content: center;
-    padding: 22px;
-    background: radial-gradient(ellipse 90% 65% at 50% 35%, rgba(14,22,38,0.94), rgba(5,8,16,0.97));
-  }
-
-  .hidden { display: none !important; }
-
-  .panel {
-    width: min(430px, 100%);
-    display: flex; flex-direction: column; align-items: center; gap: 16px;
-    text-align: center;
-  }
-
-  .kicker {
-    font-family: var(--f-mono); font-size: 10.5px;
-    letter-spacing: 0.32em; text-transform: uppercase;
-    color: var(--text-dim);
-  }
-
-  h1.title {
-    font-family: var(--f-display); font-weight: 700;
-    font-size: clamp(40px, 12vw, 58px);
-    margin: 0; letter-spacing: 0.06em; text-transform: uppercase;
-    color: var(--cyan);
-    text-shadow: 0 0 28px rgba(62,232,255,0.45), 0 0 60px rgba(62,232,255,0.18);
-    text-wrap: balance;
-  }
-
-  h2.sub {
-    font-family: var(--f-display); font-weight: 700;
-    font-size: clamp(22px, 6.5vw, 30px);
-    margin: 0; letter-spacing: 0.08em; text-transform: uppercase;
-    color: var(--gold);
-    text-shadow: 0 0 22px rgba(255,207,92,0.35);
-  }
-
-  .lede { color: var(--text-dim); font-size: 14px; line-height: 1.65; max-width: 330px; }
-  .lede b { color: var(--cyan); font-weight: 700; }
-
-  .btn {
-    font-family: var(--f-display); font-weight: 700;
-    font-size: 15px; letter-spacing: 0.12em; text-transform: uppercase;
-    color: var(--void);
-    background: linear-gradient(180deg, #9df3ff, var(--cyan));
-    border: none; border-radius: 8px; padding: 15px 38px;
-    cursor: pointer;
-    box-shadow: 0 0 26px rgba(62,232,255,0.4), inset 0 1px 0 rgba(255,255,255,0.5);
-  }
-  .btn:active { transform: translateY(1px) scale(0.985); }
-  .btn:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
-
-  #cards { display: flex; flex-direction: column; gap: 10px; width: 100%; }
-
-  .card {
-    display: flex; align-items: center; gap: 13px;
-    text-align: left; width: 100%;
-    /* butoanele NU mostenesc culoarea/fontul din body - le setam explicit */
-    color: var(--text);
-    font-family: var(--f-body);
-    background: linear-gradient(100deg, var(--panel), #0a1220);
-    border: 1px solid var(--panel-edge);
-    border-left: 3px solid var(--cyan);
-    border-radius: 9px; padding: 13px 15px;
-    cursor: pointer;
-    transition: border-color 130ms ease, transform 130ms ease, background 130ms ease;
-  }
-  .card:hover { background: linear-gradient(100deg, #16233a, #0c1524); border-color: var(--cyan); }
-  .card:active { transform: scale(0.98); }
-  .card:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
-
-  .card .glyph {
-    flex: 0 0 40px; height: 40px; border-radius: 7px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 19px; color: var(--cyan);
-    background: rgba(62,232,255,0.1);
-    border: 1px solid rgba(62,232,255,0.28);
-  }
-  .card .txt { display: flex; flex-direction: column; gap: 2px; }
-  .card .nm { font-family: var(--f-display); font-weight: 700; font-size: 14.5px; letter-spacing: 0.03em; }
-  .card .ds { font-size: 12.5px; color: var(--text-dim); line-height: 1.35; }
-
-  /* ---------------- Ecrane care pot depasi inaltimea ecranului ---------------- */
-  .overlay.scrollable { align-items: flex-start; overflow-y: auto; -webkit-overflow-scrolling: touch; }
-  .overlay.scrollable .panel { margin: max(20px, env(safe-area-inset-top)) 0 26px; }
-
-  /* ---------------- Hub-ul profilului ---------------- */
-  .profileCard {
-    width: 100%; text-align: center;
-    background: rgba(16,26,44,0.6);
-    border: 1px solid var(--panel-edge); border-radius: 9px;
-    padding: 10px 12px;
-  }
-  .profileNm { font-family: var(--f-display); font-weight: 700; font-size: 16px; color: var(--text); letter-spacing: 0.04em; }
-  .profileSub { font-family: var(--f-mono); font-size: 11.5px; color: var(--text-dim); margin-top: 3px; }
-  .profileSub b { color: var(--gold); }
-
-  .navRow { display: flex; gap: 7px; width: 100%; }
-  .navBtn {
-    flex: 1; cursor: pointer;
-    font-family: var(--f-display); font-weight: 700;
-    font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase;
-    color: var(--cyan);
-    background: rgba(62,232,255,0.08);
-    border: 1px solid rgba(62,232,255,0.28);
-    border-radius: 8px; padding: 10px 6px;
-    display: flex; flex-direction: column; gap: 2px; align-items: center;
-  }
-  .navBtn small {
-    font-family: var(--f-body); font-size: 10px; font-weight: 500;
-    letter-spacing: 0; text-transform: none; color: var(--text-dim);
-  }
-  .navBtn:active { transform: scale(0.97); }
-  .navBtn:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
-
-  .linkBtn {
-    background: none; border: none; cursor: pointer;
-    font-family: var(--f-body); font-size: 12px;
-    color: var(--text-dim); text-decoration: underline;
-    padding: 4px;
-  }
-  .linkBtn:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
-
-  .nameInput {
-    width: 100%; box-sizing: border-box;
-    font-family: var(--f-display); font-size: 16px; font-weight: 700;
-    color: var(--text); text-align: center;
-    background: rgba(7,11,20,0.7);
-    border: 1px solid var(--panel-edge); border-radius: 8px;
-    padding: 12px 14px;
-  }
-  .nameInput:focus { outline: none; border-color: var(--cyan); }
-
-  /* ---------------- Sloturi de profil ---------------- */
-  #slotList, #mapList, #equipList { display: flex; flex-direction: column; gap: 10px; width: 100%; }
-
-  .slotCard {
-    width: 100%; text-align: left;
-    background: linear-gradient(100deg, var(--panel), #0a1220);
-    border: 1px solid var(--panel-edge); border-radius: 9px;
-    padding: 13px 15px;
-    display: flex; flex-direction: column; gap: 8px;
-  }
-  .slotCard .slotTop { display: flex; justify-content: space-between; align-items: baseline; }
-  .slotCard .slotNm { font-family: var(--f-display); font-weight: 700; font-size: 15px; color: var(--text); }
-  .slotCard .slotInfo { font-family: var(--f-mono); font-size: 11.5px; color: var(--text-dim); }
-  .slotCard .slotRow { display: flex; gap: 8px; }
-
-  /* ---------------- Harti ---------------- */
-  .mapCard {
-    width: 100%; text-align: left; cursor: pointer;
-    color: var(--text); font-family: var(--f-body);
-    background: linear-gradient(100deg, var(--panel), #0a1220);
-    border: 1px solid var(--panel-edge); border-left: 3px solid var(--panel-edge);
-    border-radius: 9px; padding: 13px 15px;
-  }
-  .mapCard[aria-pressed="true"] { border-left-color: var(--gold); box-shadow: 0 0 16px rgba(255,207,92,0.12); }
-  .mapCard .mapNm { font-family: var(--f-display); font-weight: 700; font-size: 14.5px; }
-  .mapCard .mapDs { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
-  .mapCard .mapDiff { font-family: var(--f-mono); font-size: 11px; color: var(--gold); margin-top: 5px; }
-  .mapCard:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
-
-  /* ---------------- Echipament ---------------- */
-  .equipGroup { width: 100%; text-align: left; }
-  .equipLabel {
-    font-family: var(--f-display); font-size: 11px; font-weight: 700;
-    letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-dim);
-    margin: 4px 0 6px;
-  }
-
-  /* ---------------- Tabăra (progres permanent) ---------------- */
-  #campOverlay .panel { width: min(460px, 100%); gap: 13px; }
-
-  .purse {
-    display: flex; align-items: baseline; gap: 7px;
-    font-family: var(--f-mono); font-weight: 700; font-size: 21px;
-    color: var(--gold); font-variant-numeric: tabular-nums;
-  }
-  .purse span {
-    font-family: var(--f-display); font-size: 10px; font-weight: 700;
-    letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-dim);
-  }
-
-  #shop { display: flex; flex-direction: column; gap: 8px; width: 100%; }
-
-  .buy {
-    display: flex; align-items: center; gap: 11px; width: 100%; text-align: left;
-    color: var(--text); font-family: var(--f-body);
-    background: linear-gradient(100deg, var(--panel), #0a1220);
-    border: 1px solid var(--panel-edge); border-radius: 9px;
-    padding: 11px 13px; cursor: pointer;
-    transition: border-color 130ms ease, transform 130ms ease;
-  }
-  .buy:active { transform: scale(0.985); }
-  .buy:hover:not(:disabled) { border-color: var(--gold); }
-  .buy:disabled { cursor: default; opacity: 0.55; }
-  .buy:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
-
-  .buy .info { flex: 1; display: flex; flex-direction: column; gap: 3px; }
-  .buy .nm { font-family: var(--f-display); font-weight: 700; font-size: 14px; letter-spacing: 0.03em; }
-  .buy .ds { font-size: 12px; color: var(--text-dim); }
-
-  .pips { display: flex; gap: 3px; margin-top: 2px; }
-  .pip { width: 15px; height: 4px; border-radius: 2px; background: #24354f; }
-  .pip.on { background: var(--gold); box-shadow: 0 0 7px rgba(255,207,92,0.5); }
-
-  .price {
-    font-family: var(--f-mono); font-weight: 700; font-size: 13px;
-    font-variant-numeric: tabular-nums; color: var(--gold);
-    white-space: nowrap; min-width: 42px; text-align: right;
-  }
-  .price.maxed { color: var(--mint); font-size: 11px; }
-  .price.short { color: #5d6a80; }
-
-  #track {
-    width: 100%; background: rgba(16,26,44,0.7);
-    border: 1px solid var(--panel-edge); border-radius: 9px;
-    padding: 11px 13px; display: flex; flex-direction: column; gap: 7px;
-  }
-  #trackTop {
-    display: flex; justify-content: space-between; align-items: baseline;
-    font-family: var(--f-display); font-size: 11px;
-    letter-spacing: 0.13em; text-transform: uppercase; color: var(--text-dim);
-  }
-  #trackTop b { color: var(--cyan); }
-  #trackBar { height: 6px; border-radius: 3px; background: #0b1220; overflow: hidden; }
-  #trackFill { height: 100%; width: 0%; border-radius: 3px; background: linear-gradient(90deg, var(--cyan-deep), var(--cyan)); }
-  #trackNote { font-size: 11.5px; color: #63748f; }
-
-  .statRow { display: flex; gap: 30px; }
-  .stat { display: flex; flex-direction: column; gap: 3px; }
-  .stat b { font-family: var(--f-mono); font-size: 25px; font-variant-numeric: tabular-nums; color: var(--gold); }
-  .stat span { font-family: var(--f-display); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-dim); }
-
-  #toast {
-    position: absolute; left: 50%; top: 38%;
-    transform: translate(-50%,-50%);
-    font-family: var(--f-display); font-weight: 700;
-    font-size: clamp(20px, 6vw, 27px);
-    letter-spacing: 0.16em; text-transform: uppercase;
-    color: var(--gold); text-shadow: 0 0 26px rgba(255,207,92,0.5);
-    opacity: 0; pointer-events: none; z-index: 5; white-space: nowrap;
-  }
-  #toast.show { animation: toastAnim 1250ms ease-out forwards; }
-  @keyframes toastAnim {
-    0% { opacity: 0; transform: translate(-50%,-44%) scale(0.94); }
-    16% { opacity: 1; transform: translate(-50%,-50%) scale(1); }
-    72% { opacity: 1; }
-    100% { opacity: 0; transform: translate(-50%,-56%); }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    #toast.show { animation: none; opacity: 1; }
-    .card, .btn { transition: none; }
-  }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Heroium Web - Action Roguelike</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #070b14;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: #fff;
+    }
+    #game-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    canvas {
+      background: #0d1527;
+      display: block;
+      box-shadow: 0 0 20px rgba(0,0,0,0.8);
+      touch-action: none;
+    }
+    .ui-layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 15px;
+    }
+    .hud {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: bold;
+      text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
+    }
+    .hud-bar {
+      background: rgba(15, 23, 42, 0.8);
+      padding: 8px 15px;
+      border-radius: 20px;
+      border: 1px solid #1e293b;
+      display: flex;
+      gap: 15px;
+      align-items: center;
+    }
+    .hp-container {
+      width: 120px;
+      height: 14px;
+      background: #334155;
+      border-radius: 7px;
+      overflow: hidden;
+      border: 1px solid #475569;
+    }
+    .hp-fill {
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, #ef4444, #f87171);
+      transition: width 0.2s ease;
+    }
+    .overlay-modal {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(7, 11, 20, 0.85);
+      backdrop-filter: blur(4px);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      pointer-events: auto;
+      z-index: 100;
+    }
+    .modal-card {
+      background: #111827;
+      border: 2px solid #374151;
+      border-radius: 16px;
+      padding: 24px;
+      width: 90%;
+      max-width: 400px;
+      text-align: center;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+    }
+    .modal-title {
+      font-size: 24px;
+      color: #38bdf8;
+      margin-bottom: 12px;
+      font-weight: 800;
+    }
+    .btn {
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      font-size: 16px;
+      font-weight: bold;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-top: 15px;
+      width: 100%;
+      transition: transform 0.1s, background 0.2s;
+    }
+    .btn:active {
+      transform: scale(0.98);
+    }
+    .hero-select {
+      display: flex;
+      gap: 10px;
+      margin: 15px 0;
+    }
+    .hero-option {
+      flex: 1;
+      background: #1f2937;
+      border: 2px solid #374151;
+      border-radius: 10px;
+      padding: 10px 5px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .hero-option.active {
+      border-color: #38bdf8;
+      background: #1e3a8a;
+    }
+    .skill-cards {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 15px;
+    }
+    .skill-card {
+      background: #1f2937;
+      border: 1px solid #374151;
+      border-radius: 10px;
+      padding: 12px;
+      text-align: left;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .skill-card:hover, .skill-card:active {
+      background: #374151;
+      border-color: #38bdf8;
+    }
+    .skill-title {
+      color: #f59e0b;
+      font-weight: bold;
+      font-size: 15px;
+    }
+    .skill-desc {
+      font-size: 12px;
+      color: #9ca3af;
+      margin-top: 4px;
+    }
+  </style>
 </head>
 <body>
-<div id="stage">
-  <canvas id="game"></canvas>
-  <div id="vignette"></div>
-  <button id="muteBtn" type="button" aria-pressed="false" title="Sunet">♪</button>
 
-  <div id="hud">
-    <div class="barRow">
-      <div class="barLabel">HP</div>
-      <div class="barOuter"><div id="hpFill"></div></div>
-      <div class="barNum"><span id="hpVal">100</span>/<span id="hpMax">100</span></div>
-    </div>
-    <div class="barRow">
-      <div class="barLabel">XP</div>
-      <div class="barOuter"><div id="xpFill"></div></div>
-      <div class="barNum" id="xpNum">0/8</div>
-    </div>
-    <div id="metaRow">
-      <div id="roomTag">Camera <b id="roomNum">1</b></div>
-      <div id="lvlTag">Nivel <b id="lvlNum">1</b></div>
-    </div>
-    <div id="abilityRow"></div>
-    <div id="bossBar" class="hidden">
-      <div id="bossNm">Bătrânul Rege Căzut</div>
-      <div id="bossPhase">Faza I</div>
-      <div class="barOuter"><div id="bossFill"></div></div>
-    </div>
-  </div>
+<div id="game-container">
+  <canvas id="gameCanvas"></canvas>
 
-  <div id="joyBase"><div id="joyKnob"></div></div>
-  <div id="fireBtn"><div class="ring"></div>Trage</div>
-  <div id="toast"></div>
-
-  <div id="startOverlay" class="overlay">
-    <div class="panel">
-      <div class="kicker">ultimul erou în picioare</div>
-      <h1 class="title">Heroium</h1>
-      <p class="lede">Tărâmul a fost înghițit de beznă. Scheleți, demoni și creaturi ale nopții năvălesc din toate direcțiile — n-au mai rămas ziduri, n-a mai rămas refugiu, doar tu. Oprit pe loc tragi cu <b>damage plin</b>; din mers, mai slab. Curăță valul, treci mai departe, alege puteri.</p>
-      <div class="profileCard">
-        <div class="profileNm" id="hubName">Erou</div>
-        <div class="profileSub"><span id="hubClass">Ranger</span> · Nivel <b id="hubLevel">1</b> · <b id="hubShards">0</b> cioburi</div>
+  <div class="ui-layer">
+    <div class="hud">
+      <div class="hud-bar">
+        <span>❤️</span>
+        <div class="hp-container"><div id="hpFill" class="hp-fill"></div></div>
+        <span id="hpText" style="font-size: 12px;">100/100</span>
       </div>
-      <div class="navRow">
-        <button class="navBtn" type="button" id="equipBtn">Echipament</button>
-        <button class="navBtn" type="button" id="talentBtn">Talente</button>
+      <div class="hud-bar">
+        <span>🌊 Val: <span id="waveText" style="color:#38bdf8">1</span></span>
+        <span>🪙 <span id="goldText" style="color:#f59e0b">0</span></span>
       </div>
-      <div class="navRow">
-        <button class="navBtn" type="button" id="mapBtn">Hartă<small id="hubMap">—</small></button>
-        <button class="navBtn" type="button" id="modeSelBtn">Regim<small id="hubGameMode">—</small></button>
+    </div>
+  </div>
+
+  <!-- Start Modal -->
+  <div id="startModal" class="overlay-modal">
+    <div class="modal-card">
+      <div class="modal-title">HEROIUM WEB</div>
+      <p style="color: #9ca3af; font-size: 14px;">Action Roguelike - Mișcă-te pentru a te feri, oprește-te pentru a ataca!</p>
+      
+      <div style="margin-top: 15px; font-size: 14px; color: #e5e7eb;">Alege Eroul:</div>
+      <div class="hero-select">
+        <div class="hero-option active" onclick="selectHero('ranger', this)">
+          <div style="font-size: 20px;">🏹</div>
+          <div style="font-size: 12px; font-weight: bold;">Ranger</div>
+        </div>
+        <div class="hero-option" onclick="selectHero('knight', this)">
+          <div style="font-size: 20px;">⚔️</div>
+          <div style="font-size: 12px; font-weight: bold;">Knight</div>
+        </div>
+        <div class="hero-option" onclick="selectHero('mage', this)">
+          <div style="font-size: 20px;">🔮</div>
+          <div style="font-size: 12px; font-weight: bold;">Mage</div>
+        </div>
       </div>
-      <div class="navRow">
-        <button class="navBtn" type="button" id="chestBtn">Ladă de Război<small id="hubChests">0 lăzi</small></button>
-        <button class="navBtn" type="button" id="seasonBtn">Traseu Sezon<small id="hubSeason">0</small></button>
-      </div>
-      <div class="modes" id="modes" role="group" aria-label="Mod de tragere">
-        <button class="mode" type="button" data-mode="clasic" aria-pressed="false">Clasic<small>doar pe loc · +25%</small></button>
-        <button class="mode" type="button" data-mode="hibrid" aria-pressed="true">Hibrid<small>apeși în mers · +10%</small></button>
-        <button class="mode" type="button" data-mode="liber" aria-pressed="false">Liber<small>tragi mereu</small></button>
-      </div>
-      <button class="btn" id="startBtn">Intră în temniță</button>
-      <button class="btn secondary" id="campBtn">Tabăra · <span id="purseStart">0</span> cioburi</button>
-      <button class="linkBtn" type="button" id="switchProfileBtn">Schimbă profilul</button>
-      <p class="lede" style="font-size:12px;">Stânga: joystick · Dreapta: tragi (apasă des, e mai rapid decât ținut) · PC: WASD + Spațiu</p>
+
+      <button class="btn" onclick="startGame()">Începe Jocul</button>
     </div>
   </div>
 
-  <div id="levelOverlay" class="overlay hidden">
-    <div class="panel">
-      <div class="kicker">nivel crescut</div>
-      <h2 class="sub">Alege o putere</h2>
-      <div id="cards"></div>
+  <!-- Level Up Modal -->
+  <div id="skillModal" class="overlay-modal" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-title" style="color: #f59e0b;">NIVEL NOU!</div>
+      <p style="color: #9ca3af; font-size: 13px;">Alege o abilitate pentru a evolua:</p>
+      <div class="skill-cards" id="skillOptions"></div>
     </div>
   </div>
 
-  <div id="campOverlay" class="overlay hidden">
-    <div class="panel">
-      <div class="kicker">între runde</div>
-      <h2 class="sub">Tabăra</h2>
-      <div class="purse"><span>Cioburi</span> <b id="purse">0</b></div>
-      <div id="shop"></div>
-      <div id="track">
-        <div id="trackTop"><span>Următoarea deblocare</span> <b id="trackName">—</b></div>
-        <div id="trackBar"><div id="trackFill"></div></div>
-        <div id="trackNote"></div>
-      </div>
-      <button class="btn" id="campBack">Înapoi</button>
-    </div>
-  </div>
-
-  <div id="overOverlay" class="overlay hidden">
-    <div class="panel">
-      <div class="kicker">torța s-a stins</div>
-      <h1 class="title" style="font-size:clamp(34px,10vw,48px);color:var(--red);text-shadow:0 0 28px rgba(255,51,85,0.45);">Ai căzut</h1>
-      <div class="statRow">
-        <div class="stat"><b id="fRoom">1</b><span>Camere</span></div>
-        <div class="stat"><b id="fKills">0</b><span>Uciși</span></div>
-        <div class="stat"><b id="fLvl">1</b><span>Nivel</span></div>
-      </div>
-      <div class="purse"><span>Câștigat</span> <b id="fShards">+0</b></div>
-      <p class="lede" style="font-size:11.5px;margin:-8px 0 0;" id="fBonus"></p>
-      <button class="btn" id="retryBtn">Din nou</button>
-      <button class="btn secondary" id="campBtn2">Tabăra</button>
-    </div>
-  </div>
-
-  <div id="profilesOverlay" class="overlay scrollable hidden">
-    <div class="panel">
-      <div class="kicker">selectează profilul</div>
-      <h2 class="sub">Sloturi</h2>
-      <div id="slotList"></div>
-      <button class="linkBtn" type="button" id="profilesBackBtn">Înapoi</button>
-    </div>
-  </div>
-
-  <div id="createOverlay" class="overlay scrollable hidden">
-    <div class="panel">
-      <div class="kicker" id="createKicker">profil nou</div>
-      <h2 class="sub">Erou nou</h2>
-      <input id="nameInput" class="nameInput" type="text" maxlength="16" placeholder="Numele eroului" autocomplete="off" />
-      <div class="modes" id="createClasses" role="group" aria-label="Clasă">
-        <button class="mode" type="button" data-class="ranger" aria-pressed="true">Ranger<small>iute · tir dublu</small></button>
-        <button class="mode" type="button" data-class="knight" aria-pressed="false">Knight<small>corp la corp · tanc</small></button>
-        <button class="mode" type="button" data-class="mage" aria-pressed="false">Mage<small>vrăji grele · ardere</small></button>
-      </div>
-      <button class="btn" id="createConfirmBtn">Creează profilul</button>
-      <button class="linkBtn" type="button" id="createBackBtn">Înapoi</button>
-    </div>
-  </div>
-
-  <div id="equipOverlay" class="overlay scrollable hidden">
-    <div class="panel">
-      <div class="kicker">echipament</div>
-      <h2 class="sub">Inventar</h2>
-      <div class="statRow" id="equipStats">
-        <div class="stat"><b id="eqAtk">+0</b><span>ATK</span></div>
-        <div class="stat"><b id="eqHp">+0</b><span>HP</span></div>
-        <div class="stat"><b id="eqDef">+0</b><span>DEF</span></div>
-      </div>
-      <div id="equipList"></div>
-      <button class="btn" id="equipBack">Înapoi</button>
-    </div>
-  </div>
-
-  <div id="talentOverlay" class="overlay scrollable hidden">
-    <div class="panel">
-      <div class="kicker">calea legendară</div>
-      <h2 class="sub">Talente</h2>
-      <div class="purse"><span>Cioburi</span> <b id="talentPurse">0</b></div>
-      <div id="talentList"></div>
-      <button class="btn" id="talentBack">Înapoi</button>
-    </div>
-  </div>
-
-  <div id="mapOverlay" class="overlay scrollable hidden">
-    <div class="panel">
-      <div class="kicker">alege tărâmul</div>
-      <h2 class="sub">Hărți</h2>
-      <div id="mapList"></div>
-      <button class="btn" id="mapBack">Înapoi</button>
-    </div>
-  </div>
-
-  <div id="gameModeOverlay" class="overlay scrollable hidden">
-    <div class="panel">
-      <div class="kicker">alege regimul</div>
-      <h2 class="sub">Regim de joc</h2>
-      <div id="gameModeList"></div>
-      <button class="btn" id="gameModeBack">Înapoi</button>
-    </div>
-  </div>
-
-  <div id="victoryOverlay" class="overlay hidden">
-    <div class="panel">
-      <div class="kicker">campania s-a încheiat</div>
-      <h1 class="title" style="font-size:clamp(30px,9vw,44px);">Victorie</h1>
-      <p class="lede">Bătrânul Rege Căzut zace din nou nemișcat. Tărâmul respiră o clipă.</p>
-      <div class="statRow">
-        <div class="stat"><b id="vRoom">1</b><span>Camere</span></div>
-        <div class="stat"><b id="vKills">0</b><span>Uciși</span></div>
-        <div class="stat"><b id="vLvl">1</b><span>Nivel</span></div>
-      </div>
-      <div class="purse"><span>Câștigat</span> <b id="vShards">+0</b></div>
-      <button class="btn" id="victoryBackBtn">Înapoi la tărâm</button>
-    </div>
-  </div>
-
-  <div id="chestOverlay" class="overlay scrollable hidden">
-    <div class="panel">
-      <div class="kicker">recompense · fără clan real, fără bani reali</div>
-      <h2 class="sub">Ladă de Război</h2>
-      <div class="purse"><span>Cioburi</span> <b id="chestPurse">0</b></div>
-      <div class="statRow"><div class="stat"><b id="chestCount">0</b><span>Lăzi deținute</span></div></div>
-      <button class="btn" id="openChestBtn">Deschide o ladă</button>
-      <p class="lede" id="chestResult" style="font-size:13px; min-height: 1.6em;"></p>
-      <h2 class="sub" style="font-size:19px; margin-top:4px;">Cosmetice</h2>
-      <div id="cosmeticList"></div>
-      <button class="btn" id="chestBack">Înapoi</button>
-    </div>
-  </div>
-
-  <div id="seasonOverlay" class="overlay scrollable hidden">
-    <div class="panel">
-      <div class="kicker">traseu de sezon · plătit din cioburi, nu bani reali</div>
-      <h2 class="sub">Recompense</h2>
-      <div class="purse"><span>Cioburi adunate</span> <b id="seasonEarned">0</b></div>
-      <div id="seasonList"></div>
-      <button class="btn" id="seasonBack">Înapoi</button>
+  <!-- Game Over Modal -->
+  <div id="gameOverModal" class="overlay-modal" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-title" style="color: #ef4444;">AI FOST ÎNVINS</div>
+      <p id="gameOverStats" style="color: #9ca3af; font-size: 14px; margin: 10px 0;"></p>
+      <button class="btn" onclick="showStartMenu()">Meniu Principal</button>
     </div>
   </div>
 </div>
 
 <script>
-(function () {
-  "use strict";
-
-  // ====================== LUME VIRTUALA ======================
-  // Tot jocul traieste in 450x800. Canvasul se scaleaza cu letterbox,
-  // deci coordonatele sunt identice pe orice telefon -> responsive gratuit.
-  // Latimea e fixa (450) ca balansul sa fie identic peste tot; inaltimea se
-  // adapteaza la ecran intre 700 si 980 -> zero benzi negre pe orice telefon.
-  var VW = 450, VH = 800;
-  var WALL = 22;
-  var ROOM = { x0: WALL, y0: 96, x1: VW - WALL, y1: VH - WALL };
-  var DOOR_W = 92;
-
-  function layout() {
-    var availW = stage.clientWidth || 450, availH = stage.clientHeight || 800;
-    VH = Math.max(700, Math.min(980, Math.round(450 * (availH / availW))));
-    ROOM.x0 = WALL; ROOM.x1 = VW - WALL;
-    ROOM.y0 = 96; ROOM.y1 = VH - WALL;
+class SoundFX {
+  constructor() {
+    this.ctx = null;
   }
-
-  var canvas = document.getElementById("game");
-  var ctx = canvas.getContext("2d", { alpha: false });
-  var stage = document.getElementById("stage");
-
-  var view = { scale: 1, ox: 0, oy: 0, w: VW, h: VH };
-
-  function resize() {
-    layout();
-    var dpr = Math.min(window.devicePixelRatio || 1, 2);
-    var availW = stage.clientWidth, availH = stage.clientHeight;
-    var scale = Math.min(availW / VW, availH / VH);
-    var cssW = VW * scale, cssH = VH * scale;
-    canvas.style.width = cssW + "px";
-    canvas.style.height = cssH + "px";
-    canvas.width = Math.round(cssW * dpr);
-    canvas.height = Math.round(cssH * dpr);
-    ctx.setTransform(dpr * scale, 0, 0, dpr * scale, 0, 0);
-    var r = canvas.getBoundingClientRect();
-    var sr = stage.getBoundingClientRect();
-    view.scale = scale; view.ox = r.left - sr.left; view.oy = r.top - sr.top;
-    view.w = cssW; view.h = cssH;
-  }
-  window.addEventListener("resize", resize);
-  window.addEventListener("orientationchange", resize);
-
-  // ====================== SPRITE-URI GLOW (pre-randate) ======================
-  // Mult mai ieftin decat ctx.shadowBlur pe fiecare frame -> esential pe mobil.
-  function makeGlow(rgb) {
-    var s = 64, c = document.createElement("canvas");
-    c.width = c.height = s;
-    var g = c.getContext("2d");
-    var grad = g.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
-    grad.addColorStop(0, "rgba(" + rgb + ",0.95)");
-    grad.addColorStop(0.35, "rgba(" + rgb + ",0.42)");
-    grad.addColorStop(1, "rgba(" + rgb + ",0)");
-    g.fillStyle = grad;
-    g.fillRect(0, 0, s, s);
-    return c;
-  }
-  var GLOW_CYAN = makeGlow("62,232,255");
-  var GLOW_RED = makeGlow("255,51,85");
-  var GLOW_GOLD = makeGlow("255,207,92");
-  var GLOW_MINT = makeGlow("94,240,182");
-  var GLOW_VIOLET = makeGlow("178,107,255");
-
-  // Cosmetice pentru erou - doar culoare, platite din cioburi (nu bani
-  // reali). "default" e mereu detinut si e cyan-ul original al jocului.
-  var COSMETICS = [
-    { id: "default", nm: "Cyan (implicit)", cost: 0,   rgb: "62,232,255" },
-    { id: "gold",    nm: "Auriu Regal",      cost: 150, rgb: "255,207,92" },
-    { id: "crimson", nm: "Purpuriu Sângeriu", cost: 150, rgb: "255,51,85" },
-    { id: "emerald", nm: "Smarald",          cost: 150, rgb: "94,240,182" },
-    { id: "violet",  nm: "Violet Arcan",     cost: 200, rgb: "178,107,255" }
-  ];
-  var SKIN_GLOWS = {};
-  COSMETICS.forEach(function (c) { SKIN_GLOWS[c.id] = makeGlow(c.rgb); });
-  function cosmeticById(id) {
-    for (var i = 0; i < COSMETICS.length; i++) if (COSMETICS[i].id === id) return COSMETICS[i];
-    return COSMETICS[0];
-  }
-
-  function drawGlow(sprite, x, y, radius, alpha) {
-    ctx.globalAlpha = alpha === undefined ? 1 : alpha;
-    ctx.drawImage(sprite, x - radius, y - radius, radius * 2, radius * 2);
-    ctx.globalAlpha = 1;
-  }
-
-  // ====================== STARE ======================
-  var S_MENU = "menu", S_PLAY = "play", S_LEVEL = "level", S_OVER = "over", S_VICTORY = "victory";
-  var state = S_MENU;
-
-  // O singura regula de echilibru, valabila in toate modurile: un foc tras din
-  // miscare face mai putina dauna. Statul pe loc ramane deci mereu cea mai buna
-  // sursa de damage, indiferent de modul ales.
-  var MOVE_DMG = 0.6;
-  // Tinut apasat trage mai rar decat apasat repetat -> bataia in ecran e rasplatita.
-  var HOLD_MULT = 1.6;
-
-  var fireMode = "hibrid";              // "clasic" | "hibrid" | "liber"
-
-  // Modurile sunt toate disponibile de la inceput - un mod de control e o
-  // preferinta, nu o recompensa. In schimb modul greu plateste mai bine, ca sa
-  // fie ales din interes, nu din obligatie.
-  var MODE_BONUS = { clasic: 1.25, hibrid: 1.10, liber: 1.0 };
-
-  // ====================== CLASE DE EROU ======================
-  // Ranger ramane aproape de arhetipul original (fara multiplicator de
-  // viata/daune/viteza), ca sa fie clasa implicita si sa nu strice balansul
-  // existent - diferenta lui vine din tirul dublu si cadenta mai mare.
-  // Knight nu trage deloc: loveste corp la corp, in arc, toti inamicii din
-  // raza - un stil complet diferit, nu doar statistici schimbate.
-  var CLASSES = {
-    ranger: {
-      id: "ranger", nm: "Ranger",
-      ds: "Iute și precis, cu tir dublu din start",
-      hpMult: 1, dmgMult: 1, spdMult: 1, atkMult: 0.85,
-      projCount: 2
-    },
-    knight: {
-      id: "knight", nm: "Knight",
-      ds: "Corp la corp, viață multiplicată, lovește în arc",
-      hpMult: 1.55, dmgMult: 1.25, spdMult: 0.86, atkMult: 1.25,
-      meleeRange: 62, meleeArc: Math.PI * 0.8
-    },
-    mage: {
-      id: "mage", nm: "Mage",
-      ds: "Vrăji lente și grele, cu ardere garantată",
-      hpMult: 0.8, dmgMult: 1.55, spdMult: 0.95, atkMult: 1.4,
-      burn: 7
+  init() {
+    if (!this.ctx) {
+      this.ctx = new (window.AudioContext || window.webkitAudioContext)();
     }
-  };
-  // Clasa nu mai e o alegere per-runda: e fixata la crearea profilului si
-  // traieste in el (meta.classId). pendingClass e doar starea temporara a
-  // formularului de profil nou, inainte de a fi salvata undeva.
-  var pendingClass = "ranger";
-
-  // ====================== SUNET ======================
-  // Sintetizat cu Web Audio, fara fisiere externe - consistent cu restul
-  // jocului, care traieste intr-un singur HTML. Contextul se creeaza abia
-  // la primul gest al utilizatorului, ca politicile de autoplay mobile
-  // sa nu blocheze pornirea.
-  var SFX_KEY = "heroium.muted";
-  var muted = false;
-  try { muted = localStorage.getItem(SFX_KEY) === "1"; } catch (err) {}
-
-  var actx = null, masterGain = null;
-  function ensureAudio() {
-    if (actx) return;
-    try {
-      actx = new (window.AudioContext || window.webkitAudioContext)();
-      masterGain = actx.createGain();
-      masterGain.gain.value = muted ? 0 : 0.35;
-      masterGain.connect(actx.destination);
-    } catch (err) { actx = null; }
   }
-  function unlockAudio() {
-    ensureAudio();
-    if (actx && actx.state === "suspended") actx.resume();
+  playShoot() {
+    if (!this.ctx) return;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(400, this.ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(100, this.ctx.currentTime + 0.1);
+    gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start();
+    osc.stop(this.ctx.currentTime + 0.1);
   }
-  window.addEventListener("pointerdown", unlockAudio, { once: true });
-  window.addEventListener("keydown", unlockAudio, { once: true });
-
-  function beep(freq, dur, type, peak, slideTo) {
-    if (!actx || muted) return;
-    var t0 = actx.currentTime;
-    var osc = actx.createOscillator(), g = actx.createGain();
-    osc.type = type || "square";
-    osc.frequency.setValueAtTime(freq, t0);
-    if (slideTo) osc.frequency.exponentialRampToValueAtTime(slideTo, t0 + dur);
-    g.gain.setValueAtTime(0.0001, t0);
-    g.gain.linearRampToValueAtTime(peak || 0.5, t0 + 0.01);
-    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-    osc.connect(g); g.connect(masterGain);
-    osc.start(t0); osc.stop(t0 + dur + 0.02);
+  playHit() {
+    if (!this.ctx) return;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(150, this.ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(40, this.ctx.currentTime + 0.15);
+    gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start();
+    osc.stop(this.ctx.currentTime + 0.15);
   }
+  playLevelUp() {
+    if (!this.ctx) return;
+    const notes = [261.63, 329.63, 392.00, 523.25];
+    notes.forEach((freq, idx) => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, this.ctx.currentTime + idx * 0.08);
+      gain.gain.setValueAtTime(0.15, this.ctx.currentTime + idx * 0.08);
+      gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + idx * 0.08 + 0.2);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(this.ctx.currentTime + idx * 0.08);
+      osc.stop(this.ctx.currentTime + idx * 0.08 + 0.2);
+    });
+  }
+}
 
-  var sfx = {
-    shoot: function () { beep(880, 0.05, "square", 0.16); },
-    weakShoot: function () { beep(640, 0.045, "square", 0.11); },
-    swing: function () { beep(200, 0.07, "sawtooth", 0.22, 130); },
-    crit: function () { beep(1100, 0.08, "triangle", 0.26, 1500); },
-    hit: function () { beep(220, 0.035, "square", 0.13); },
-    kill: function () { beep(150, 0.11, "sawtooth", 0.2, 60); },
-    hurt: function () { beep(120, 0.16, "sawtooth", 0.28, 55); },
-    levelUp: function () {
-      beep(520, 0.09, "triangle", 0.24, 780);
-      setTimeout(function () { beep(780, 0.13, "triangle", 0.24, 1040); }, 90);
-    },
-    doorOpen: function () { beep(300, 0.18, "sine", 0.2, 520); },
-    bossDown: function () { beep(90, 0.4, "sawtooth", 0.34, 40); },
-    victory: function () {
-      beep(440, 0.12, "triangle", 0.28, 660);
-      setTimeout(function () { beep(660, 0.12, "triangle", 0.28, 880); }, 110);
-      setTimeout(function () { beep(880, 0.3, "triangle", 0.3, 1320); }, 220);
-    },
-    gameOver: function () { beep(200, 0.5, "sawtooth", 0.28, 60); },
-    revive: function () { beep(400, 0.3, "triangle", 0.3, 900); }
+const sfx = new SoundFX();
+
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+let width, height;
+function resize() {
+  width = Math.min(window.innerWidth, 480);
+  height = window.innerHeight;
+  canvas.width = width;
+  canvas.height = height;
+}
+window.addEventListener('resize', resize);
+resize();
+
+const joystick = { active: false, startX: 0, startY: 0, curX: 0, curY: 0, dx: 0, dy: 0 };
+const keys = {};
+
+window.addEventListener('keydown', e => keys[e.code] = true);
+window.addEventListener('keyup', e => keys[e.code] = false);
+
+canvas.addEventListener('touchstart', e => {
+  sfx.init();
+  const touch = e.touches[0];
+  const rect = canvas.getBoundingClientRect();
+  joystick.active = true;
+  joystick.startX = touch.clientX - rect.left;
+  joystick.startY = touch.clientY - rect.top;
+  joystick.curX = joystick.startX;
+  joystick.curY = joystick.startY;
+  joystick.dx = 0;
+  joystick.dy = 0;
+});
+
+canvas.addEventListener('touchmove', e => {
+  if (!joystick.active) return;
+  const touch = e.touches[0];
+  const rect = canvas.getBoundingClientRect();
+  joystick.curX = touch.clientX - rect.left;
+  joystick.curY = touch.clientY - rect.top;
+  const dist = Math.hypot(joystick.curX - joystick.startX, joystick.curY - joystick.startY);
+  const maxRadius = 50;
+  const angle = Math.atan2(joystick.curY - joystick.startY, joystick.curX - joystick.startX);
+  if (dist > maxRadius) {
+    joystick.curX = joystick.startX + Math.cos(angle) * maxRadius;
+    joystick.curY = joystick.startY + Math.sin(angle) * maxRadius;
+  }
+  joystick.dx = Math.cos(angle) * Math.min(dist / maxRadius, 1);
+  joystick.dy = Math.sin(angle) * Math.min(dist / maxRadius, 1);
+});
+
+canvas.addEventListener('touchend', () => {
+  joystick.active = false;
+  joystick.dx = 0;
+  joystick.dy = 0;
+});
+
+let selectedHeroClass = 'ranger';
+let gameRunning = false;
+let wave = 1;
+let gold = 0;
+let kills = 0;
+
+const heroClasses = {
+  ranger: { hp: 120, speed: 3.2, attackSpeed: 0.35, damage: 25, color: '#38bdf8' },
+  knight: { hp: 200, speed: 2.6, attackSpeed: 0.5, damage: 40, color: '#f59e0b' },
+  mage:   { hp: 90,  speed: 2.9, attackSpeed: 0.3, damage: 30, color: '#a855f7' }
+};
+
+let hero = {
+  x: 0, y: 0, radius: 16,
+  hp: 100, maxHp: 100,
+  speed: 3, attackSpeed: 0.4, damage: 25,
+  lastShot: 0,
+  multishot: 1,
+  pierce: false,
+  fireArrow: false
+};
+
+let projectiles = [];
+let enemies = [];
+let particles = [];
+let floatingTexts = [];
+
+function selectHero(heroClass, element) {
+  selectedHeroClass = heroClass;
+  document.querySelectorAll('.hero-option').forEach(el => el.classList.remove('active'));
+  element.classList.add('active');
+}
+
+function showStartMenu() {
+  gameRunning = false;
+  document.getElementById('startModal').style.display = 'flex';
+  document.getElementById('gameOverModal').style.display = 'none';
+  document.getElementById('skillModal').style.display = 'none';
+}
+
+function startGame() {
+  sfx.init();
+  const cfg = heroClasses[selectedHeroClass];
+  hero = {
+    x: width / 2,
+    y: height / 2,
+    radius: 16,
+    hp: cfg.hp,
+    maxHp: cfg.hp,
+    speed: cfg.speed,
+    attackSpeed: cfg.attackSpeed,
+    damage: cfg.damage,
+    lastShot: 0,
+    multishot: 1,
+    pierce: false,
+    fireArrow: false
   };
 
-  var muteBtn = document.getElementById("muteBtn");
-  function syncMuteBtn() {
-    muteBtn.setAttribute("aria-pressed", String(muted));
-    muteBtn.textContent = muted ? "✕" : "♪";
+  wave = 1;
+  gold = 0;
+  kills = 0;
+  projectiles = [];
+  enemies = [];
+  particles = [];
+  floatingTexts = [];
+
+  document.getElementById('startModal').style.display = 'none';
+  document.getElementById('gameOverModal').style.display = 'none';
+
+  updateHUD();
+  spawnWave();
+  gameRunning = true;
+  requestAnimationFrame(gameLoop);
+}
+
+function updateHUD() {
+  document.getElementById('hpFill').style.width = Math.max(0, (hero.hp / hero.maxHp) * 100) + '%';
+  document.getElementById('hpText').innerText = `${Math.ceil(hero.hp)}/${hero.maxHp}`;
+  document.getElementById('waveText').innerText = wave;
+  document.getElementById('goldText').innerText = gold;
+}
+
+function spawnWave() {
+  enemies = [];
+  const count = 4 + wave * 2;
+  for (let i = 0; i < count; i++) {
+    const edge = Math.floor(Math.random() * 4);
+    let x, y;
+    if (edge === 0) { x = Math.random() * width; y = -20; }
+    else if (edge === 1) { x = width + 20; y = Math.random() * height; }
+    else if (edge === 2) { x = Math.random() * width; y = height + 20; }
+    else { x = -20; y = Math.random() * height; }
+
+    const isBoss = (wave % 5 === 0) && (i === 0);
+    enemies.push({
+      x, y,
+      radius: isBoss ? 28 : 14,
+      hp: (25 + wave * 15) * (isBoss ? 5 : 1),
+      maxHp: (25 + wave * 15) * (isBoss ? 5 : 1),
+      speed: isBoss ? 1.2 : 1.5 + Math.random() * 0.8,
+      damage: (10 + wave * 2) * (isBoss ? 1.8 : 1),
+      color: isBoss ? '#ef4444' : '#10b981',
+      isBoss
+    });
   }
-  muteBtn.addEventListener("click", function () {
-    muted = !muted;
-    try { localStorage.setItem(SFX_KEY, muted ? "1" : "0"); } catch (err) {}
-    if (masterGain) masterGain.gain.value = muted ? 0 : 0.35;
-    syncMuteBtn();
-  });
-  syncMuteBtn();
+}
 
-  // ====================== PROGRES PERMANENT ======================
-  // Trei sloturi de profil, complet izolate: fiecare traieste sub propria
-  // cheie in localStorage, deci progresul unuia nu atinge niciodata pe al
-  // altuia. "meta" e mereu profilul ACTIV - restul jocului citeste/scrie in
-  // el fara sa stie de sloturi.
-  var SLOT_COUNT = 3;
-  var ACTIVE_SLOT_KEY = "heroium.activeSlot";
-  function slotKey(n) { return "heroium_slot_" + n; }
+function triggerLevelUp() {
+  gameRunning = false;
+  sfx.playLevelUp();
 
-  var EQUIP_SLOTS = ["helm", "armor", "boots", "gloves", "weapon", "offhand", "ring1", "ring2"];
-  var SLOT_NAMES = {
-    helm: "Cască", armor: "Armură", boots: "Papuci", gloves: "Mănuși",
-    weapon: "Armă Principală", offhand: "Armă Secundară", ring1: "Inel 1", ring2: "Inel 2"
-  };
-
-  // Doua nivele pe slot - suficient cat echiparea sa fie o alegere reala,
-  // fara sa transforme ecranul intr-un catalog nesfarsit.
-  var ITEMS = [
-    { id: "helm1",    slot: "helm",    nm: "Coif de fier",    cost: 60,  hp: 10, def: 1 },
-    { id: "helm2",    slot: "helm",    nm: "Coif de dragon",  cost: 220, hp: 22, def: 3 },
-    { id: "armor1",   slot: "armor",   nm: "Zale ușoare",     cost: 70,  hp: 16, def: 2 },
-    { id: "armor2",   slot: "armor",   nm: "Platoșă grea",    cost: 240, hp: 34, def: 5 },
-    { id: "boots1",   slot: "boots",   nm: "Cizme de piele",  cost: 50,  hp: 6,  def: 1 },
-    { id: "boots2",   slot: "boots",   nm: "Cizme fermecate", cost: 180, hp: 12, def: 2 },
-    { id: "gloves1",  slot: "gloves",  nm: "Mănuși aspre",    cost: 50,  atk: 1, def: 1 },
-    { id: "gloves2",  slot: "gloves",  nm: "Mănuși ghimpate", cost: 180, atk: 3, def: 2 },
-    { id: "weapon1",  slot: "weapon",  nm: "Lamă ascuțită",   cost: 90,  atk: 3 },
-    { id: "weapon2",  slot: "weapon",  nm: "Lamă legendară",  cost: 320, atk: 8 },
-    { id: "offhand1", slot: "offhand", nm: "Pumnal secundar", cost: 80,  atk: 2 },
-    { id: "offhand2", slot: "offhand", nm: "Talisman de foc", cost: 260, atk: 5, hp: 8 },
-    { id: "ring1a",   slot: "ring1",   nm: "Inel de rubin",   cost: 70,  atk: 2, hp: 6 },
-    { id: "ring1b",   slot: "ring1",   nm: "Inel de safir",   cost: 230, atk: 4, hp: 14 },
-    { id: "ring2a",   slot: "ring2",   nm: "Inel de smarald", cost: 70,  def: 2 },
-    { id: "ring2b",   slot: "ring2",   nm: "Inel de onix",    cost: 230, def: 5, hp: 10 }
-  ];
-  function itemById(id) {
-    for (var i = 0; i < ITEMS.length; i++) if (ITEMS[i].id === id) return ITEMS[i];
-    return null;
-  }
-  function itemsForSlot(slotId) { return ITEMS.filter(function (it) { return it.slot === slotId; }); }
-
-  // Talente permanente, pe doua ramuri: Putere Atac deblocheaza Rezistenta
-  // si Sanatate Maxima; Viteza Atac deblocheaza Sansa Critica. "requires"
-  // cere cel putin un nivel investit in talentul parinte.
-  var TALENTS = [
-    { id: "atkPower",   nm: "Putere Atac",     ds: "+5% daună / nivel",         max: 5, costs: [50, 90, 140, 200, 280] },
-    { id: "resist",     nm: "Rezistență",      ds: "+2 armură / nivel",         max: 5, costs: [60, 100, 150, 210, 290], requires: "atkPower" },
-    { id: "vitality",   nm: "Sănătate Maximă", ds: "+15 viață maximă / nivel",  max: 5, costs: [60, 100, 150, 210, 290], requires: "atkPower" },
-    { id: "atkSpeed",   nm: "Viteză Atac",     ds: "-4% timp de atac / nivel",  max: 5, costs: [55, 95, 145, 205, 285] },
-    { id: "critChance", nm: "Șansă Critică",   ds: "+5% șansă critică / nivel", max: 5, costs: [70, 120, 180, 250, 340], requires: "atkSpeed" }
-  ];
-  function talentById(id) {
-    for (var i = 0; i < TALENTS.length; i++) if (TALENTS[i].id === id) return TALENTS[i];
-    return null;
-  }
-  function talentLevel(id) { return meta.talents[id] | 0; }
-  function talentAvailable(t) { return !t.requires || talentLevel(t.requires) >= 1; }
-
-  // ====================== ECONOMIE (fara clan multiplayer, fara bani reali) ======================
-  // O lada de razboi single-player, castigata la fiecare victorie de
-  // Campanie - contine cioburi si, uneori, un cosmetic. Nu exista clan real
-  // (ar necesita cont si server); asta e echivalentul jucabil fara backend.
-  var CHEST_REWARD_MIN = 40, CHEST_REWARD_MAX = 120;
-  function openChest() {
-    if (meta.chests <= 0) return null;
-    meta.chests--;
-    var shardsWon = CHEST_REWARD_MIN + Math.floor(Math.random() * (CHEST_REWARD_MAX - CHEST_REWARD_MIN + 1));
-    meta.shards += shardsWon;
-    meta.seasonEarned += shardsWon;
-    var locked = COSMETICS.filter(function (c) { return c.id !== "default" && meta.cosmetics.indexOf(c.id) < 0; });
-    var wonCosmetic = null;
-    if (locked.length && Math.random() < 0.25) {
-      wonCosmetic = locked[Math.floor(Math.random() * locked.length)];
-      meta.cosmetics.push(wonCosmetic.id);
-    }
-    saveMeta();
-    return { shards: shardsWon, cosmetic: wonCosmetic };
-  }
-
-  // Traseul de sezon - echivalentul Battle Pass, dar platit din cioburile
-  // adunate de-a lungul rundelor (meta.seasonEarned), nu din bani reali.
-  var SEASON_TIERS = [
-    { at: 200,  reward: 60,  nm: "Treapta 1" },
-    { at: 500,  reward: 100, nm: "Treapta 2" },
-    { at: 1000, reward: 150, cosmetic: "gold",    nm: "Treapta 3" },
-    { at: 2000, reward: 250, nm: "Treapta 4" },
-    { at: 3500, reward: 400, cosmetic: "violet",  nm: "Treapta 5" }
-  ];
-  function seasonTierId(i) { return "t" + i; }
-  function claimSeasonTier(i) {
-    var t = SEASON_TIERS[i];
-    if (!t) return false;
-    var id = seasonTierId(i);
-    if (meta.seasonClaimed.indexOf(id) >= 0 || meta.seasonEarned < t.at) return false;
-    meta.shards += t.reward;
-    if (t.cosmetic && meta.cosmetics.indexOf(t.cosmetic) < 0) meta.cosmetics.push(t.cosmetic);
-    meta.seasonClaimed.push(id);
-    saveMeta();
-    return true;
-  }
-
-  // Patru harti: paleta proprie (podea/pereti/contur), multiplicator de
-  // dificultate care scaleaza viata si dauna inamicilor (si rasplata in
-  // cioburi), si o compozitie proprie de tipuri de inamici.
-  var MAPS = [
-    { id: "forest", nm: "Pădurea Umbrită", ds: "Copaci morți, ceață verde", diff: 1.0,
-      floor: "#0e1a12", wall: "#1c3323", edge: "94,214,150",
-      weights: { melee: 0.45, ranged: 0.35, charger: 0.20 } },
-    { id: "castle", nm: "Castelul Întunecat", ds: "Coridoare de piatră, torțe stinse", diff: 1.15,
-      floor: "#0e1626", wall: "#1b2740", edge: "62,232,255",
-      weights: { melee: 0.40, ranged: 0.35, charger: 0.25 } },
-    { id: "desert", nm: "Deșertul Pierdut", ds: "Nisipuri arse, sub un soare mort", diff: 1.3,
-      floor: "#241a0e", wall: "#3a2a1b", edge: "255,180,84",
-      weights: { melee: 0.35, ranged: 0.25, charger: 0.40 } },
-    { id: "shadow", nm: "Tărâmul Umbrelor", ds: "Bezna pură, cel mai greu tărâm", diff: 1.5,
-      floor: "#140e1e", wall: "#241b3a", edge: "178,107,255",
-      weights: { melee: 0.30, ranged: 0.45, charger: 0.25 } }
-  ];
-  function mapById(id) {
-    for (var i = 0; i < MAPS.length; i++) if (MAPS[i].id === id) return MAPS[i];
-    return MAPS[0];
-  }
-  function currentMap() { return mapById(meta.mapId); }
-
-  // Patru regimuri de joc. Supraviețuire e comportamentul original (infinit,
-  // gardian la fiecare 5 camere) - ramane implicit ca sa nu schimbe nimic
-  // pentru cine nu alege explicit altceva.
-  var FINAL_BOSS_ROOM = 20;   // camera Campaniei unde apare Batranul Rege
-  var GAME_MODES = [
-    { id: "survival", nm: "Supraviețuire", ds: "Fără sfârșit — camere tot mai grele, cât reziști" },
-    { id: "campaign", nm: "Campanie", ds: "Camerele 1–" + (FINAL_BOSS_ROOM - 1) + ", apoi Bătrânul Rege Căzut" },
-    { id: "bossrush", nm: "Boss Rush", ds: "Fiecare cameră e un gardian, fără pauză" },
-    { id: "events", nm: "Evenimente", ds: "Modificator zilnic, diferit în fiecare zi" }
-  ];
-  function gameModeById(id) {
-    for (var i = 0; i < GAME_MODES.length; i++) if (GAME_MODES[i].id === id) return GAME_MODES[i];
-    return GAME_MODES[0];
-  }
-  function currentGameMode() { return gameModeById(meta.gameMode); }
-
-  // Evenimentul zilei - determinist (aceeasi zi = acelasi modificator pentru
-  // toata lumea), fara sa fie nevoie de server: doar data curenta ca sursa.
-  var EVENT_MODIFIERS = [
-    { nm: "Val dublu", ds: "Inamici cu +40% viață și daună, recompensă +50%", diffMult: 1.4, rewardMult: 1.5 },
-    { nm: "Comoara uitată", ds: "Dificultate normală, recompensă +80%", diffMult: 1.0, rewardMult: 1.8 },
-    { nm: "Asediu greu", ds: "Inamici cu +70% viață și daună, recompensă +60%", diffMult: 1.7, rewardMult: 1.6 }
-  ];
-  function todayEventIndex() {
-    var d = new Date();
-    return (d.getFullYear() * 372 + d.getMonth() * 31 + d.getDate()) % EVENT_MODIFIERS.length;
-  }
-  function currentEvent() { return EVENT_MODIFIERS[todayEventIndex()]; }
-  function eventDiffMult() { return meta.gameMode === "events" ? currentEvent().diffMult : 1; }
-  function eventRewardMult() { return meta.gameMode === "events" ? currentEvent().rewardMult : 1; }
-
-  var UPGRADES = [
-    { id: "vigoare",     nm: "Vigoare",      ds: "+12 viață maximă",        max: 5, costs: [40, 70, 110, 160, 220] },
-    { id: "tais",        nm: "Tăiș",         ds: "+8% daună",               max: 5, costs: [50, 85, 130, 190, 260] },
-    { id: "iuteala",     nm: "Iuțeală",      ds: "+5% viteză de mișcare",   max: 4, costs: [45, 80, 125, 180] },
-    { id: "clarviziune", nm: "Clarviziune",  ds: "O carte în plus la nivel", max: 1, costs: [250] },
-    { id: "torta",       nm: "A doua torță", ds: "Te ridici o dată pe rundă", max: 1, costs: [400] }
+  const allSkills = [
+    { id: 'multishot', title: '🏹 Săgeată Dublă', desc: 'Tragi două proiectile simultan' },
+    { id: 'damage', title: '⚡ Daună Augmentată', desc: '+30% Daună pentru toate atacurile' },
+    { id: 'atkSpeed', title: '💨 Viteză de Atac', desc: 'Apar atacuri mai rapide cu 25%' },
+    { id: 'heal', title: '💖 Vindecare', desc: 'Refaci 50% din viața maximă' },
+    { id: 'fire', title: '🔥 Săgeată Arzătoare', desc: 'Proiectilele provoacă arsură' }
   ];
 
-  // Deblocarile ADAUGA lucruri noi - nu ridica restrictii. Camerele curatate se
-  // aduna peste toate rundele, deci progresul nu se pierde niciodata.
-  var UNLOCKS = [
-    { rooms: 8,  id: "ricochet", nm: "Ricoșeu" },
-    { rooms: 20, id: "fire",     nm: "Atac de foc" },
-    { rooms: 36, id: "pierce",   nm: "Săgeți perforante" },
-    { rooms: 60, id: "explode",  nm: "Sfârșit exploziv" }
-  ];
-
-  function emptyProfile(name, classId) {
-    var equip = {};
-    EQUIP_SLOTS.forEach(function (s) { equip[s] = null; });
-    return {
-      name: name, classId: classId,
-      shards: 0, totalRooms: 0, bestRoom: 1, bestLevel: 1,
-      up: {}, talents: {}, equip: equip, owned: [], mapId: "forest", gameMode: "survival",
-      chests: 0, cosmetics: [], skin: "default", seasonEarned: 0, seasonClaimed: []
-    };
-  }
-
-  // Validare defensiva la incarcare - un profil corupt sau vechi nu trebuie
-  // sa dea crash, doar sa cada pe valori implicite sigure.
-  function sanitizeProfile(p) {
-    if (!p || typeof p !== "object" || !CLASSES[p.classId]) return null;
-    var nm = (typeof p.name === "string" && p.name.trim()) ? p.name.trim().slice(0, 16) : "Erou";
-    var prof = emptyProfile(nm, p.classId);
-    prof.shards = Math.max(0, p.shards | 0);
-    prof.totalRooms = Math.max(0, p.totalRooms | 0);
-    prof.bestRoom = Math.max(1, p.bestRoom | 0);
-    prof.bestLevel = Math.max(1, p.bestLevel | 0);
-    prof.up = (p.up && typeof p.up === "object") ? p.up : {};
-    prof.talents = (p.talents && typeof p.talents === "object") ? p.talents : {};
-    if (p.equip && typeof p.equip === "object") {
-      EQUIP_SLOTS.forEach(function (s) { if (typeof p.equip[s] === "string") prof.equip[s] = p.equip[s]; });
-    }
-    prof.owned = Array.isArray(p.owned) ? p.owned.filter(function (id) { return typeof id === "string"; }) : [];
-    if (typeof p.mapId === "string" && MAPS.some(function (m) { return m.id === p.mapId; })) prof.mapId = p.mapId;
-    if (typeof p.gameMode === "string" && GAME_MODES.some(function (m) { return m.id === p.gameMode; })) prof.gameMode = p.gameMode;
-    prof.chests = Math.max(0, p.chests | 0);
-    prof.cosmetics = Array.isArray(p.cosmetics) ? p.cosmetics.filter(function (id) { return typeof id === "string"; }) : [];
-    if (typeof p.skin === "string" && (p.skin === "default" || prof.cosmetics.indexOf(p.skin) >= 0)) prof.skin = p.skin;
-    prof.seasonEarned = Math.max(0, p.seasonEarned | 0);
-    prof.seasonClaimed = Array.isArray(p.seasonClaimed) ? p.seasonClaimed.filter(function (id) { return typeof id === "string"; }) : [];
-    return prof;
-  }
-
-  function readSlot(n) {
-    try {
-      var raw = localStorage.getItem(slotKey(n));
-      return raw ? sanitizeProfile(JSON.parse(raw)) : null;
-    } catch (err) { return null; }
-  }
-
-  var activeSlot = null;
-  var meta = emptyProfile("Erou", "ranger");   // profil-placeholder pana se incarca unul real
-
-  function saveMeta() {
-    if (!activeSlot) return;
-    try { localStorage.setItem(slotKey(activeSlot), JSON.stringify(meta)); } catch (err) {}
-  }
-
-  function loadSlot(n) {
-    var prof = readSlot(n);
-    if (!prof) return false;
-    activeSlot = n;
-    meta = prof;
-    try { localStorage.setItem(ACTIVE_SLOT_KEY, String(n)); } catch (err) {}
-    return true;
-  }
-
-  function createProfile(n, name, classId) {
-    if (!CLASSES[classId]) classId = "ranger";
-    activeSlot = n;
-    meta = emptyProfile((name || "").trim().slice(0, 16) || "Erou", classId);
-    saveMeta();
-    try { localStorage.setItem(ACTIVE_SLOT_KEY, String(n)); } catch (err) {}
-  }
-
-  function wipeSlot(n) {
-    try { localStorage.removeItem(slotKey(n)); } catch (err) {}
-    if (activeSlot === n) { activeSlot = null; meta = emptyProfile("Erou", "ranger"); }
-  }
-
-  function loadDevicePrefs() {
-    try {
-      var savedMode = localStorage.getItem("heroium.fireMode");
-      if (savedMode === "clasic" || savedMode === "hibrid" || savedMode === "liber") fireMode = savedMode;
-    } catch (err) { /* stocarea poate fi blocata - ramanem pe valorile implicite */ }
-  }
-
-  function upLevel(id) { return meta.up[id] | 0; }
-
-  function isUnlocked(id) {
-    for (var i = 0; i < UNLOCKS.length; i++) {
-      if (UNLOCKS[i].id === id) return meta.totalRooms >= UNLOCKS[i].rooms;
-    }
-    return true;                        // ce nu e in lista e disponibil din start
-  }
-
-  function nextUnlock() {
-    for (var i = 0; i < UNLOCKS.length; i++) {
-      if (meta.totalRooms < UNLOCKS[i].rooms) return UNLOCKS[i];
-    }
-    return null;
-  }
-
-  // Suma unei statistici peste tot echipamentul purtat curent.
-  function equipSum(stat) {
-    var sum = 0;
-    EQUIP_SLOTS.forEach(function (s) {
-      var it = meta.equip[s] && itemById(meta.equip[s]);
-      if (it) sum += it[stat] || 0;
-    });
-    return sum;
-  }
-
-  loadDevicePrefs();
-
-  var player = null;
-  var enemies = [], pBullets = [], eBullets = [], particles = [], telegraphs = [], orbs = [], slashes = [], damageNumbers = [];
-  var room = 1, kills = 0, doorOpen = false, transitioning = false;
-  var runShards = 0;                    // cioburi stranse in runda curenta
-  var lastTime = 0, shakeTime = 0, shakeMag = 0;
-
-  function newPlayer() {
-    // patru straturi combinate o singura data pe rulare: baza clasei,
-    // upgrade-urile din tabara, talentele permanente si echipamentul
-    var cls = CLASSES[meta.classId] || CLASSES.ranger;
-    var talentDmgPct = talentLevel("atkPower") * 0.05;
-    var talentAtkSpeedPct = talentLevel("atkSpeed") * 0.04;
-    var maxHp = Math.round((100 + upLevel("vigoare") * 12 + equipSum("hp") + talentLevel("vitality") * 15) * cls.hpMult);
-    var dmg = Math.round((14 * (1 + upLevel("tais") * 0.08) + equipSum("atk")) * (1 + talentDmgPct) * cls.dmgMult * 10) / 10;
-    return {
-      classId: cls.id,
-      x: VW / 2, y: ROOM.y1 - 90, r: 13,
-      hp: maxHp, maxHp: maxHp,
-      speed: Math.round(205 * (1 + upLevel("iuteala") * 0.05) * cls.spdMult),
-      damage: dmg,
-      armor: equipSum("def") + talentLevel("resist") * 2,
-      critChance: Math.min(0.75, talentLevel("critChance") * 0.05),
-      cardCount: 3 + upLevel("clarviziune"),
-      revives: upLevel("torta"),
-      explode: 0,
-      atkInterval: Math.round(420 * cls.atkMult * (1 - talentAtkSpeedPct)),   // ms
-      atkTimer: 0,
-      manualCd: 0,        // racire pentru focurile trase manual, din mers
-      settle: 0,          // mica intarziere dupa oprire, ca in Archero
-      projSpeed: 620,
-      projCount: cls.projCount || 1,
-      pierce: 0,
-      bounces: 0,
-      burn: cls.burn || 0,        // damage/sec aplicat pe lovitura
-      meleeRange: cls.meleeRange || 0,   // >0 => Knight loveste corp la corp, nu trage
-      meleeArc: cls.meleeArc || 0,
-      level: 1, xp: 0, xpNext: 8,
-      hurtCd: 0, flash: 0,
-      facing: -Math.PI / 2,
-      powers: []          // id-urile puterilor alese in runda curenta, pt. HUD
-    };
-  }
-
-  function resetRun() {
-    player = newPlayer();
-    enemies.length = 0; pBullets.length = 0; eBullets.length = 0;
-    particles.length = 0; telegraphs.length = 0; orbs.length = 0; slashes.length = 0; damageNumbers.length = 0;
-    room = 1; kills = 0; doorOpen = false; transitioning = false;
-    lastPowerCount = -1;   // fortam reafisarea sloturilor de abilitati la runda noua
-    runShards = 0;
-    buildRoom();
-    syncHud();
-  }
-
-  // ====================== CAMERE ======================
-  var BOSS_EVERY = 5;                     // o camera de garda la fiecare 5 camere
-  // Boss Rush face fiecare camera un gardian; Campania are un boss unic la
-  // FINAL_BOSS_ROOM (verificat separat, are prioritate).
-  function isBossRoom() { return meta.gameMode === "bossrush" || room % BOSS_EVERY === 0; }
-  function isFinalBossRoom() { return meta.gameMode === "campaign" && room === FINAL_BOSS_ROOM; }
-
-  function buildRoom() {
-    enemies.length = 0; pBullets.length = 0; eBullets.length = 0;
-    telegraphs.length = 0; orbs.length = 0; slashes.length = 0; damageNumbers.length = 0;
-    doorOpen = false;
-
-    if (isFinalBossRoom()) {
-      spawnFinalKing();
-      toast("Bătrânul Rege Căzut");
-    } else if (isBossRoom()) {
-      spawnBoss();
-      toast("Camera " + room + " · Gardian");
-    } else {
-      var count = Math.min(3 + Math.floor(room * 1.15), 13);
-      for (var i = 0; i < count; i++) spawnEnemy(pickType());
-      toast("Camera " + room);
-    }
-  }
-
-  // Primele camere raman un tutorial fix (mai mult "melee", ca regula de
-  // baza sa se invete usor); dupa aceea, compozitia vine din harta aleasa.
-  function pickType() {
-    var r = Math.random();
-    if (room <= 1) return "melee";
-    if (room <= 3) return r < 0.65 ? "melee" : "ranged";
-    var w = currentMap().weights;
-    if (r < w.melee) return "melee";
-    if (r < w.melee + w.ranged) return "ranged";
-    return "charger";
-  }
-
-  function spawnEnemy(type) {
-    var x, y, tries = 0;
-    do {
-      x = ROOM.x0 + 30 + Math.random() * (ROOM.x1 - ROOM.x0 - 60);
-      y = ROOM.y0 + 30 + Math.random() * (ROOM.y1 - ROOM.y0 - 60);
-      tries++;
-    } while (tries < 30 && Math.hypot(x - player.x, y - player.y) < 190);
-
-    var tier = room - 1;
-    var diff = currentMap().diff * eventDiffMult();
-    var e = {
-      type: type, x: x, y: y,
-      hp: 1, maxHp: 1, r: 13,
-      speed: 60, damage: 8,
-      touchCd: 0, phase: "idle", phaseT: 0,
-      aimX: 0, aimY: 0, burnT: 0, burnDps: 0, flash: 0,
-      xp: 2
-    };
-
-    if (type === "melee") {
-      e.maxHp = (26 + tier * 7) * diff; e.speed = 74 + tier * 3.2; e.damage = (9 + tier) * diff; e.r = 13; e.xp = 2;
-    } else if (type === "ranged") {
-      e.maxHp = (20 + tier * 5) * diff; e.speed = 52 + tier * 2; e.damage = (11 + tier) * diff; e.r = 12; e.xp = 3;
-      e.phase = "reposition"; e.phaseT = 0.5 + Math.random();
-    } else { // charger
-      e.maxHp = (40 + tier * 9) * diff; e.speed = 46 + tier * 1.6; e.damage = (16 + tier * 1.4) * diff; e.r = 16; e.xp = 4;
-      e.phase = "stalk"; e.phaseT = 0.9 + Math.random() * 0.7;
-    }
-    e.hp = e.maxHp;
-    enemies.push(e);
-  }
-
-  // Un singur gardian in loc de un val de inamici obisnuiti. Alterneaza un
-  // atac de tip taur (telegrafat cu o linie, ca la charger) cu o rafala
-  // radiala telegrafata cu un cerc - ambele folosesc mecanismele deja
-  // existente pentru inamici obisnuiti, doar la scara mai mare.
-  function spawnBoss() {
-    var tier = room - 1;
-    var diff = currentMap().diff * eventDiffMult();
-    var e = {
-      type: "boss", x: VW / 2, y: ROOM.y0 + 130, r: 26,
-      hp: 1, maxHp: 1, speed: 58 + tier * 1.2, damage: (15 + tier * 1.6) * diff,
-      touchCd: 0, phase: "stalk", phaseT: 1.2,
-      aimX: 0, aimY: 0, burnT: 0, burnDps: 0, flash: 0,
-      xp: 14 + tier * 2
-    };
-    e.maxHp = (160 + tier * 34) * diff;
-    e.hp = e.maxHp;
-    enemies.push(e);
-  }
-
-  // Boss-ul unic de final de Campanie. Mult mai multa viata decat un gardian
-  // obisnuit, si o a doua faza (kingPhase) declansata la 50% viata.
-  function spawnFinalKing() {
-    var diff = currentMap().diff * eventDiffMult();
-    var e = {
-      type: "king", x: VW / 2, y: ROOM.y0 + 150, r: 30,
-      hp: 1, maxHp: 1, speed: 50, damage: 20 * diff,
-      touchCd: 0, phase: "stalk", phaseT: 1.4,
-      aimX: 0, aimY: 0, burnT: 0, burnDps: 0, flash: 0,
-      xp: 80, kingPhase: 1
-    };
-    e.maxHp = 900 * diff;
-    e.hp = e.maxHp;
-    enemies.push(e);
-  }
-
-  // ====================== INPUT ======================
-  var keys = Object.create(null);
-  window.addEventListener("keydown", function (e) {
-    var k = e.key.toLowerCase();
-    keys[k] = true;
-    if ([" ", "arrowup", "arrowdown", "arrowleft", "arrowright"].indexOf(k) >= 0) e.preventDefault();
-  });
-  window.addEventListener("keyup", function (e) { keys[e.key.toLowerCase()] = false; });
-  window.addEventListener("blur", function () { keys = Object.create(null); });
-
-  var joy = { active: false, id: null, ox: 0, oy: 0, x: 0, y: 0, mag: 0 };
-  var joyBase = document.getElementById("joyBase");
-  var joyKnob = document.getElementById("joyKnob");
-  var JOY_R = 52;
-
-  function joyDown(e) {
-    if (state !== S_PLAY) return;
-    if (joy.active) return;
-    // butoanele din chrome-ul jocului (ex. mute) nu trebuie sa porneasca un joystick sub ele
-    if (e.target && e.target.closest && e.target.closest("button")) return;
-    // in modul hibrid semiecranul drept e rezervat tragerii
-    if (fireMode === "hibrid" && e.clientX - stage.getBoundingClientRect().left > stage.clientWidth * 0.5) return;
-    joy.active = true; joy.id = e.pointerId;
-    var sr = stage.getBoundingClientRect();
-    joy.ox = e.clientX - sr.left; joy.oy = e.clientY - sr.top;
-    joyBase.style.left = joy.ox + "px";
-    joyBase.style.top = joy.oy + "px";
-    joyBase.style.display = "block";
-    joyKnob.style.left = "50%"; joyKnob.style.top = "50%";
-    try { stage.setPointerCapture(e.pointerId); } catch (err) {}
-  }
-
-  function joyMove(e) {
-    if (!joy.active || e.pointerId !== joy.id) return;
-    var sr = stage.getBoundingClientRect();
-    var dx = (e.clientX - sr.left) - joy.ox;
-    var dy = (e.clientY - sr.top) - joy.oy;
-    var d = Math.hypot(dx, dy);
-    var cl = Math.min(d, JOY_R);
-    if (d > 0.001) {
-      var a = Math.atan2(dy, dx);
-      joyKnob.style.left = (58 + Math.cos(a) * cl) + "px";
-      joyKnob.style.top = (58 + Math.sin(a) * cl) + "px";
-    }
-    if (d > 7) { joy.x = dx / d; joy.y = dy / d; joy.mag = Math.min(1, cl / JOY_R); }
-    else { joy.x = 0; joy.y = 0; joy.mag = 0; }
-  }
-
-  function joyUp(e) {
-    if (!joy.active || (e && e.pointerId !== joy.id)) return;
-    joy.active = false; joy.id = null;
-    joy.x = 0; joy.y = 0; joy.mag = 0;
-    joyBase.style.display = "none";
-  }
-
-  stage.addEventListener("pointerdown", joyDown);
-  stage.addEventListener("pointermove", joyMove);
-  window.addEventListener("pointerup", joyUp);
-  window.addEventListener("pointercancel", joyUp);
-
-  // ---------- tragere manuala (modul hibrid) ----------
-  // Tot semiecranul drept e buton, ca sa poti bate in ecran fara sa ochesti.
-  var fire = { held: false, id: null, holdT: 0 };
-  var fireBtnEl = document.getElementById("fireBtn");
-
-  function isFireZone(e) {
-    var sr = stage.getBoundingClientRect();
-    return (e.clientX - sr.left) > stage.clientWidth * 0.5;
-  }
-
-  function fireDown(e) {
-    if (state !== S_PLAY || fireMode !== "hibrid") return;
-    if (e.target && e.target.closest && e.target.closest("button")) return;
-    if (!isFireZone(e)) return;
-    fire.held = true; fire.id = e.pointerId; fire.holdT = HOLD_MULT * player.atkInterval / 1000;
-    manualShot();
-  }
-
-  function fireUp(e) {
-    if (e && fire.id !== null && e.pointerId !== fire.id) return;
-    fire.held = false; fire.id = null;
-  }
-
-  stage.addEventListener("pointerdown", fireDown);
-  window.addEventListener("pointerup", fireUp);
-  window.addEventListener("pointercancel", fireUp);
-
-  // PC: spatiu declanseaza acelasi foc manual
-  window.addEventListener("keydown", function (e) {
-    if (e.code !== "Space" || e.repeat) return;
-    if (state !== S_PLAY || fireMode !== "hibrid") return;
-    fire.held = true; fire.holdT = HOLD_MULT * player.atkInterval / 1000;
-    manualShot();
-  });
-  window.addEventListener("keyup", function (e) { if (e.code === "Space") fireUp(null); });
-
-  function inputVector() {
-    var kx = 0, ky = 0;
-    if (keys["a"] || keys["arrowleft"]) kx -= 1;
-    if (keys["d"] || keys["arrowright"]) kx += 1;
-    if (keys["w"] || keys["arrowup"]) ky -= 1;
-    if (keys["s"] || keys["arrowdown"]) ky += 1;
-    if (kx || ky) {
-      var l = Math.hypot(kx, ky);
-      return { x: kx / l, y: ky / l, mag: 1 };
-    }
-    if (joy.mag > 0) return { x: joy.x, y: joy.y, mag: joy.mag };
-    return { x: 0, y: 0, mag: 0 };
-  }
-
-  // ====================== PUTERI (level-up) ======================
-  // Puterile fara camp "classes" sunt disponibile oricarei clase. Cele legate
-  // strict de proiectile (dublu tir, ricoseu, perforare) nu au sens pentru
-  // Knight, care nu trage deloc - primeste in schimb doua puteri proprii,
-  // legate de arma lui corp la corp.
-  var POWERS = [
-    { id: "double", glyph: "⇶", nm: "Săgeți duble", ds: "+1 proiectil pe atac",
-      classes: ["ranger", "mage"],
-      max: function () { return player.projCount >= 5; },
-      go: function () { player.projCount++; } },
-    { id: "ricochet", glyph: "◇", nm: "Ricoșeu", ds: "Proiectilele ricoșează din pereți",
-      classes: ["ranger", "mage"],
-      max: function () { return player.bounces >= 3; },
-      go: function () { player.bounces++; } },
-    { id: "fire", glyph: "≈", nm: "Atac de foc", ds: "Inamicii lovit ard în timp",
-      max: function () { return player.burn >= 40; },
-      go: function () { player.burn += 9; } },
-    { id: "pierce", glyph: "→", nm: "Săgeți perforante", ds: "Trec prin încă un inamic",
-      classes: ["ranger", "mage"],
-      max: function () { return player.pierce >= 3; },
-      go: function () { player.pierce++; } },
-    { id: "wide", glyph: "◠", nm: "Rotire largă", ds: "Arc de atac mai larg",
-      classes: ["knight"],
-      max: function () { return player.meleeArc >= Math.PI * 1.6; },
-      go: function () { player.meleeArc = Math.min(Math.PI * 1.6, player.meleeArc + Math.PI * 0.18); } },
-    { id: "reach", glyph: "↔", nm: "Rază extinsă", ds: "Lovești mai de departe",
-      classes: ["knight"],
-      max: function () { return player.meleeRange >= 110; },
-      go: function () { player.meleeRange += 12; } },
-    { id: "dmg", glyph: "✦", nm: "Vârf ascuțit", ds: "+25% daună",
-      max: function () { return false; },
-      go: function () { player.damage = Math.round(player.damage * 1.25); } },
-    { id: "rate", glyph: "⟳", nm: "Tragere rapidă", ds: "+14% viteză de atac",
-      max: function () { return player.atkInterval <= 150; },
-      go: function () { player.atkInterval = Math.max(150, Math.round(player.atkInterval * 0.86)); } },
-    { id: "move", glyph: "»", nm: "Pas ușor", ds: "+14% viteză de mișcare",
-      max: function () { return player.speed >= 340; },
-      go: function () { player.speed = Math.round(player.speed * 1.14); } },
-    { id: "hp", glyph: "✚", nm: "Vitalitate", ds: "+25 viață maximă, vindecare completă",
-      max: function () { return false; },
-      go: function () { player.maxHp += 25; player.hp = player.maxHp; } },
-    { id: "heal", glyph: "♥", nm: "Bandaje", ds: "Recuperezi 50% din viață",
-      max: function () { return false; },
-      go: function () { player.hp = Math.min(player.maxHp, player.hp + player.maxHp * 0.5); } },
-    { id: "explode", glyph: "✺", nm: "Sfârșit exploziv", ds: "Inamicii uciși explodează",
-      max: function () { return player.explode >= 60; },
-      go: function () { player.explode += 15; } }
-  ];
-
-  function offerPowers() {
-    state = S_LEVEL;
-    joyUp();
-    sfx.levelUp();
-    toastEl.classList.remove("show");   // fara text ramas in spatele cartilor
-    // doar puterile deblocate si potrivite clasei curente intra in pachet
-    var pool = POWERS.filter(function (p) {
-      if (p.classes && p.classes.indexOf(player.classId) < 0) return false;
-      return !p.max() && isUnlocked(p.id);
-    });
-    var picks = [];
-    var want = player.cardCount || 3;
-    while (picks.length < want && pool.length) picks.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
-
-    var box = document.getElementById("cards");
-    box.innerHTML = "";
-    picks.forEach(function (p) {
-      var b = document.createElement("button");
-      b.className = "card"; b.type = "button";
-      b.innerHTML = '<div class="glyph">' + p.glyph + '</div><div class="txt"><div class="nm">' +
-        p.nm + '</div><div class="ds">' + p.ds + '</div></div>';
-      b.addEventListener("click", function () {
-        p.go();
-        player.powers.push(p.id);
-        document.getElementById("levelOverlay").classList.add("hidden");
-        state = S_PLAY;
-        syncHud();
-      });
-      box.appendChild(b);
-    });
-    document.getElementById("levelOverlay").classList.remove("hidden");
-  }
-
-  function gainXp(n) {
-    player.xp += n;
-    while (player.xp >= player.xpNext) {
-      player.xp -= player.xpNext;
-      player.level++;
-      player.xpNext = Math.round(8 + player.level * 4.5);
-      offerPowers();
-    }
-    syncHud();
-  }
-
-  // ====================== EFECTE ======================
-  function burst(x, y, rgb, n, spd) {
-    if (particles.length > 200) return;
-    for (var i = 0; i < n; i++) {
-      var a = Math.random() * Math.PI * 2;
-      var s = (spd || 130) * (0.35 + Math.random() * 0.8);
-      particles.push({ x: x, y: y, vx: Math.cos(a) * s, vy: Math.sin(a) * s,
-        life: 0.3 + Math.random() * 0.3, max: 0.6, rgb: rgb, r: 1.6 + Math.random() * 2.4 });
-    }
-  }
-
-  function shake(mag, time) { shakeMag = Math.max(shakeMag, mag); shakeTime = Math.max(shakeTime, time); }
-
-  // Numere de daună plutitoare - aurii si mai mari la crit, rosii cand
-  // jucatorul e cel lovit. Un singur pool, ca particulele.
-  function spawnDamageNumber(x, y, amount, kind) {
-    if (damageNumbers.length > 80) return;
-    damageNumbers.push({
-      x: x + (Math.random() - 0.5) * 14, y: y - 6,
-      vy: -62, text: String(Math.round(amount)),
-      kind: kind || "hit",          // "hit" | "crit" | "hurt"
-      life: 0.7, max: 0.7
-    });
-  }
-
-  function updateDamageNumbers(dt) {
-    for (var i = damageNumbers.length - 1; i >= 0; i--) {
-      var d = damageNumbers[i];
-      d.y += d.vy * dt; d.vy *= 0.92;
-      d.life -= dt;
-      if (d.life <= 0) damageNumbers.splice(i, 1);
-    }
-  }
-
-  var toastEl = document.getElementById("toast");
-  function toast(text) {
-    toastEl.textContent = text;
-    toastEl.classList.remove("show");
-    void toastEl.offsetWidth;
-    toastEl.classList.add("show");
-  }
-
-  // ====================== TRAGERE ======================
-  function nearestEnemy() {
-    var best = null, bd = Infinity;
-    for (var i = 0; i < enemies.length; i++) {
-      var e = enemies[i];
-      var d = (e.x - player.x) * (e.x - player.x) + (e.y - player.y) * (e.y - player.y);
-      if (d < bd) { bd = d; best = e; }
-    }
-    return best;
-  }
-
-  var CRIT_MULT = 2;
-  var lastMeleeCrit = false;   // ultima lovitura corp la corp a fost critica? (Knight nu are bullets unde sa stea flagul)
-
-  function fireAt(target, mult) {
-    var m = mult === undefined ? 1 : mult;
-    var crit = Math.random() < (player.critChance || 0);
-    var cm = crit ? CRIT_MULT : 1;
-    var base = Math.atan2(target.y - player.y, target.x - player.x);
-    player.facing = base;
-    var n = player.projCount, spread = 0.14;
-    for (var i = 0; i < n; i++) {
-      var off = n === 1 ? 0 : (i - (n - 1) / 2) * spread;
-      var a = base + off;
-      pBullets.push({
-        x: player.x + Math.cos(a) * 16, y: player.y + Math.sin(a) * 16,
-        vx: Math.cos(a) * player.projSpeed, vy: Math.sin(a) * player.projSpeed,
-        r: m < 1 ? 3.6 : 4.5,          // focurile din mers arata vizibil mai slabe
-        dmg: player.damage * m * cm, life: 2.2,
-        pierce: player.pierce, bounces: player.bounces,
-        burn: player.burn * m, hitIds: [], trail: [], weak: m < 1,
-        cls: player.classId, crit: crit
-      });
-    }
-    var rgb = player.classId === "mage" ? "178,107,255" : "62,232,255";
-    burst(player.x + Math.cos(base) * 18, player.y + Math.sin(base) * 18, crit ? "255,207,92" : rgb, m < 1 ? 2 : 3, crit ? 130 : 90);
-    if (m < 1) sfx.weakShoot(); else sfx.shoot();
-    if (crit) sfx.crit();
-  }
-
-  // Knight nu trage - loveste in arc toti inamicii aflati in raza si unghiul
-  // armei, indiferent cati sunt. Foloseste acelasi multiplicator MOVE_DMG ca
-  // tragerea la distanta, ca regula "pe loc = damage plin" sa ramana valabila
-  // pentru toate clasele.
-  function meleeAttack(target, mult) {
-    var m = mult === undefined ? 1 : mult;
-    var crit = Math.random() < (player.critChance || 0);
-    var cm = crit ? CRIT_MULT : 1;
-    var base = Math.atan2(target.y - player.y, target.x - player.x);
-    player.facing = base;
-    var range = player.meleeRange, arc = player.meleeArc;
-    for (var i = enemies.length - 1; i >= 0; i--) {
-      var e = enemies[i];
-      var dx = e.x - player.x, dy = e.y - player.y;
-      var dist = Math.hypot(dx, dy);
-      if (dist > range + e.r) continue;
-      var ang = Math.atan2(dy, dx);
-      var diff = Math.abs(Math.atan2(Math.sin(ang - base), Math.cos(ang - base)));
-      if (diff > arc / 2) continue;
-      var meleeDmg = player.damage * m * cm;
-      e.hp -= meleeDmg;
-      e.flash = 0.12;
-      if (player.burn > 0) { e.burnDps = player.burn * m; e.burnT = 2.2; }
-      burst(e.x, e.y, crit ? "255,235,150" : "255,207,92", 4, crit ? 150 : 110);
-      spawnDamageNumber(e.x, e.y, meleeDmg, crit ? "crit" : "hit");
-      sfx.hit();
-      if (e.hp <= 0) killEnemy(i, e);
-    }
-    slashes.push({ x: player.x, y: player.y, angle: base, range: range, arc: arc, t: 0.16, max: 0.16 });
-    lastMeleeCrit = crit;
-    sfx.swing();
-    if (crit) sfx.crit();
-  }
-
-  // Punct unic de atac: dirijeaza spre tragere la distanta sau lovitura corp
-  // la corp, dupa clasa jucatorului curent.
-  function performAttack(target, mult) {
-    if (player.meleeRange > 0) meleeAttack(target, mult); else fireAt(target, mult);
-  }
-
-  // Un atac manual, declansat din miscare. Cadenta maxima e aceeasi cu cea
-  // automata, deci apasatul rapid nu poate depasi ritmul normal - doar il atinge.
-  function manualShot() {
-    if (!player || state !== S_PLAY) return false;
-    if (player.manualCd > 0) return false;
-    // doar din miscare: pe loc tragerea automata acopera deja damage-ul plin,
-    // altfel apasatul s-ar aduna peste ea si ar strica echilibrul
-    if (inputVector().mag <= 0.14) return false;
-    var tgt = nearestEnemy();
-    if (!tgt) return false;
-    performAttack(tgt, MOVE_DMG);
-    player.manualCd = player.atkInterval / 1000;
-    fireBtnEl.classList.add("kick");
-    setTimeout(function () { fireBtnEl.classList.remove("kick"); }, 70);
-    return true;
-  }
-
-  function enemyShoot(e, tx, ty) {
-    var a = Math.atan2(ty - e.y, tx - e.x);
-    var sp = 300;
-    eBullets.push({ x: e.x, y: e.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
-      r: 5.5, dmg: e.damage, life: 3.2, trail: [] });
-  }
-
-  // ====================== UPDATE ======================
-  function update(dt) {
-    if (state !== S_PLAY || !player) return;
-
-    var iv = inputVector();
-    var moving = iv.mag > 0.14;
-
-    // --- MECANICA DE BAZA ---
-    // Statul pe loc da mereu damage plin. Ce se intampla in miscare depinde de mod,
-    // dar orice foc tras din mers e slabit cu MOVE_DMG.
-    if (moving) {
-      player.x += iv.x * player.speed * iv.mag * dt;
-      player.y += iv.y * player.speed * iv.mag * dt;
-      player.facing = Math.atan2(iv.y, iv.x);
-      player.settle = 0.12;               // trebuie sa stai nemiscat putin ca sa tragi automat
-      player.atkTimer = Math.min(player.atkTimer, player.atkInterval / 1000);
-    } else if (player.settle > 0) {
-      player.settle -= dt;
-    }
-
-    if (player.manualCd > 0) player.manualCd -= dt;
-
-    // tragere automata: pe loc in orice mod, iar in miscare doar in modul liber
-    var autoFires = moving ? (fireMode === "liber") : (player.settle <= 0);
-    if (autoFires) {
-      player.atkTimer -= dt;
-      if (player.atkTimer <= 0) {
-        var tgt = nearestEnemy();
-        if (tgt) { performAttack(tgt, moving ? MOVE_DMG : 1); player.atkTimer = player.atkInterval / 1000; }
-        else player.atkTimer = 0;
-      }
-    }
-
-    // tragere manuala tinuta apasat (modul hibrid, doar din miscare)
-    if (fireMode === "hibrid" && moving && fire.held) {
-      fire.holdT -= dt;
-      if (fire.holdT <= 0 && manualShot()) fire.holdT = HOLD_MULT * player.atkInterval / 1000;
-    }
-
-    updateFireBtn(moving);
-
-    // limite camera + usa
-    clampToRoom(player);
-
-    if (player.hurtCd > 0) player.hurtCd -= dt;
-    if (player.flash > 0) player.flash -= dt;
-
-    updateEnemies(dt);
-    updateBullets(dt);
-    updateOrbs(dt);
-    updateParticles(dt);
-    updateTelegraphs(dt);
-    updateSlashes(dt);
-    updateDamageNumbers(dt);
-
-    if (shakeTime > 0) { shakeTime -= dt; if (shakeTime <= 0) shakeMag = 0; }
-
-    // camera curatata -> deschide usa
-    if (!doorOpen && enemies.length === 0) {
-      doorOpen = true;
-      toast("Ușa s-a deschis");
-      sfx.doorOpen();
-    }
-
-    // trecere prin usa
-    if (doorOpen && !transitioning &&
-        player.y <= ROOM.y0 + 6 &&
-        Math.abs(player.x - VW / 2) < DOOR_W / 2) {
-      nextRoom();
-    }
-
-    if (player.hp <= 0) {
-      if (player.revives > 0) revive(); else gameOver();
-    }
-    syncHud();
-  }
-
-  function clampToRoom(o) {
-    var r = o.r;
-    if (o.x < ROOM.x0 + r) o.x = ROOM.x0 + r;
-    if (o.x > ROOM.x1 - r) o.x = ROOM.x1 - r;
-    if (o.y > ROOM.y1 - r) o.y = ROOM.y1 - r;
-    // marginea de sus: usa lasa sa treaca doar cand e deschisa
-    var inDoor = doorOpen && Math.abs(o.x - VW / 2) < DOOR_W / 2 - 2;
-    var minY = inDoor ? ROOM.y0 - 4 : ROOM.y0 + r;
-    if (o.y < minY) o.y = minY;
-  }
-
-  function nextRoom() {
-    transitioning = true;
-    runShards += Math.round((8 + room * 2) * currentMap().diff * eventRewardMult());   // rasplata pentru camera tocmai curatata
-    meta.totalRooms++;                  // progresul spre deblocari nu se pierde niciodata
-    saveMeta();
-    room++;
-    player.x = VW / 2; player.y = ROOM.y1 - 70;
-    player.hp = Math.min(player.maxHp, player.hp + player.maxHp * 0.12); // mica rasplata
-    buildRoom();
-    syncHud();
-    setTimeout(function () { transitioning = false; }, 120);
-  }
-
-  function updateEnemies(dt) {
-    for (var i = enemies.length - 1; i >= 0; i--) {
-      var e = enemies[i];
-      if (e.flash > 0) e.flash -= dt;
-      if (e.touchCd > 0) e.touchCd -= dt;
-
-      // arsura
-      if (e.burnT > 0) {
-        e.burnT -= dt;
-        e.hp -= e.burnDps * dt;
-        if (Math.random() < 0.25) burst(e.x, e.y, "255,140,60", 1, 40);
-        if (e.hp <= 0) { killEnemy(i, e); continue; }
-      }
-
-      var dx = player.x - e.x, dy = player.y - e.y;
-      var dist = Math.hypot(dx, dy) || 1;
-
-      if (e.type === "melee") {
-        e.x += (dx / dist) * e.speed * dt;
-        e.y += (dy / dist) * e.speed * dt;
-      } else if (e.type === "ranged") {
-        e.phaseT -= dt;
-        var want = 250;
-        if (e.phase === "reposition") {
-          var dir = dist > want + 40 ? 1 : (dist < want - 40 ? -1 : 0);
-          e.x += (dx / dist) * e.speed * dir * dt;
-          e.y += (dy / dist) * e.speed * dir * dt;
-          // deplasare laterala ca sa nu stea ca o tinta fixa
-          e.x += (-dy / dist) * e.speed * 0.45 * dt;
-          e.y += (dx / dist) * e.speed * 0.45 * dt;
-          if (e.phaseT <= 0) { e.phase = "aim"; e.phaseT = 0.85; e.aimX = player.x; e.aimY = player.y;
-            telegraphs.push({ kind: "spot", x: player.x, y: player.y, r: 34, t: 0.85, max: 0.85, owner: e }); }
-        } else if (e.phase === "aim") {
-          if (e.phaseT <= 0) {
-            enemyShoot(e, e.aimX, e.aimY);
-            e.phase = "reposition"; e.phaseT = 1.1 + Math.random() * 0.8;
-          }
-        }
-      } else if (e.type === "charger") {
-        e.phaseT -= dt;
-        if (e.phase === "stalk") {
-          e.x += (dx / dist) * e.speed * dt;
-          e.y += (dy / dist) * e.speed * dt;
-          if (e.phaseT <= 0 && dist < 330) {
-            e.phase = "wind"; e.phaseT = 0.75;
-            e.aimX = player.x; e.aimY = player.y;
-            telegraphs.push({ kind: "line", x: e.x, y: e.y, tx: player.x, ty: player.y, t: 0.75, max: 0.75, owner: e });
-          }
-        } else if (e.phase === "wind") {
-          if (e.phaseT <= 0) {
-            var a = Math.atan2(e.aimY - e.y, e.aimX - e.x);
-            e.dashVx = Math.cos(a) * 520; e.dashVy = Math.sin(a) * 520;
-            e.phase = "dash"; e.phaseT = 0.42;
-          }
-        } else if (e.phase === "dash") {
-          e.x += e.dashVx * dt; e.y += e.dashVy * dt;
-          e.dashVx *= 0.94; e.dashVy *= 0.94;
-          if (Math.random() < 0.6) burst(e.x, e.y, "255,51,85", 1, 60);
-          if (e.phaseT <= 0) { e.phase = "stalk"; e.phaseT = 1.2 + Math.random() * 0.8; }
-        }
-      } else if (e.type === "boss") {
-        e.phaseT -= dt;
-        if (e.phase === "stalk") {
-          e.x += (dx / dist) * e.speed * dt;
-          e.y += (dy / dist) * e.speed * dt;
-          if (e.phaseT <= 0) {
-            var pick = Math.random() < 0.5 ? "windMelee" : "windRanged";
-            e.phase = pick; e.phaseT = 0.7;
-            if (pick === "windMelee") {
-              e.aimX = player.x; e.aimY = player.y;
-              telegraphs.push({ kind: "line", x: e.x, y: e.y, tx: player.x, ty: player.y, t: 0.7, max: 0.7, owner: e });
-            } else {
-              telegraphs.push({ kind: "spot", x: e.x, y: e.y, r: 130, t: 0.7, max: 0.7, owner: e });
-            }
-          }
-        } else if (e.phase === "windMelee") {
-          if (e.phaseT <= 0) {
-            var ang = Math.atan2(e.aimY - e.y, e.aimX - e.x);
-            e.dashVx = Math.cos(ang) * 460; e.dashVy = Math.sin(ang) * 460;
-            e.phase = "dash"; e.phaseT = 0.4;
-          }
-        } else if (e.phase === "dash") {
-          e.x += e.dashVx * dt; e.y += e.dashVy * dt;
-          e.dashVx *= 0.92; e.dashVy *= 0.92;
-          if (Math.random() < 0.6) burst(e.x, e.y, "255,51,85", 1, 60);
-          if (e.phaseT <= 0) { e.phase = "stalk"; e.phaseT = 1.3 + Math.random() * 0.5; }
-        } else if (e.phase === "windRanged") {
-          if (e.phaseT <= 0) {
-            var rays = 8;
-            for (var ri = 0; ri < rays; ri++) {
-              var a2 = (Math.PI * 2 / rays) * ri;
-              eBullets.push({ x: e.x, y: e.y, vx: Math.cos(a2) * 220, vy: Math.sin(a2) * 220,
-                r: 5.5, dmg: e.damage * 0.7, life: 2.6, trail: [] });
-            }
-            e.phase = "stalk"; e.phaseT = 1.3 + Math.random() * 0.5;
-          }
-        }
-      } else if (e.type === "king") {
-        // faza a II-a se declanseaza o singura data, la 50% viata: cheama doi
-        // sacoliti si accelereaza toate atacurile
-        if (e.kingPhase === 1 && e.hp <= e.maxHp * 0.5) {
-          e.kingPhase = 2;
-          e.phase = "stalk"; e.phaseT = 0.6;
-          toast("Bătrânul Rege: Faza a II-a!");
-          shake(9, 0.3);
-          burst(e.x, e.y, "178,107,255", 20, 220);
-          sfx.bossDown();
-          spawnEnemy("melee"); spawnEnemy("melee");
-        }
-        var fast = e.kingPhase === 2;
-        e.phaseT -= dt;
-        if (e.phase === "stalk") {
-          e.x += (dx / dist) * e.speed * dt;
-          e.y += (dy / dist) * e.speed * dt;
-          if (e.phaseT <= 0) {
-            var pickK = Math.random() < 0.5 ? "windMelee" : "windRanged";
-            e.phase = pickK; e.phaseT = fast ? 0.5 : 0.7;
-            if (pickK === "windMelee") {
-              e.aimX = player.x; e.aimY = player.y;
-              telegraphs.push({ kind: "line", x: e.x, y: e.y, tx: player.x, ty: player.y, t: e.phaseT, max: e.phaseT, owner: e });
-            } else {
-              telegraphs.push({ kind: "spot", x: e.x, y: e.y, r: 150, t: e.phaseT, max: e.phaseT, owner: e });
-            }
-          }
-        } else if (e.phase === "windMelee") {
-          if (e.phaseT <= 0) {
-            var angK = Math.atan2(e.aimY - e.y, e.aimX - e.x);
-            var dashSp = fast ? 560 : 460;
-            e.dashVx = Math.cos(angK) * dashSp; e.dashVy = Math.sin(angK) * dashSp;
-            e.phase = "dash"; e.phaseT = 0.4;
-          }
-        } else if (e.phase === "dash") {
-          e.x += e.dashVx * dt; e.y += e.dashVy * dt;
-          e.dashVx *= 0.92; e.dashVy *= 0.92;
-          if (Math.random() < 0.6) burst(e.x, e.y, "178,107,255", 1, 60);
-          if (e.phaseT <= 0) { e.phase = "stalk"; e.phaseT = (fast ? 0.9 : 1.3) + Math.random() * 0.5; }
-        } else if (e.phase === "windRanged") {
-          if (e.phaseT <= 0) {
-            var raysK = fast ? 12 : 8, spdK = fast ? 260 : 220;
-            for (var rk = 0; rk < raysK; rk++) {
-              var ak = (Math.PI * 2 / raysK) * rk;
-              eBullets.push({ x: e.x, y: e.y, vx: Math.cos(ak) * spdK, vy: Math.sin(ak) * spdK,
-                r: 5.5, dmg: e.damage * 0.7, life: 2.6, trail: [] });
-            }
-            e.phase = "stalk"; e.phaseT = (fast ? 0.9 : 1.3) + Math.random() * 0.5;
-          }
-        }
-      }
-
-      clampToRoom(e);
-
-      // contact
-      if (dist < e.r + player.r && e.touchCd <= 0 && player.hurtCd <= 0) {
-        hurtPlayer(e.damage);
-        e.touchCd = 0.6;
-        var pa = Math.atan2(-dy, -dx);
-        player.x += Math.cos(pa) * 14; player.y += Math.sin(pa) * 14;
-      }
-    }
-  }
-
-  function killEnemy(index, e) {
-    burst(e.x, e.y, "255,51,85", 14, 190);
-    orbs.push({ x: e.x, y: e.y, r: 5, xp: e.xp, t: 0 });
-    enemies.splice(index, 1);
-    kills++;
-    runShards += 1;
-    shake(3, 0.12);
-
-    if (e.type === "king") {
-      runShards += Math.round(120 * currentMap().diff * eventRewardMult());
-      shake(14, 0.4);
-      sfx.victory();
-      victoryRun();
-    } else if (e.type === "boss") {
-      runShards += Math.round((20 + room * 3) * currentMap().diff * eventRewardMult());
-      shake(10, 0.32);
-      toast("Gardian învins!");
-      sfx.bossDown();
-    } else {
-      sfx.kill();
-    }
-
-    // sfarsit exploziv: mortul raneste ce e in jur (putere deblocabila)
-    if (player && player.explode > 0) {
-      var rad = 78;
-      burst(e.x, e.y, "255,180,84", 12, 240);
-      for (var i = enemies.length - 1; i >= 0; i--) {
-        var o = enemies[i];
-        if (Math.hypot(o.x - e.x, o.y - e.y) < rad) {
-          o.hp -= player.explode;
-          o.flash = 0.12;
-          if (o.hp <= 0) killEnemy(i, o);
-        }
-      }
-    }
-  }
-
-  function hurtPlayer(dmg) {
-    var taken = Math.max(1, Math.round(dmg - player.armor));
-    player.hp -= taken;
-    player.hurtCd = 0.45;
-    player.flash = 0.22;
-    burst(player.x, player.y, "255,51,85", 9, 150);
-    spawnDamageNumber(player.x, player.y, taken, "hurt");
-    shake(7, 0.2);
-    sfx.hurt();
-  }
-
-  function updateBullets(dt) {
-    // proiectilele jucatorului
-    for (var i = pBullets.length - 1; i >= 0; i--) {
-      var b = pBullets[i];
-      pushTrail(b);
-      b.x += b.vx * dt; b.y += b.vy * dt; b.life -= dt;
-
-      var dead = b.life <= 0;
-
-      // ricoseu din pereti
-      if (!dead) {
-        if (b.x < ROOM.x0 + b.r) { if (b.bounces > 0) { b.x = ROOM.x0 + b.r; b.vx = -b.vx; b.bounces--; b.hitIds.length = 0; } else dead = true; }
-        else if (b.x > ROOM.x1 - b.r) { if (b.bounces > 0) { b.x = ROOM.x1 - b.r; b.vx = -b.vx; b.bounces--; b.hitIds.length = 0; } else dead = true; }
-        if (b.y < ROOM.y0 + b.r) { if (b.bounces > 0) { b.y = ROOM.y0 + b.r; b.vy = -b.vy; b.bounces--; b.hitIds.length = 0; } else dead = true; }
-        else if (b.y > ROOM.y1 - b.r) { if (b.bounces > 0) { b.y = ROOM.y1 - b.r; b.vy = -b.vy; b.bounces--; b.hitIds.length = 0; } else dead = true; }
-      }
-
-      if (!dead) {
-        for (var j = enemies.length - 1; j >= 0; j--) {
-          var e = enemies[j];
-          if (b.hitIds.indexOf(e) >= 0) continue;
-          if (Math.hypot(e.x - b.x, e.y - b.y) < e.r + b.r) {
-            e.hp -= b.dmg;
-            e.flash = 0.12;
-            if (b.burn > 0) { e.burnDps = b.burn; e.burnT = 2.2; }
-            burst(b.x, b.y, "62,232,255", 5, 130);
-            spawnDamageNumber(e.x, e.y, b.dmg, b.crit ? "crit" : "hit");
-            sfx.hit();
-            if (e.hp <= 0) { killEnemy(j, e); }
-            if (b.pierce > 0) { b.pierce--; b.hitIds.push(e); }
-            else { dead = true; }
-            break;
-          }
-        }
-      }
-
-      // curatare instant (fara gunoi in memorie)
-      if (dead) pBullets.splice(i, 1);
-    }
-
-    // proiectilele inamicilor
-    for (var k = eBullets.length - 1; k >= 0; k--) {
-      var eb = eBullets[k];
-      pushTrail(eb);
-      eb.x += eb.vx * dt; eb.y += eb.vy * dt; eb.life -= dt;
-      var gone = eb.life <= 0 ||
-        eb.x < ROOM.x0 - 20 || eb.x > ROOM.x1 + 20 ||
-        eb.y < ROOM.y0 - 20 || eb.y > ROOM.y1 + 20;
-      if (!gone && player.hurtCd <= 0 && Math.hypot(player.x - eb.x, player.y - eb.y) < player.r + eb.r) {
-        hurtPlayer(eb.dmg);
-        gone = true;
-      }
-      if (gone) eBullets.splice(k, 1);
-    }
-  }
-
-  function pushTrail(b) {
-    b.trail.push(b.x, b.y);
-    if (b.trail.length > 12) b.trail.splice(0, 2);
-  }
-
-  function updateOrbs(dt) {
-    for (var i = orbs.length - 1; i >= 0; i--) {
-      var o = orbs[i];
-      o.t += dt;
-      var dx = player.x - o.x, dy = player.y - o.y;
-      var d = Math.hypot(dx, dy) || 1;
-      if (d < 150) { var pull = 260 * dt; o.x += (dx / d) * pull; o.y += (dy / d) * pull; }
-      if (d < player.r + 8) { gainXp(o.xp); burst(o.x, o.y, "94,240,182", 5, 90); orbs.splice(i, 1); }
-    }
-  }
-
-  function updateParticles(dt) {
-    for (var i = particles.length - 1; i >= 0; i--) {
-      var p = particles[i];
-      p.x += p.vx * dt; p.y += p.vy * dt;
-      p.vx *= 0.9; p.vy *= 0.9;
-      p.life -= dt;
-      if (p.life <= 0) particles.splice(i, 1);
-    }
-  }
-
-  function updateTelegraphs(dt) {
-    for (var i = telegraphs.length - 1; i >= 0; i--) {
-      var t = telegraphs[i];
-      t.t -= dt;
-      if (t.kind === "line" && t.owner) { t.x = t.owner.x; t.y = t.owner.y; }
-      if (t.t <= 0) telegraphs.splice(i, 1);
-    }
-  }
-
-  function updateSlashes(dt) {
-    for (var i = slashes.length - 1; i >= 0; i--) {
-      slashes[i].t -= dt;
-      if (slashes[i].t <= 0) slashes.splice(i, 1);
-    }
-  }
-
-  function updateFireBtn(moving) {
-    if (fireMode !== "hibrid") { fireBtnEl.style.display = "none"; return; }
-    fireBtnEl.style.display = "flex";
-    // aprins doar cand apasatul chiar face ceva: in miscare, cu tinta, fara racire
-    var armed = moving && player.manualCd <= 0 && enemies.length > 0;
-    fireBtnEl.classList.toggle("armed", armed);
-    fireBtnEl.style.opacity = moving ? "1" : "0.45";
-  }
-
-  // ====================== HUD ======================
-  var hpFill = document.getElementById("hpFill"), xpFill = document.getElementById("xpFill");
-  var hpVal = document.getElementById("hpVal"), hpMax = document.getElementById("hpMax");
-  var xpNum = document.getElementById("xpNum");
-  var roomNum = document.getElementById("roomNum"), lvlNum = document.getElementById("lvlNum");
-  var abilityRowEl = document.getElementById("abilityRow");
-  var bossBarEl = document.getElementById("bossBar");
-  var lastPowerCount = -1;    // evitam sa rescriem DOM-ul in fiecare frame degeaba
-
-  function syncHud() {
-    if (!player) return;
-    hpFill.style.width = Math.max(0, (player.hp / player.maxHp) * 100) + "%";
-    hpVal.textContent = String(Math.max(0, Math.round(player.hp)));
-    hpMax.textContent = String(player.maxHp);
-    xpFill.style.width = Math.min(100, (player.xp / player.xpNext) * 100) + "%";
-    xpNum.textContent = Math.floor(player.xp) + "/" + player.xpNext;
-    roomNum.textContent = String(room);
-    lvlNum.textContent = String(player.level);
-
-    if (player.powers.length !== lastPowerCount) {
-      lastPowerCount = player.powers.length;
-      abilityRowEl.innerHTML = player.powers.map(function (id) {
-        var p = POWERS.filter(function (x) { return x.id === id; })[0];
-        return p ? '<div class="abilitySlot" title="' + p.nm + '">' + p.glyph + '</div>' : "";
-      }).join("");
-    }
-
-    var king = null;
-    for (var ki = 0; ki < enemies.length; ki++) { if (enemies[ki].type === "king") { king = enemies[ki]; break; } }
-    if (king) {
-      bossBarEl.classList.remove("hidden");
-      document.getElementById("bossFill").style.width = Math.max(0, (king.hp / king.maxHp) * 100) + "%";
-      document.getElementById("bossPhase").textContent = king.kingPhase === 2 ? "Faza a II-a" : "Faza I";
-    } else {
-      bossBarEl.classList.add("hidden");
-    }
-  }
-
-  // ====================== RENDER ======================
-  function render(time) {
-    // fundal
-    ctx.fillStyle = "#070b14";
-    ctx.fillRect(0, 0, VW, VH);
-
-    ctx.save();
-    if (shakeMag > 0) {
-      ctx.translate((Math.random() - 0.5) * shakeMag, (Math.random() - 0.5) * shakeMag);
-    }
-
-    drawRoom(time);
-
-    // telegrafe (sub entitati - sunt marcaje pe podea)
-    drawTelegraphs(time);
-
-    drawOrbs(time);
-
-    ctx.globalCompositeOperation = "lighter";
-    drawBulletTrails();
-    ctx.globalCompositeOperation = "source-over";
-
-    drawEnemies();
-    if (player && state !== S_MENU) drawPlayer(time);
-
-    ctx.globalCompositeOperation = "lighter";
-    drawBulletHeads();
-    drawSlashes();
-    drawParticles();
-    ctx.globalCompositeOperation = "source-over";
-
-    drawDamageNumbers();
-
-    ctx.restore();
-  }
-
-  function drawRoom(time) {
-    var mp = currentMap();
-
-    // podea
-    ctx.fillStyle = mp.floor;
-    ctx.fillRect(ROOM.x0, ROOM.y0, ROOM.x1 - ROOM.x0, ROOM.y1 - ROOM.y0);
-
-    // dale
-    ctx.strokeStyle = "rgba(" + mp.edge + ",0.06)";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    for (var x = ROOM.x0 + 45; x < ROOM.x1; x += 45) { ctx.moveTo(x, ROOM.y0); ctx.lineTo(x, ROOM.y1); }
-    for (var y = ROOM.y0 + 45; y < ROOM.y1; y += 45) { ctx.moveTo(ROOM.x0, y); ctx.lineTo(ROOM.x1, y); }
-    ctx.stroke();
-
-    // ziduri
-    ctx.fillStyle = mp.wall;
-    ctx.fillRect(ROOM.x0 - WALL, ROOM.y0 - WALL, (ROOM.x1 - ROOM.x0) + WALL * 2, WALL); // sus
-    ctx.fillRect(ROOM.x0 - WALL, ROOM.y1, (ROOM.x1 - ROOM.x0) + WALL * 2, WALL);        // jos
-    ctx.fillRect(ROOM.x0 - WALL, ROOM.y0, WALL, ROOM.y1 - ROOM.y0);                     // stanga
-    ctx.fillRect(ROOM.x1, ROOM.y0, WALL, ROOM.y1 - ROOM.y0);                            // dreapta
-
-    // muchie luminata - contureaza clar arena, culoare specifica hartii
-    ctx.strokeStyle = "rgba(" + mp.edge + ",0.28)";
-    ctx.lineWidth = 2;
-    ctx.strokeRect(ROOM.x0, ROOM.y0, ROOM.x1 - ROOM.x0, ROOM.y1 - ROOM.y0);
-
-    // usa
-    var dx0 = VW / 2 - DOOR_W / 2;
-    if (doorOpen) {
-      var pulse = 0.55 + Math.sin(time / 240) * 0.2;
-      ctx.fillStyle = "#050810";
-      ctx.fillRect(dx0, ROOM.y0 - WALL, DOOR_W, WALL);
-      ctx.globalCompositeOperation = "lighter";
-      drawGlow(GLOW_GOLD, VW / 2, ROOM.y0 - 2, 62, pulse * 0.5);
-      ctx.globalCompositeOperation = "source-over";
-      ctx.strokeStyle = "rgba(255,207,92," + pulse.toFixed(2) + ")";
-      ctx.lineWidth = 2.5;
-      ctx.beginPath();
-      ctx.moveTo(dx0, ROOM.y0); ctx.lineTo(dx0, ROOM.y0 - WALL);
-      ctx.moveTo(dx0 + DOOR_W, ROOM.y0); ctx.lineTo(dx0 + DOOR_W, ROOM.y0 - WALL);
-      ctx.stroke();
-      // sageata
-      ctx.fillStyle = "rgba(255,207,92," + (pulse * 0.85).toFixed(2) + ")";
-      var ay = ROOM.y0 + 26 + Math.sin(time / 300) * 4;
-      ctx.beginPath();
-      ctx.moveTo(VW / 2, ay - 11); ctx.lineTo(VW / 2 + 9, ay + 3); ctx.lineTo(VW / 2 - 9, ay + 3);
-      ctx.closePath(); ctx.fill();
-    } else {
-      ctx.fillStyle = "#141d30";
-      ctx.fillRect(dx0, ROOM.y0 - WALL, DOOR_W, WALL);
-      ctx.strokeStyle = "rgba(130,150,184,0.28)";
-      ctx.lineWidth = 2;
-      ctx.strokeRect(dx0 + 1, ROOM.y0 - WALL + 1, DOOR_W - 2, WALL - 2);
-    }
-  }
-
-  function drawTelegraphs(time) {
-    telegraphs.forEach(function (t) {
-      var k = 1 - t.t / t.max;          // 0 -> 1 pe masura ce se apropie lovitura
-      var a = 0.18 + k * 0.42;
-      if (t.kind === "spot") {
-        ctx.beginPath();
-        ctx.fillStyle = "rgba(255,45,85," + (a * 0.35).toFixed(3) + ")";
-        ctx.arc(t.x, t.y, t.r, 0, Math.PI * 2); ctx.fill();
-        ctx.beginPath();
-        ctx.strokeStyle = "rgba(255,45,85," + a.toFixed(3) + ")";
-        ctx.lineWidth = 2.5;
-        ctx.arc(t.x, t.y, t.r, 0, Math.PI * 2); ctx.stroke();
-        // cerc care se strange = timpul ramas
-        ctx.beginPath();
-        ctx.strokeStyle = "rgba(255,120,140," + (a + 0.15).toFixed(3) + ")";
-        ctx.lineWidth = 2;
-        ctx.arc(t.x, t.y, Math.max(2, t.r * (1 - k)), 0, Math.PI * 2); ctx.stroke();
-      } else if (t.kind === "line") {
-        var ang = Math.atan2(t.ty - t.y, t.tx - t.x);
-        var len = 300, w = 26;
-        ctx.save();
-        ctx.translate(t.x, t.y); ctx.rotate(ang);
-        ctx.fillStyle = "rgba(255,45,85," + (a * 0.3).toFixed(3) + ")";
-        ctx.fillRect(0, -w / 2, len, w);
-        ctx.strokeStyle = "rgba(255,45,85," + a.toFixed(3) + ")";
-        ctx.lineWidth = 2;
-        ctx.strokeRect(0, -w / 2, len, w);
-        ctx.restore();
-      }
-    });
-  }
-
-  function drawOrbs(time) {
-    ctx.globalCompositeOperation = "lighter";
-    orbs.forEach(function (o) {
-      var b = 0.6 + Math.sin(time / 160 + o.x) * 0.25;
-      drawGlow(GLOW_MINT, o.x, o.y, 13, b);
-    });
-    ctx.globalCompositeOperation = "source-over";
-    orbs.forEach(function (o) {
-      ctx.beginPath(); ctx.fillStyle = "#c8fff0";
-      ctx.arc(o.x, o.y, 3, 0, Math.PI * 2); ctx.fill();
-    });
-  }
-
-  function drawBulletTrails() {
-    for (var i = 0; i < pBullets.length; i++) {
-      drawTrail(pBullets[i], pBullets[i].cls === "mage" ? "178,107,255" : "62,232,255");
-    }
-    for (var j = 0; j < eBullets.length; j++) drawTrail(eBullets[j], "255,51,85");
-  }
-
-  function drawTrail(b, rgb) {
-    var t = b.trail;
-    if (t.length < 4) return;
-    for (var i = 0; i < t.length - 2; i += 2) {
-      var f = (i / (t.length - 2));
-      ctx.strokeStyle = "rgba(" + rgb + "," + (f * 0.5).toFixed(3) + ")";
-      ctx.lineWidth = b.r * (0.35 + f * 1.1);
-      ctx.lineCap = "round";
-      ctx.beginPath();
-      ctx.moveTo(t[i], t[i + 1]);
-      ctx.lineTo(t[i + 2], t[i + 3]);
-      ctx.stroke();
-    }
-  }
-
-  function drawBulletHeads() {
-    pBullets.forEach(function (b) {
-      var mage = b.cls === "mage";
-      drawGlow(mage ? GLOW_VIOLET : GLOW_CYAN, b.x, b.y, b.r * 3.4, 0.85);
-      ctx.globalCompositeOperation = "source-over";
-      ctx.beginPath(); ctx.fillStyle = mage ? "#f1e0ff" : "#e8fdff";
-      ctx.arc(b.x, b.y, b.r * 0.72, 0, Math.PI * 2); ctx.fill();
-      ctx.globalCompositeOperation = "lighter";
-    });
-    eBullets.forEach(function (b) {
-      drawGlow(GLOW_RED, b.x, b.y, b.r * 3.2, 0.85);
-      ctx.globalCompositeOperation = "source-over";
-      ctx.beginPath(); ctx.fillStyle = "#ffdde3";
-      ctx.arc(b.x, b.y, b.r * 0.62, 0, Math.PI * 2); ctx.fill();
-      ctx.globalCompositeOperation = "lighter";
-    });
-  }
-
-  function drawSlashes() {
-    slashes.forEach(function (s) {
-      var k = Math.max(0, s.t / s.max);
-      ctx.save();
-      ctx.translate(s.x, s.y); ctx.rotate(s.angle);
-      ctx.beginPath();
-      ctx.strokeStyle = "rgba(255,207,92," + (k * 0.9).toFixed(3) + ")";
-      ctx.lineWidth = 4 * k + 1;
-      ctx.arc(0, 0, s.range, -s.arc / 2, s.arc / 2);
-      ctx.stroke();
-      ctx.restore();
-    });
-  }
-
-  function drawParticles() {
-    particles.forEach(function (p) {
-      var a = Math.max(0, p.life / p.max);
-      ctx.beginPath();
-      ctx.fillStyle = "rgba(" + p.rgb + "," + (a * 0.85).toFixed(3) + ")";
-      ctx.arc(p.x, p.y, p.r * a, 0, Math.PI * 2);
-      ctx.fill();
-    });
-  }
-
-  function drawDamageNumbers() {
-    ctx.textAlign = "center";
-    damageNumbers.forEach(function (d) {
-      var a = Math.max(0, d.life / d.max);
-      var crit = d.kind === "crit", hurt = d.kind === "hurt";
-      ctx.font = "700 " + (crit ? 18 : 14) + "px " + '"Chakra Petch",sans-serif';
-      var rgb = hurt ? "255,120,130" : (crit ? "255,207,92" : "232,241,255");
-      ctx.fillStyle = "rgba(" + rgb + "," + a.toFixed(3) + ")";
-      ctx.fillText("-" + d.text, d.x, d.y);
-    });
-    ctx.textAlign = "left";
-  }
-
-  function drawEnemies() {
-    enemies.forEach(function (e) {
-      var hurt = e.flash > 0;
-      var winding = (e.phase === "aim" || e.phase === "wind");
-
-      ctx.globalCompositeOperation = "lighter";
-      drawGlow(e.type === "king" ? GLOW_VIOLET : GLOW_RED, e.x, e.y, e.r * (e.type === "king" ? 3 : 2.5), winding ? 0.75 : 0.45);
-      ctx.globalCompositeOperation = "source-over";
-
-      ctx.beginPath();
-      ctx.fillStyle = hurt ? "#ffffff" :
-        (e.type === "king" ? "#7a2ea8" : (e.type === "boss" ? "#ff8a3d" : (e.type === "charger" ? "#c22745" : (e.type === "ranged" ? "#e0405f" : "#ff3355"))));
-      if (e.type === "king") {
-        // octogon mare, cu inel dublu (aur + violet) - regele se vede de departe
-        var sides = 8, ang0 = -Math.PI / 2;
-        for (var si = 0; si < sides; si++) {
-          var sa = ang0 + (Math.PI * 2 / sides) * si;
-          var px = e.x + Math.cos(sa) * e.r, py = e.y + Math.sin(sa) * e.r;
-          if (si === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-        }
-        ctx.closePath(); ctx.fill();
-        ctx.beginPath();
-        ctx.strokeStyle = "rgba(255,207,92,0.7)"; ctx.lineWidth = 3;
-        ctx.arc(e.x, e.y, e.r + 8, 0, Math.PI * 2); ctx.stroke();
-        ctx.beginPath();
-        ctx.strokeStyle = "rgba(178,107,255,0.55)"; ctx.lineWidth = 2;
-        ctx.arc(e.x, e.y, e.r + 13, 0, Math.PI * 2); ctx.stroke();
-      } else if (e.type === "boss") {
-        // patrat mare rotit, cu inel auriu - se distinge clar de restul
-        ctx.save(); ctx.translate(e.x, e.y); ctx.rotate(Math.PI / 4);
-        ctx.fillRect(-e.r, -e.r, e.r * 2, e.r * 2);
-        ctx.restore();
-        ctx.beginPath();
-        ctx.strokeStyle = "rgba(255,207,92,0.65)"; ctx.lineWidth = 3;
-        ctx.arc(e.x, e.y, e.r + 7, 0, Math.PI * 2); ctx.stroke();
-      } else if (e.type === "charger") {
-        // patrat rotit = tanc
-        ctx.save(); ctx.translate(e.x, e.y); ctx.rotate(Math.PI / 4);
-        ctx.fillRect(-e.r * 0.8, -e.r * 0.8, e.r * 1.6, e.r * 1.6);
-        ctx.restore();
-      } else if (e.type === "ranged") {
-        // triunghi = tragator
-        ctx.moveTo(e.x, e.y - e.r);
-        ctx.lineTo(e.x + e.r * 0.9, e.y + e.r * 0.75);
-        ctx.lineTo(e.x - e.r * 0.9, e.y + e.r * 0.75);
-        ctx.closePath(); ctx.fill();
-      } else {
-        ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2); ctx.fill();
-      }
-
-      // bara de viata (regele are deja o bara mare separata, in HUD)
-      if (e.hp < e.maxHp && e.type !== "king") {
-        var w = e.r * 2.1, pct = Math.max(0, e.hp / e.maxHp);
-        ctx.fillStyle = "rgba(5,8,16,0.8)";
-        ctx.fillRect(e.x - w / 2, e.y - e.r - 8, w, 3.5);
-        ctx.fillStyle = e.burnT > 0 ? "#ff9040" : "#ff6b81";
-        ctx.fillRect(e.x - w / 2, e.y - e.r - 8, w * pct, 3.5);
-      }
-    });
-  }
-
-  function drawPlayer(time) {
-    var moving = inputVector().mag > 0.14;
-    var ready = !moving && player.settle <= 0;
-
-    // inel de "gata de tras" - feedback pentru mecanica principala
-    if (ready && enemies.length) {
-      var p = 0.35 + Math.sin(time / 180) * 0.15;
-      ctx.beginPath();
-      ctx.strokeStyle = "rgba(62,232,255," + p.toFixed(3) + ")";
-      ctx.lineWidth = 1.5;
-      ctx.arc(player.x, player.y, player.r + 8, 0, Math.PI * 2);
-      ctx.stroke();
-    }
-
-    var skinRgb = cosmeticById(meta.skin).rgb;
-    var skinGlow = SKIN_GLOWS[meta.skin] || GLOW_CYAN;
-
-    ctx.globalCompositeOperation = "lighter";
-    drawGlow(player.flash > 0 ? GLOW_RED : skinGlow, player.x, player.y, player.r * 3, 0.6);
-    ctx.globalCompositeOperation = "source-over";
-
-    ctx.beginPath();
-    ctx.fillStyle = player.flash > 0 ? "#ffd7dd" : "#fbfeff";
-    ctx.arc(player.x, player.y, player.r, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.lineWidth = 2.5;
-    ctx.strokeStyle = player.flash > 0 ? "#ff3355" : "rgb(" + skinRgb + ")";
-    ctx.stroke();
-
-    // arcul / directia
-    ctx.save();
-    ctx.translate(player.x, player.y);
-    ctx.rotate(player.facing);
-    ctx.strokeStyle = ready ? "#9df3ff" : "rgba(157,243,255,0.45)";
-    ctx.lineWidth = 3; ctx.lineCap = "round";
-    ctx.beginPath();
-    ctx.arc(6, 0, 9, -Math.PI * 0.6, Math.PI * 0.6);
-    ctx.stroke();
-    ctx.restore();
-  }
-
-  // ====================== BUCLA ======================
-  function frame(ts) {
-    var dt = Math.min((ts - lastTime) / 1000, 0.05);
-    lastTime = ts;
-    update(dt);
-    render(ts);
-    requestAnimationFrame(frame);
-  }
-
-  // ====================== FLUX ======================
-  function startRun() {
-    if (!activeSlot) return;   // fara profil activ nu exista nimic de pornit
-    hideAllOverlays();
-    resetRun();
-    state = S_PLAY;
-  }
-
-  // A doua torta: te ridici o data pe runda, cu jumatate de viata si aer in jur
-  function revive() {
-    player.revives--;
-    player.hp = player.maxHp * 0.5;
-    player.hurtCd = 1.6;
-    burst(player.x, player.y, "255,207,92", 26, 260);
-    shake(11, 0.3);
-    sfx.revive();
-    for (var i = enemies.length - 1; i >= 0; i--) {
-      if (Math.hypot(enemies[i].x - player.x, enemies[i].y - player.y) < 140) killEnemy(i, enemies[i]);
-    }
-    eBullets.length = 0;
-    toast("Torța se reaprinde");
-  }
-
-  function gameOver() {
-    state = S_OVER;
-    joyUp();
-    sfx.gameOver();
-
-    var earned = Math.round(runShards * (MODE_BONUS[fireMode] || 1));
-    meta.shards += earned;
-    meta.seasonEarned += earned;
-    if (room > meta.bestRoom) meta.bestRoom = room;
-    if (player.level > meta.bestLevel) meta.bestLevel = player.level;
-    saveMeta();
-
-    document.getElementById("fRoom").textContent = String(room);
-    document.getElementById("fKills").textContent = String(kills);
-    document.getElementById("fLvl").textContent = String(player.level);
-    document.getElementById("fShards").textContent = "+" + earned;
-    document.getElementById("fBonus").textContent =
-      MODE_BONUS[fireMode] > 1
-        ? "inclusiv +" + Math.round((MODE_BONUS[fireMode] - 1) * 100) + "% pentru modul " + fireMode
-        : "fără bonus de mod";
-    document.getElementById("overOverlay").classList.remove("hidden");
-  }
-
-  // Victoria de Campanie: Batranul Rege invins. Distincta de gameOver() - nu
-  // e o moarte, e un final reusit, cu propriul ecran si o lada de razboi.
-  function victoryRun() {
-    state = S_VICTORY;
-    joyUp();
-    document.getElementById("bossBar").classList.add("hidden");
-
-    var earned = Math.round(runShards * (MODE_BONUS[fireMode] || 1));
-    meta.shards += earned;
-    meta.seasonEarned += earned;
-    meta.chests += 1;
-    if (room > meta.bestRoom) meta.bestRoom = room;
-    if (player.level > meta.bestLevel) meta.bestLevel = player.level;
-    saveMeta();
-
-    document.getElementById("vRoom").textContent = String(room);
-    document.getElementById("vKills").textContent = String(kills);
-    document.getElementById("vLvl").textContent = String(player.level);
-    document.getElementById("vShards").textContent = "+" + earned;
-    document.getElementById("victoryOverlay").classList.remove("hidden");
-  }
-
-  document.getElementById("startBtn").addEventListener("click", startRun);
-  document.getElementById("retryBtn").addEventListener("click", startRun);
-  document.getElementById("victoryBackBtn").addEventListener("click", goToHub);
-
-  // ---------- tabara: upgrade-uri permanente ----------
-  var campOverlay = document.getElementById("campOverlay");
-  var shopEl = document.getElementById("shop");
-  var cameFrom = "start";               // unde ne intoarcem la Inapoi
-
-  function costOf(u) {
-    var lv = upLevel(u.id);
-    return lv >= u.max ? null : u.costs[lv];
-  }
-
-  function renderCamp() {
-    document.getElementById("purse").textContent = String(meta.shards);
-    document.getElementById("purseStart").textContent = String(meta.shards);
-
-    shopEl.innerHTML = "";
-    UPGRADES.forEach(function (u) {
-      var lv = upLevel(u.id), cost = costOf(u), affordable = cost !== null && meta.shards >= cost;
-
-      var pips = "";
-      for (var i = 0; i < u.max; i++) pips += '<div class="pip' + (i < lv ? " on" : "") + '"></div>';
-
-      var b = document.createElement("button");
-      b.className = "buy"; b.type = "button";
-      b.disabled = cost === null || !affordable;
-      b.innerHTML =
-        '<div class="info"><div class="nm">' + u.nm + '</div>' +
-        '<div class="ds">' + u.ds + '</div>' +
-        '<div class="pips">' + pips + '</div></div>' +
-        '<div class="price ' + (cost === null ? "maxed" : (affordable ? "" : "short")) + '">' +
-        (cost === null ? "MAXIM" : cost) + '</div>';
-
-      b.addEventListener("click", function () {
-        var c = costOf(u);
-        if (c === null || meta.shards < c) return;
-        meta.shards -= c;
-        meta.up[u.id] = upLevel(u.id) + 1;
-        saveMeta();
-        renderCamp();
-      });
-      shopEl.appendChild(b);
-    });
-
-    // traseul de deblocari
-    var nx = nextUnlock();
-    var nameEl = document.getElementById("trackName");
-    var fillEl = document.getElementById("trackFill");
-    var noteEl = document.getElementById("trackNote");
-    if (nx) {
-      var prev = 0;
-      for (var i = 0; i < UNLOCKS.length; i++) {
-        if (UNLOCKS[i].id === nx.id) break;
-        prev = UNLOCKS[i].rooms;
-      }
-      var pct = Math.max(0, Math.min(100, ((meta.totalRooms - prev) / (nx.rooms - prev)) * 100));
-      nameEl.textContent = nx.nm;
-      fillEl.style.width = pct + "%";
-      noteEl.textContent = meta.totalRooms + " / " + nx.rooms + " camere curățate în total · încă " +
-        (nx.rooms - meta.totalRooms);
-    } else {
-      nameEl.textContent = "toate deblocate";
-      fillEl.style.width = "100%";
-      noteEl.textContent = meta.totalRooms + " camere curățate în total. Cel mai departe: camera " + meta.bestRoom + ".";
-    }
-  }
-
-  function openCamp(from) {
-    cameFrom = from;
-    renderCamp();
-    hideAllOverlays();
-    campOverlay.classList.remove("hidden");
-  }
-
-  document.getElementById("campBtn").addEventListener("click", function () { openCamp("start"); });
-  document.getElementById("campBtn2").addEventListener("click", function () { openCamp("over"); });
-  document.getElementById("campBack").addEventListener("click", function () {
-    campOverlay.classList.add("hidden");
-    document.getElementById(cameFrom === "over" ? "overOverlay" : "startOverlay").classList.remove("hidden");
-    syncHub();
+  const shuffled = [...allSkills].sort(() => 0.5 - Math.random()).slice(0, 3);
+  const container = document.getElementById('skillOptions');
+  container.innerHTML = '';
+
+  shuffled.forEach(skill => {
+    const card = document.createElement('div');
+    card.className = 'skill-card';
+    card.innerHTML = `<div class="skill-title">${skill.title}</div><div class="skill-desc">${skill.desc}</div>`;
+    card.onclick = () => selectSkill(skill.id);
+    container.appendChild(card);
   });
 
-  // ---------- selector de mod de tragere ----------
-  // scopat la #modes, nu la .mode in general - selectorul de clasa de mai jos
-  // foloseste acelasi stil de buton, dar e un grup separat
-  var modeBtns = Array.prototype.slice.call(document.querySelectorAll("#modes .mode"));
+  document.getElementById('skillModal').style.display = 'flex';
+}
 
-  function setMode(m) {
-    fireMode = m;
-    try { localStorage.setItem("heroium.fireMode", m); } catch (err) {}
-    modeBtns.forEach(function (b) {
-      b.setAttribute("aria-pressed", String(b.dataset.mode === m));
-    });
-    if (fireBtnEl) fireBtnEl.style.display = (m === "hibrid") ? "flex" : "none";
+function selectSkill(skillId) {
+  if (skillId === 'multishot') hero.multishot += 1;
+  else if (skillId === 'damage') hero.damage = Math.round(hero.damage * 1.3);
+  else if (skillId === 'atkSpeed') hero.attackSpeed *= 0.75;
+  else if (skillId === 'heal') hero.hp = Math.min(hero.maxHp, hero.hp + hero.maxHp * 0.5);
+  else if (skillId === 'fire') hero.fireArrow = true;
+
+  document.getElementById('skillModal').style.display = 'none';
+  updateHUD();
+  wave++;
+  spawnWave();
+  gameRunning = true;
+  requestAnimationFrame(gameLoop);
+}
+
+function triggerGameOver() {
+  gameRunning = false;
+  sfx.playHit();
+  document.getElementById('gameOverStats').innerHTML = `Ai rezistat până la <b>Valul ${wave}</b><br>Inamici învinși: <b>${kills}</b><br>Monede colectate: <b>${gold}</b>`;
+  document.getElementById('gameOverModal').style.display = 'flex';
+}
+
+let lastTime = performance.now();
+
+function gameLoop(now) {
+  if (!gameRunning) return;
+  const dt = (now - lastTime) / 1000;
+  lastTime = now;
+
+  let moveX = 0, moveY = 0;
+
+  if (joystick.active) {
+    moveX = joystick.dx;
+    moveY = joystick.dy;
+  } else {
+    if (keys['KeyW'] || keys['ArrowUp']) moveY -= 1;
+    if (keys['KeyS'] || keys['ArrowDown']) moveY += 1;
+    if (keys['KeyA'] || keys['ArrowLeft']) moveX -= 1;
+    if (keys['KeyD'] || keys['ArrowRight']) moveX += 1;
+
+    const len = Math.hypot(moveX, moveY);
+    if (len > 0) { moveX /= len; moveY /= len; }
   }
 
-  modeBtns.forEach(function (b) {
-    b.addEventListener("click", function () { setMode(b.dataset.mode); });
-  });
-  setMode(fireMode);
+  const isMoving = Math.abs(moveX) > 0.1 || Math.abs(moveY) > 0.1;
 
-  // ---------- hub-ul profilului activ ----------
-  function syncHub() {
-    document.getElementById("hubName").textContent = meta.name;
-    document.getElementById("hubClass").textContent = (CLASSES[meta.classId] || CLASSES.ranger).nm;
-    document.getElementById("hubLevel").textContent = String(meta.bestLevel);
-    document.getElementById("hubShards").textContent = String(meta.shards);
-    document.getElementById("hubMap").textContent = currentMap().nm;
-    document.getElementById("hubGameMode").textContent = currentGameMode().nm;
-    document.getElementById("hubChests").textContent = meta.chests + (meta.chests === 1 ? " ladă" : " lăzi");
-    document.getElementById("hubSeason").textContent = meta.seasonEarned + " cioburi";
-    document.getElementById("purseStart").textContent = String(meta.shards);
-  }
+  if (isMoving) {
+    hero.x += moveX * hero.speed;
+    hero.y += moveY * hero.speed;
+    hero.x = Math.max(hero.radius, Math.min(width - hero.radius, hero.x));
+    hero.y = Math.max(hero.radius, Math.min(height - hero.radius, hero.y));
+  } else {
+    if (now - hero.lastShot > hero.attackSpeed * 1000 && enemies.length > 0) {
+      let closestEnemy = null;
+      let minDst = Infinity;
 
-  var ALL_OVERLAYS = ["startOverlay", "overOverlay", "levelOverlay", "campOverlay",
-    "profilesOverlay", "createOverlay", "equipOverlay", "talentOverlay", "mapOverlay",
-    "gameModeOverlay", "victoryOverlay", "chestOverlay", "seasonOverlay"];
+      for (let enemy of enemies) {
+        const dst = Math.hypot(enemy.x - hero.x, enemy.y - hero.y);
+        if (dst < minDst) {
+          minDst = dst;
+          closestEnemy = enemy;
+        }
+      }
 
-  // Fiecare ecran secundar porneste ascunzand-le pe TOATE, nu doar hub-ul -
-  // altfel navigarea directa intre ele (din teste sau din hook-uri) lasa
-  // ecranul anterior vizibil dedesubt.
-  function hideAllOverlays() {
-    ALL_OVERLAYS.forEach(function (id) { document.getElementById(id).classList.add("hidden"); });
-  }
+      if (closestEnemy && minDst < 450) {
+        const baseAngle = Math.atan2(closestEnemy.y - hero.y, closestEnemy.x - hero.x);
+        const spread = 0.15;
 
-  function goToHub() {
-    hideAllOverlays();
-    syncHub();
-    document.getElementById("startOverlay").classList.remove("hidden");
-  }
-
-  // ---------- sloturi de profil ----------
-  var profilesOverlay = document.getElementById("profilesOverlay");
-  var slotListEl = document.getElementById("slotList");
-
-  function renderSlots() {
-    slotListEl.innerHTML = "";
-    for (var n = 1; n <= SLOT_COUNT; n++) {
-      (function (n) {
-        var prof = readSlot(n);
-        var card = document.createElement("div");
-        card.className = "slotCard";
-        if (prof) {
-          card.innerHTML =
-            '<div class="slotTop"><div class="slotNm">Slot ' + n + ' · ' + prof.name + '</div></div>' +
-            '<div class="slotInfo">' + (CLASSES[prof.classId] || CLASSES.ranger).nm + ' · Nivel ' + prof.bestLevel +
-            ' · ' + prof.shards + ' cioburi</div>' +
-            '<div class="slotRow"><button class="btn" type="button" data-act="play">Joacă</button>' +
-            '<button class="linkBtn" type="button" data-act="wipe">Șterge</button></div>';
-          card.querySelector('[data-act="play"]').addEventListener("click", function () {
-            loadSlot(n);
-            profilesOverlay.classList.add("hidden");
-            goToHub();
+        for (let i = 0; i < hero.multishot; i++) {
+          const angle = baseAngle + (i - (hero.multishot - 1) / 2) * spread;
+          projectiles.push({
+            x: hero.x, y: hero.y,
+            vx: Math.cos(angle) * 8,
+            vy: Math.sin(angle) * 8,
+            damage: hero.damage,
+            fire: hero.fireArrow,
+            radius: 5
           });
-          card.querySelector('[data-act="wipe"]').addEventListener("click", function () {
-            if (!window.confirm("Ștergi definitiv profilul \"" + prof.name + "\" din slotul " + n + "?")) return;
-            wipeSlot(n);
-            renderSlots();
-          });
-        } else {
-          card.innerHTML =
-            '<div class="slotTop"><div class="slotNm">Slot ' + n + ' · gol</div></div>' +
-            '<div class="slotInfo">Niciun profil salvat aici</div>' +
-            '<div class="slotRow"><button class="btn" type="button">Profil Nou</button></div>';
-          card.querySelector("button").addEventListener("click", function () { openCreate(n); });
         }
-        slotListEl.appendChild(card);
-      })(n);
+
+        sfx.playShoot();
+        hero.lastShot = now;
+      }
     }
-    document.getElementById("profilesBackBtn").style.display = activeSlot ? "" : "none";
   }
 
-  function openProfiles() {
-    renderSlots();
-    hideAllOverlays();
-    profilesOverlay.classList.remove("hidden");
-  }
+  for (let i = projectiles.length - 1; i >= 0; i--) {
+    const p = projectiles[i];
+    p.x += p.vx;
+    p.y += p.vy;
 
-  document.getElementById("switchProfileBtn").addEventListener("click", openProfiles);
-  document.getElementById("profilesBackBtn").addEventListener("click", function () {
-    if (!activeSlot) return;
-    profilesOverlay.classList.add("hidden");
-    goToHub();
-  });
+    if (p.x < 0 || p.x > width || p.y < 0 || p.y > height) {
+      projectiles.splice(i, 1);
+      continue;
+    }
 
-  // ---------- creare profil nou ----------
-  var createOverlay = document.getElementById("createOverlay");
-  var createTargetSlot = 1;
-  var createClassBtns = Array.prototype.slice.call(document.querySelectorAll("#createClasses .mode"));
+    for (let j = enemies.length - 1; j >= 0; j--) {
+      const e = enemies[j];
+      if (Math.hypot(p.x - e.x, p.y - e.y) < p.radius + e.radius) {
+        e.hp -= p.damage;
+        sfx.playHit();
 
-  function setPendingClass(c) {
-    if (!CLASSES[c]) return;
-    pendingClass = c;
-    createClassBtns.forEach(function (b) {
-      b.setAttribute("aria-pressed", String(b.dataset.class === c));
-    });
-  }
-  createClassBtns.forEach(function (b) {
-    b.addEventListener("click", function () { setPendingClass(b.dataset.class); });
-  });
-
-  function openCreate(n) {
-    createTargetSlot = n;
-    document.getElementById("nameInput").value = "";
-    setPendingClass("ranger");
-    hideAllOverlays();
-    createOverlay.classList.remove("hidden");
-  }
-
-  document.getElementById("createConfirmBtn").addEventListener("click", function () {
-    var nm = document.getElementById("nameInput").value;
-    createProfile(createTargetSlot, nm, pendingClass);
-    createOverlay.classList.add("hidden");
-    goToHub();
-  });
-  document.getElementById("createBackBtn").addEventListener("click", function () {
-    createOverlay.classList.add("hidden");
-    openProfiles();
-  });
-
-  // ---------- echipament ----------
-  var equipOverlay = document.getElementById("equipOverlay");
-
-  function renderEquip() {
-    document.getElementById("eqAtk").textContent = "+" + equipSum("atk");
-    document.getElementById("eqHp").textContent = "+" + equipSum("hp");
-    document.getElementById("eqDef").textContent = "+" + equipSum("def");
-
-    var box = document.getElementById("equipList");
-    box.innerHTML = "";
-    EQUIP_SLOTS.forEach(function (slotId) {
-      var group = document.createElement("div");
-      group.className = "equipGroup";
-      var equippedId = meta.equip[slotId];
-      var label = document.createElement("div");
-      label.className = "equipLabel";
-      label.textContent = SLOT_NAMES[slotId] + " · " + (equippedId ? itemById(equippedId).nm : "gol");
-      group.appendChild(label);
-
-      itemsForSlot(slotId).forEach(function (it) {
-        var owned = meta.owned.indexOf(it.id) >= 0;
-        var equipped = equippedId === it.id;
-        var affordable = meta.shards >= it.cost;
-        var stats = [];
-        if (it.atk) stats.push("+" + it.atk + " ATK");
-        if (it.hp) stats.push("+" + it.hp + " HP");
-        if (it.def) stats.push("+" + it.def + " DEF");
-
-        var b = document.createElement("button");
-        b.className = "buy"; b.type = "button";
-        b.disabled = !owned && !affordable;
-        b.innerHTML =
-          '<div class="info"><div class="nm">' + it.nm + '</div>' +
-          '<div class="ds">' + stats.join(" · ") + '</div></div>' +
-          '<div class="price ' + (equipped ? "maxed" : (owned ? "" : (affordable ? "" : "short"))) + '">' +
-          (equipped ? "ECHIPAT" : (owned ? "ECHIPEAZĂ" : it.cost)) + '</div>';
-        b.addEventListener("click", function () {
-          if (equipped) { meta.equip[slotId] = null; }
-          else if (owned) { meta.equip[slotId] = it.id; }
-          else {
-            if (meta.shards < it.cost) return;
-            meta.shards -= it.cost;
-            meta.owned.push(it.id);
-            meta.equip[slotId] = it.id;
-          }
-          saveMeta();
-          renderEquip();
+        floatingTexts.push({
+          text: Math.round(p.damage),
+          x: e.x, y: e.y,
+          alpha: 1,
+          color: p.fire ? '#f97316' : '#ffffff'
         });
-        group.appendChild(b);
-      });
-      box.appendChild(group);
-    });
-  }
 
-  function openEquip() {
-    renderEquip();
-    hideAllOverlays();
-    equipOverlay.classList.remove("hidden");
-  }
-  document.getElementById("equipBtn").addEventListener("click", openEquip);
-  document.getElementById("equipBack").addEventListener("click", function () {
-    equipOverlay.classList.add("hidden");
-    goToHub();
-  });
-
-  // ---------- talente permanente ----------
-  var talentOverlay = document.getElementById("talentOverlay");
-
-  function talentCostOf(t) {
-    var lv = talentLevel(t.id);
-    return lv >= t.max ? null : t.costs[lv];
-  }
-
-  function renderTalents() {
-    document.getElementById("talentPurse").textContent = String(meta.shards);
-    var box = document.getElementById("talentList");
-    box.innerHTML = "";
-    TALENTS.forEach(function (t) {
-      var lv = talentLevel(t.id), cost = talentCostOf(t);
-      var avail = talentAvailable(t);
-      var affordable = avail && cost !== null && meta.shards >= cost;
-      var pips = "";
-      for (var i = 0; i < t.max; i++) pips += '<div class="pip' + (i < lv ? " on" : "") + '"></div>';
-      var priceTxt = !avail ? "Necesită " + talentById(t.requires).nm : (cost === null ? "MAXIM" : String(cost));
-
-      var b = document.createElement("button");
-      b.className = "buy"; b.type = "button";
-      b.disabled = !avail || cost === null || !affordable;
-      b.innerHTML =
-        '<div class="info"><div class="nm">' + t.nm + '</div>' +
-        '<div class="ds">' + t.ds + '</div>' +
-        '<div class="pips">' + pips + '</div></div>' +
-        '<div class="price ' + (!avail || cost === null ? (cost === null ? "maxed" : "short") : (affordable ? "" : "short")) + '">' +
-        priceTxt + '</div>';
-      b.addEventListener("click", function () {
-        var c = talentCostOf(t);
-        if (!talentAvailable(t) || c === null || meta.shards < c) return;
-        meta.shards -= c;
-        meta.talents[t.id] = talentLevel(t.id) + 1;
-        saveMeta();
-        renderTalents();
-      });
-      box.appendChild(b);
-    });
-  }
-
-  function openTalents() {
-    renderTalents();
-    hideAllOverlays();
-    talentOverlay.classList.remove("hidden");
-  }
-  document.getElementById("talentBtn").addEventListener("click", openTalents);
-  document.getElementById("talentBack").addEventListener("click", function () {
-    talentOverlay.classList.add("hidden");
-    goToHub();
-  });
-
-  // ---------- selectia hartii ----------
-  var mapOverlay = document.getElementById("mapOverlay");
-
-  function renderMaps() {
-    var box = document.getElementById("mapList");
-    box.innerHTML = "";
-    MAPS.forEach(function (m) {
-      var b = document.createElement("button");
-      b.className = "mapCard"; b.type = "button";
-      b.setAttribute("aria-pressed", String(meta.mapId === m.id));
-      b.innerHTML =
-        '<div class="mapNm" style="color:rgb(' + m.edge + ')">' + m.nm + '</div>' +
-        '<div class="mapDs">' + m.ds + '</div>' +
-        '<div class="mapDiff">Dificultate ×' + m.diff.toFixed(2) + '</div>';
-      b.addEventListener("click", function () {
-        meta.mapId = m.id;
-        saveMeta();
-        renderMaps();
-      });
-      box.appendChild(b);
-    });
-  }
-
-  function openMaps() {
-    renderMaps();
-    hideAllOverlays();
-    mapOverlay.classList.remove("hidden");
-  }
-  document.getElementById("mapBtn").addEventListener("click", openMaps);
-  document.getElementById("mapBack").addEventListener("click", function () {
-    mapOverlay.classList.add("hidden");
-    goToHub();
-  });
-
-  // ---------- regimul de joc ----------
-  var gameModeOverlay = document.getElementById("gameModeOverlay");
-
-  function renderGameModes() {
-    var box = document.getElementById("gameModeList");
-    box.innerHTML = "";
-    GAME_MODES.forEach(function (m) {
-      var b = document.createElement("button");
-      b.className = "mapCard"; b.type = "button";
-      b.setAttribute("aria-pressed", String(meta.gameMode === m.id));
-      var extra = "";
-      if (m.id === "events") {
-        var ev = currentEvent();
-        extra = '<div class="mapDiff">Astăzi: ' + ev.nm + ' — ' + ev.ds + '</div>';
-      }
-      b.innerHTML = '<div class="mapNm">' + m.nm + '</div><div class="mapDs">' + m.ds + '</div>' + extra;
-      b.addEventListener("click", function () {
-        meta.gameMode = m.id;
-        saveMeta();
-        renderGameModes();
-      });
-      box.appendChild(b);
-    });
-  }
-
-  function openGameModes() {
-    renderGameModes();
-    hideAllOverlays();
-    gameModeOverlay.classList.remove("hidden");
-  }
-  document.getElementById("modeSelBtn").addEventListener("click", openGameModes);
-  document.getElementById("gameModeBack").addEventListener("click", function () {
-    gameModeOverlay.classList.add("hidden");
-    goToHub();
-  });
-
-  // ---------- lada de razboi + cosmetice ----------
-  var chestOverlay = document.getElementById("chestOverlay");
-
-  function renderCosmetics() {
-    var box = document.getElementById("cosmeticList");
-    box.innerHTML = "";
-    COSMETICS.forEach(function (c) {
-      var owned = c.id === "default" || meta.cosmetics.indexOf(c.id) >= 0;
-      var equipped = meta.skin === c.id;
-      var affordable = meta.shards >= c.cost;
-      var b = document.createElement("button");
-      b.className = "buy"; b.type = "button";
-      b.disabled = !owned && !affordable;
-      b.innerHTML =
-        '<div class="info"><div class="nm">' + c.nm + '</div>' +
-        '<div class="ds" style="color:rgb(' + c.rgb + ')">●●●</div></div>' +
-        '<div class="price ' + (equipped ? "maxed" : (owned ? "" : (affordable ? "" : "short"))) + '">' +
-        (equipped ? "ACTIV" : (owned ? "FOLOSEȘTE" : c.cost)) + '</div>';
-      b.addEventListener("click", function () {
-        if (owned) { meta.skin = c.id; }
-        else {
-          if (meta.shards < c.cost) return;
-          meta.shards -= c.cost;
-          meta.cosmetics.push(c.id);
-          meta.skin = c.id;
+        for (let k = 0; k < 4; k++) {
+          particles.push({
+            x: e.x, y: e.y,
+            vx: (Math.random() - 0.5) * 4,
+            vy: (Math.random() - 0.5) * 4,
+            life: 0.3,
+            color: p.fire ? '#f97316' : '#38bdf8'
+          });
         }
-        saveMeta();
-        renderCosmetics();
-      });
-      box.appendChild(b);
-    });
-  }
 
-  function renderChest() {
-    document.getElementById("chestPurse").textContent = String(meta.shards);
-    document.getElementById("chestCount").textContent = String(meta.chests);
-    document.getElementById("openChestBtn").disabled = meta.chests <= 0;
-    renderCosmetics();
-  }
+        if (e.hp <= 0) {
+          kills++;
+          gold += e.isBoss ? 50 : 10;
+          enemies.splice(j, 1);
+        }
 
-  function openChestScreen() {
-    document.getElementById("chestResult").textContent = "";
-    renderChest();
-    hideAllOverlays();
-    chestOverlay.classList.remove("hidden");
-  }
-  document.getElementById("chestBtn").addEventListener("click", openChestScreen);
-  document.getElementById("openChestBtn").addEventListener("click", function () {
-    var r = openChest();
-    if (!r) return;
-    document.getElementById("chestResult").textContent = r.cosmetic
-      ? "+" + r.shards + " cioburi și un cosmetic nou: " + r.cosmetic.nm + "!"
-      : "+" + r.shards + " cioburi.";
-    renderChest();
-  });
-  document.getElementById("chestBack").addEventListener("click", function () {
-    chestOverlay.classList.add("hidden");
-    goToHub();
-  });
-
-  // ---------- traseul de sezon ----------
-  var seasonOverlay = document.getElementById("seasonOverlay");
-
-  function renderSeason() {
-    document.getElementById("seasonEarned").textContent = String(meta.seasonEarned);
-    var box = document.getElementById("seasonList");
-    box.innerHTML = "";
-    SEASON_TIERS.forEach(function (t, i) {
-      var id = seasonTierId(i);
-      var claimed = meta.seasonClaimed.indexOf(id) >= 0;
-      var reached = meta.seasonEarned >= t.at;
-      var ds = "+" + t.reward + " cioburi" + (t.cosmetic ? " · " + cosmeticById(t.cosmetic).nm : "") +
-        " · necesită " + t.at + " cioburi adunate";
-      var b = document.createElement("button");
-      b.className = "buy"; b.type = "button";
-      b.disabled = claimed || !reached;
-      b.innerHTML =
-        '<div class="info"><div class="nm">' + t.nm + '</div><div class="ds">' + ds + '</div></div>' +
-        '<div class="price ' + (claimed ? "maxed" : (reached ? "" : "short")) + '">' +
-        (claimed ? "RIDICAT" : (reached ? "RIDICĂ" : "BLOCAT")) + '</div>';
-      b.addEventListener("click", function () { if (claimSeasonTier(i)) renderSeason(); });
-      box.appendChild(b);
-    });
-  }
-
-  function openSeasonScreen() {
-    renderSeason();
-    hideAllOverlays();
-    seasonOverlay.classList.remove("hidden");
-  }
-  document.getElementById("seasonBtn").addEventListener("click", openSeasonScreen);
-  document.getElementById("seasonBack").addEventListener("click", function () {
-    seasonOverlay.classList.add("hidden");
-    goToHub();
-  });
-
-  // ---------- pornirea aplicatiei: reia profilul activ sau cere unul ----------
-  function bootProfile() {
-    var saved = null;
-    try { saved = parseInt(localStorage.getItem(ACTIVE_SLOT_KEY), 10); } catch (err) {}
-    if (saved >= 1 && saved <= SLOT_COUNT && loadSlot(saved)) {
-      syncHub();
-    } else {
-      openProfiles();
+        projectiles.splice(i, 1);
+        break;
+      }
     }
   }
-  bootProfile();
 
-  resize();
-  player = newPlayer();      // exista de la primul frame, ca render-ul sa nu cada
-  lastTime = performance.now();
-  requestAnimationFrame(frame);
+  for (let e of enemies) {
+    const angle = Math.atan2(hero.y - e.y, hero.x - e.x);
+    e.x += Math.cos(angle) * e.speed;
+    e.y += Math.sin(angle) * e.speed;
 
-  // ====================== HOOK PENTRU TESTE AUTOMATE ======================
-  window.__game = {
-    snap: function () {
-      return {
-        state: state, room: room, level: player ? player.level : 0,
-        hp: player ? Math.round(player.hp) : 0, maxHp: player ? player.maxHp : 0,
-        enemies: enemies.length, pBullets: pBullets.length, eBullets: eBullets.length,
-        doorOpen: doorOpen, kills: kills, xp: player ? player.xp : 0,
-        px: player ? Math.round(player.x) : 0, py: player ? Math.round(player.y) : 0,
-        projCount: player ? player.projCount : 0,
-        fireMode: fireMode,
-        baseDmg: player ? player.damage : 0,
-        shards: meta.shards, totalRooms: meta.totalRooms, runShards: runShards,
-        revives: player ? player.revives : 0,
-        cardCount: player ? player.cardCount : 0,
-        lastDmg: pBullets.length ? pBullets[pBullets.length - 1].dmg : null,
-        lastWeak: pBullets.length ? !!pBullets[pBullets.length - 1].weak : null,
-        enemyType: enemies.length ? enemies[0].type : null,
-        classId: player ? player.classId : null,
-        meleeRange: player ? player.meleeRange : 0,
-        meleeArc: player ? player.meleeArc : 0,
-        burn: player ? player.burn : 0,
-        bulletCls: pBullets.length ? pBullets[pBullets.length - 1].cls : null,
-        lastCrit: pBullets.length ? !!pBullets[pBullets.length - 1].crit : lastMeleeCrit,
-        armor: player ? player.armor : 0,
-        critChance: player ? player.critChance : 0,
-        activeSlot: activeSlot, profileName: meta.name, mapId: meta.mapId, bestLevel: meta.bestLevel,
-        gameMode: meta.gameMode, chests: meta.chests, seasonEarned: meta.seasonEarned, skin: meta.skin,
-        powersCount: player ? player.powers.length : 0, damageNumberCount: damageNumbers.length
-      };
-    },
-    start: startRun,
-    buildRoomAt: function (n) { room = n; buildRoom(); syncHud(); },
-    setMode: setMode,
-    tapFire: manualShot,
-    openCamp: openCamp,
-    grantShards: function (n) { meta.shards += n; saveMeta(); renderCamp(); },
-    // Reface un profil de test curat, in acelasi slot activ (sau creeaza
-    // slotul 1 daca inca nu exista niciunul) - pastrat pentru compatibilitate
-    // cu restul suitei, care presupune un profil Ranger gata de folosit.
-    wipeMeta: function () {
-      if (!activeSlot) createProfile(1, "Erou", "ranger");
-      else { meta = emptyProfile(meta.name, meta.classId); saveMeta(); }
-      goToHub();
-      renderCamp();
-    },
-    setTotalRooms: function (n) { meta.totalRooms = n; saveMeta(); renderCamp(); },
-    unlocked: isUnlocked,
-    nearestEnemyPos: function () {
-      var e = nearestEnemy();
-      return e ? { x: e.x, y: e.y, hp: e.hp, maxHp: e.maxHp } : null;
-    },
-    anyDamaged: function () { return enemies.some(function (e) { return e.hp < e.maxHp; }); },
-    clearRoom: function () { while (enemies.length) killEnemy(enemies.length - 1, enemies[enemies.length - 1]); },
-    dropEnemies: function () { enemies.length = 0; },
-    clearBullets: function () { pBullets.length = 0; eBullets.length = 0; },
-    collectOrbs: function () { orbs.forEach(function (o) { gainXp(o.xp); }); orbs.length = 0; },
-    setPos: function (x, y) { player.x = x; player.y = y; },
-    hurt: function (n) { player.hp -= n; },
-    // ---------- sloturi de profil ----------
-    wipeAllSlots: function () {
-      for (var n = 1; n <= SLOT_COUNT; n++) { try { localStorage.removeItem(slotKey(n)); } catch (err) {} }
-      try { localStorage.removeItem(ACTIVE_SLOT_KEY); } catch (err) {}
-      activeSlot = null;
-      meta = emptyProfile("Erou", "ranger");
-    },
-    slotSummary: function (n) { return readSlot(n); },
-    createProfile: createProfile,
-    loadSlot: loadSlot,
-    wipeSlot: wipeSlot,
-    goToHub: goToHub,
-    openProfiles: openProfiles,
-    // ---------- echipament / talente / harti ----------
-    equipStats: function () { return { atk: equipSum("atk"), hp: equipSum("hp"), def: equipSum("def") }; },
-    buyItem: function (id) {
-      var it = itemById(id);
-      if (!it) return false;
-      if (meta.owned.indexOf(id) < 0) {
-        if (meta.shards < it.cost) return false;
-        meta.shards -= it.cost;
-        meta.owned.push(id);
+    if (Math.hypot(e.x - hero.x, e.y - hero.y) < e.radius + hero.radius) {
+      hero.hp -= e.damage * dt;
+      updateHUD();
+      if (hero.hp <= 0) {
+        triggerGameOver();
+        return;
       }
-      meta.equip[it.slot] = id;
-      saveMeta();
-      return true;
-    },
-    unequip: function (slotId) { meta.equip[slotId] = null; saveMeta(); },
-    buyTalent: function (id) {
-      var t = talentById(id);
-      if (!t || !talentAvailable(t)) return false;
-      var c = talentCostOf(t);
-      if (c === null || meta.shards < c) return false;
-      meta.shards -= c;
-      meta.talents[id] = talentLevel(id) + 1;
-      saveMeta();
-      return true;
-    },
-    talentLevel: talentLevel,
-    setMap: function (id) {
-      if (!MAPS.some(function (m) { return m.id === id; })) return;
-      meta.mapId = id; saveMeta();
-    },
-    openEquip: openEquip,
-    openTalents: openTalents,
-    openMaps: openMaps,
-    // ---------- moduri de joc / boss final ----------
-    setGameMode: function (id) {
-      if (!GAME_MODES.some(function (m) { return m.id === id; })) return;
-      meta.gameMode = id; saveMeta();
-    },
-    finalBossRoom: function () { return FINAL_BOSS_ROOM; },
-    kingInfo: function () {
-      var k = enemies.filter(function (e) { return e.type === "king"; })[0];
-      return k ? { hp: k.hp, maxHp: k.maxHp, kingPhase: k.kingPhase } : null;
-    },
-    setKingHpPct: function (pct) {
-      var k = enemies.filter(function (e) { return e.type === "king"; })[0];
-      if (k) k.hp = k.maxHp * pct;
-    },
-    openGameModes: openGameModes,
-    currentEventInfo: function () { return currentEvent(); },
-    // ---------- economie ----------
-    openChest: openChest,
-    grantChest: function (n) { meta.chests += (n || 1); saveMeta(); },
-    buyCosmetic: function (id) {
-      var c = cosmeticById(id);
-      if (meta.cosmetics.indexOf(id) < 0) {
-        if (c.id !== "default" && meta.shards < c.cost) return false;
-        meta.cosmetics.push(id);
-      }
-      meta.skin = id; saveMeta();
-      return true;
-    },
-    claimSeasonTier: claimSeasonTier,
-    grantSeasonEarned: function (n) { meta.seasonEarned += n; saveMeta(); },
-    openChestScreen: openChestScreen,
-    openSeasonScreen: openSeasonScreen
-  };
-})();
+    }
+  }
+
+  if (enemies.length === 0) {
+    triggerLevelUp();
+    return;
+  }
+
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const pt = particles[i];
+    pt.x += pt.vx; pt.y += pt.vy;
+    pt.life -= dt;
+    if (pt.life <= 0) particles.splice(i, 1);
+  }
+
+  for (let i = floatingTexts.length - 1; i >= 0; i--) {
+    const ft = floatingTexts[i];
+    ft.y -= 1;
+    ft.alpha -= dt;
+    if (ft.alpha <= 0) floatingTexts.splice(i, 1);
+  }
+
+  ctx.clearRect(0, 0, width, height);
+
+  ctx.strokeStyle = '#1e293b';
+  ctx.lineWidth = 1;
+  const gridSize = 40;
+  for (let x = 0; x < width; x += gridSize) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
+  }
+  for (let y = 0; y < height; y += gridSize) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
+  }
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(hero.x, hero.y, hero.radius, 0, Math.PI * 2);
+  ctx.fillStyle = heroClasses[selectedHeroClass].color;
+  ctx.fill();
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  if (!isMoving) {
+    ctx.beginPath();
+    ctx.arc(hero.x, hero.y, hero.radius + 6, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.4)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  for (let p of projectiles) {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+    ctx.fillStyle = p.fire ? '#f97316' : '#38bdf8';
+    ctx.fill();
+  }
+
+  for (let e of enemies) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(e.x, e.y, e.radius, 0, Math.PI * 2);
+    ctx.fillStyle = e.color;
+    ctx.fill();
+
+    if (e.hp < e.maxHp) {
+      const barW = e.radius * 2;
+      ctx.fillStyle = '#334155';
+      ctx.fillRect(e.x - e.radius, e.y - e.radius - 8, barW, 4);
+      ctx.fillStyle = '#ef4444';
+      ctx.fillRect(e.x - e.radius, e.y - e.radius - 8, barW * (e.hp / e.maxHp), 4);
+    }
+    ctx.restore();
+  }
+
+  for (let pt of particles) {
+    ctx.fillStyle = pt.color;
+    ctx.globalAlpha = Math.max(0, pt.life / 0.3);
+    ctx.fillRect(pt.x, pt.y, 3, 3);
+  }
+  ctx.globalAlpha = 1;
+
+  for (let ft of floatingTexts) {
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, ft.alpha);
+    ctx.fillStyle = ft.color;
+    ctx.font = 'bold 14px sans-serif';
+    ctx.fillText(ft.text, ft.x, ft.y);
+    ctx.restore();
+  }
+
+  if (joystick.active) {
+    ctx.beginPath();
+    ctx.arc(joystick.startX, joystick.startY, 50, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(joystick.curX, joystick.curY, 20, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(56, 189, 248, 0.6)';
+    ctx.fill();
+  }
+
+  requestAnimationFrame(gameLoop);
+}
+
+showStartMenu();
 </script>
+
 </body>
 </html>
