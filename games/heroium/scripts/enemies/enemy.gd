@@ -131,6 +131,10 @@ func _initial_phase() -> StringName:
 
 ## Chemat de Pool cand inamicul lasat deoparte e dat din nou.
 func pool_activate() -> void:
+	# _ready() l-a pus in grup o singura data, la nastere - dar pool_deactivate()
+	# il scoate de fiecare data cand e pus deoparte, deci reintrarea trebuie
+	# repetata aici, nu presupusa mostenita din prima intrare.
+	add_to_group(&"enemy")
 	_collider.disabled = false
 	process_mode = Node.PROCESS_MODE_INHERIT
 	visible = true
@@ -143,6 +147,12 @@ func pool_activate() -> void:
 ## proiectile (forma lui de coliziune ramane activa la nivel de fizica,
 ## indiferent de vizibilitate sau de process_mode).
 func pool_deactivate() -> void:
+	# Un inamic pus deoparte ramane, de acum, in viata (reparentat sub Pool,
+	# nu mai moare cu rularea) - dar tot in grupul "enemy" ar insemna ca
+	# tintirea automata a eroului (find_nearest_enemy, "get_nodes_in_group")
+	# il poate alege drept cea mai apropiata tinta, desi e invizibil, oprit,
+	# si posibil parcat departe de orice camera activa.
+	remove_from_group(&"enemy")
 	_collider.disabled = true
 	process_mode = Node.PROCESS_MODE_DISABLED
 	visible = false

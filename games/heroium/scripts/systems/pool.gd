@@ -69,9 +69,6 @@ func release(node: Node) -> void:
 		node.queue_free()
 		return
 
-	if node.has_method(&"pool_deactivate"):
-		node.pool_deactivate()
-	node.visible = false
 	node.process_mode = Node.PROCESS_MODE_DISABLED
 	node.set_meta(&"pool_idle", true)
 
@@ -82,29 +79,30 @@ func release(node: Node) -> void:
 	idle.append(node)
 	_idle[scene] = idle
 
-	# Nodul ramane, pana acum, copil al containerului rularii care tocmai s-a
-	# incheiat (o camera, o arena). Cand acel container e sters (sfarsitul
-	# rularii - moarte, victorie, intoarcere la meniu), tot ce mai era
-	# inauntru piere cu el, INCLUSIV nodurile puse deoparte - dar Pool tot le
-	# crede disponibile in _idle. Urmatorul acquire() ar scoate un nod deja
-	# mort din arbore ("Trying to assign invalid previously freed instance").
-	# Reparentarea sub Pool insusi (autoload, traieste tot procesul) scoate
-	# nodul din pericol - amanata, fiindca release() se cheama uneori chiar
-	# dintr-un semnal de fizica (moartea unui inamic lovit de proiectil),
-	# unde schimbarea arborelui e interzisa pe loc.
-	if node.get_parent() != self:
-		_park.call_deferred(node)
+	# pool_deactivate() opreste coliziunea/monitorizarea (Area2D.monitoring,
+	# CollisionShape2D.disabled) - stari de fizica pe care serverul refuza sa
+	# le schimbe chiar in mijlocul unei interogari, si tocmai atunci se cheama
+	# adesea release(): un proiectil care tocmai a lovit, un inamic care
+	# tocmai a murit de la o lovitura, ambele in plina rezolvare a coliziunii
+	# care le-a cauzat moartea. Nodul ramane, pana acum, si copil al
+	# containerului rularii care tocmai s-a incheiat (o camera, o arena) -
+	# cand acela e sters, tot ce mai era pus deoparte piere cu el, dar Pool
+	# tot il crede disponibil ("Trying to assign invalid previously freed
+	# instance" la urmatorul acquire()). Amandoua amanate impreuna, cu aceeasi
+	# garda: daca nodul a fost deja redat pana atunci (acquire() l-a scos din
+	# _idle si l-a activat la loc), pool_idle nu mai e true si nu mai avem
+	# ce regla aici.
+	_settle.call_deferred(node)
 
 
-## Executata cu o intarziere de un cadru fata de release(), ca sa nu schimbe
-## arborele chiar in mijlocul unei interogari de fizica. Intre timp nodul ar
-## fi putut fi deja redat cuiva (acquire() il scoate din _idle si il muta el
-## insusi) - atunci pool_idle nu mai e true, si parcarea nu mai are ce cauta.
-func _park(node: Node) -> void:
+func _settle(node: Node) -> void:
 	if not is_instance_valid(node):
 		return
 	if not node.get_meta(&"pool_idle", false):
 		return
+	if node.has_method(&"pool_deactivate"):
+		node.pool_deactivate()
+	node.visible = false
 	if node.get_parent() != self:
 		node.reparent(self)
 
