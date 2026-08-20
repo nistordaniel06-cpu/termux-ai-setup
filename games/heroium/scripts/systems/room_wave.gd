@@ -64,7 +64,14 @@ func spawn(type: EnemyType, tier: int, min_distance: float, max_distance: float)
 	# Datele intra inainte de intrarea in arbore, ca `_ready` sa le gaseasca gata.
 	enemy.setup(type, tier)
 	enemy.global_position = _pick_spawn_point(min_distance, max_distance)
-	enemy.died.connect(_on_enemy_died)
+	# Deconectarea vechilor legaturi ale unui inamic din bazin e amanata (ca
+	# sa nu schimbe stare de fizica in mijlocul unei interogari) - dar
+	# clear_leftovers() -> spawn() poate reface acelasi inamic in ACELASI
+	# cadru, inainte ca amanarea sa apuce sa ruleze. E chiar conexiunea de
+	# care avem nevoie deja acolo, deci un al doilea connect() ar fi doar
+	# zgomot ("already connected"), nu o problema reala - garda il evita.
+	if not enemy.died.is_connected(_on_enemy_died):
+		enemy.died.connect(_on_enemy_died)
 	alive += 1
 	enemy_spawned.emit(enemy)
 	return enemy
