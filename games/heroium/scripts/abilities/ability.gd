@@ -31,10 +31,18 @@ enum Rarity { COMMON, RARE, EPIC, LEGENDARY }
 @export var bonus_pierce: int = 0
 @export var bonus_bounces: int = 0
 @export var damage_multiplier: float = 1.0
+@export var attack_speed_multiplier: float = 1.0
+@export var move_speed_multiplier: float = 1.0
 ## Dauna pe secunda aplicata ca arsura, daca e cazul.
 @export var burn_dps: float = 0.0
 ## Raza exploziei la impact; 0 inseamna fara explozie.
 @export var explosion_radius: float = 0.0
+
+@export_group("Vitalitate")
+## Viata maxima adaugata. Vine plina, ca bonusul sa se simta imediat.
+@export var bonus_max_health: float = 0.0
+## Vindecare pe loc, ca fractiune din viata maxima (0.5 = jumatate).
+@export_range(0.0, 1.0) var heal_fraction: float = 0.0
 
 @export_group("Fuziune")
 ## Abilitatea cu care se combina. Gol = nu fuzioneaza.
@@ -45,6 +53,14 @@ enum Rarity { COMMON, RARE, EPIC, LEGENDARY }
 @export_group("Deblocare")
 ## Cate camere trebuie curatate in total ca sa apara in pachetul de alegeri.
 @export var unlock_at_total_rooms: int = 0
+## Evolutiile nu se ofera niciodata direct: rostul lor e sa fie descoperite
+## combinand doua abilitati, nu trase la carti ca oricare alta.
+@export var only_from_fusion: bool = false
+
+
+## Poate fi oferita ca alegere la ridicarea unui nivel?
+func is_draftable(total_rooms_cleared: int) -> bool:
+	return not only_from_fusion and total_rooms_cleared >= unlock_at_total_rooms
 
 
 ## Poate fuziona cu abilitatea data?
@@ -54,11 +70,17 @@ func can_fuse_with(other: Ability) -> bool:
 	return other.id == fuses_with.id
 
 
-## Aplica efectul abilitatii peste statisticile rularii curente.
+## Aplica peste statisticile rularii curente partea care tine de statistici.
+## Viata (`bonus_max_health`, `heal_fraction`) nu se rezolva aici: ea nu e o
+## statistica, ci starea componentei de viata, si o pune Hero la loc.
 func apply_to(stats: HeroStats) -> void:
 	stats.projectile_count += bonus_projectiles
 	stats.pierce += bonus_pierce
 	stats.bounces += bonus_bounces
 	if not is_equal_approx(damage_multiplier, 1.0):
 		stats.mult_attack *= damage_multiplier
+	if not is_equal_approx(attack_speed_multiplier, 1.0):
+		stats.mult_attack_speed *= attack_speed_multiplier
+	if not is_equal_approx(move_speed_multiplier, 1.0):
+		stats.mult_move_speed *= move_speed_multiplier
 	stats.recalculate()

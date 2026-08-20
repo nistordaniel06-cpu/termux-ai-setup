@@ -1,7 +1,8 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://scripts/enemies/enemy.gd" id="1_enemy"]
 [ext_resource type="Script" path="res://scripts/visual/blob.gd" id="2_blob"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/enemy_projectile.tscn" id="3_enemy_proj"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_enemy"]
 radius = 16.0
@@ -11,6 +12,7 @@ collision_layer = 4
 collision_mask = 5
 motion_mode = 1
 script = ExtResource("1_enemy")
+projectile_scene = ExtResource("3_enemy_proj")
 
 [node name="Body" type="Node2D" parent="."]
 script = ExtResource("2_blob")

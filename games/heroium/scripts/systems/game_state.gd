@@ -12,6 +12,45 @@ signal hero_unlocked(hero_id: StringName)
 
 const SAVE_PATH := "user://heroium_save.cfg"
 
+## Locatiile campaniei, in ordinea in care se parcurg. Lista e explicita, nu
+## citita din folder: intr-un build exportat listarea unui director nu e de
+## incredere, si ordinea aici chiar conteaza.
+const LOCATION_PATHS := [
+	"res://resources/locations/cursed_forest.tres",
+	"res://resources/locations/dark_castle.tres",
+	"res://resources/locations/lost_desert.tres",
+	"res://resources/locations/shadow_realm.tres",
+]
+
+## Tot ce se poate trage la carti cand urci un nivel. Evolutiile (Săgeată
+## Explozivă) sunt si ele aici, dar isi poarta singure steagul care le tine
+## afara din pachet - se obtin doar fuzionand.
+const ABILITY_PATHS := [
+	"res://resources/abilities/twin_arrows.tres",
+	"res://resources/abilities/piercing_arrow.tres",
+	"res://resources/abilities/meteor_infernal.tres",
+	"res://resources/abilities/explosive_arrow.tres",
+	"res://resources/abilities/ricochet.tres",
+	"res://resources/abilities/sharp_tip.tres",
+	"res://resources/abilities/rapid_fire.tres",
+	"res://resources/abilities/light_step.tres",
+	"res://resources/abilities/vitality.tres",
+	"res://resources/abilities/bandages.tres",
+	"res://resources/abilities/explosive_end.tres",
+]
+
+## Clasele de erou, in ordinea in care apar in meniu.
+const HERO_PATHS := [
+	"res://resources/heroes/ranger.tres",
+	"res://resources/heroes/knight.tres",
+	"res://resources/heroes/mage.tres",
+]
+
+var locations: Array[Location] = []
+var abilities: Array[Ability] = []
+var heroes: Array[HeroClass] = []
+var selected_hero: StringName = &"ranger"
+
 ## Calea Legendară din poza: doua ramuri care pornesc din Putere Atac.
 const TALENTS := {
 	&"attack_power":  {"name": "Putere Atac",     "max": 10, "cost": 60,  "step": 0.04, "requires": &""},
@@ -28,8 +67,51 @@ var talents: Dictionary = {}
 var unlocked_heroes: Array[StringName] = [&"ranger"]
 
 
+## Cea mai departe camera atinsa vreodata, ca ecranul de final sa aiba de ce sa
+## se agate cand rularea a fost slaba.
+var best_run_rooms: int = 0
+
+
 func _ready() -> void:
+	for path in LOCATION_PATHS:
+		var location := load(path) as Location
+		if location != null:
+			locations.append(location)
+
+	for path in ABILITY_PATHS:
+		var ability := load(path) as Ability
+		if ability != null:
+			abilities.append(ability)
+
+	for path in HERO_PATHS:
+		var hero := load(path) as HeroClass
+		if hero != null:
+			heroes.append(hero)
+
 	load_game()
+
+
+## Locatia de la indicele dat. Dupa ultima campania nu se termina - se reia
+## ultima locatie, dar inamicii cresc mai departe cu treapta, deci "endless"
+## nu inseamna "aceeasi dificultate la nesfarsit".
+func location_at(index: int) -> Location:
+	if locations.is_empty():
+		return null
+	return locations[mini(index, locations.size() - 1)]
+
+
+## Abilitatile care au voie sa apara la carti acum.
+func draftable_abilities() -> Array[Ability]:
+	var pool: Array[Ability] = []
+	for ability in abilities:
+		if ability.is_draftable(total_rooms_cleared):
+			pool.append(ability)
+	return pool
+
+
+func register_run_result(rooms_this_run: int) -> void:
+	best_run_rooms = maxi(best_run_rooms, rooms_this_run)
+	save_game()
 
 
 func talent_level(id: StringName) -> int:
@@ -92,6 +174,29 @@ func register_room_cleared() -> void:
 	save_game()
 
 
+func hero_class_by_id(id: StringName) -> HeroClass:
+	for hero in heroes:
+		if hero.id == id:
+			return hero
+	return null
+
+
+## Clasa cu care se intra in temnita. Daca alegerea salvata nu mai e deblocata
+## (sau nu mai exista), se cade inapoi pe Ranger, care e mereu al tau.
+func selected_hero_class() -> HeroClass:
+	var chosen := hero_class_by_id(selected_hero)
+	if chosen != null and is_hero_unlocked(chosen.id):
+		return chosen
+	return hero_class_by_id(&"ranger")
+
+
+func select_hero(id: StringName) -> void:
+	if not is_hero_unlocked(id):
+		return
+	selected_hero = id
+	save_game()
+
+
 func is_hero_unlocked(id: StringName) -> bool:
 	return id in unlocked_heroes
 
@@ -113,6 +218,8 @@ func save_game() -> void:
 	config.set_value("progress", "best_location", best_location)
 	config.set_value("progress", "talents", talents)
 	config.set_value("progress", "unlocked_heroes", unlocked_heroes)
+	config.set_value("progress", "best_run_rooms", best_run_rooms)
+	config.set_value("progress", "selected_hero", String(selected_hero))
 	config.save(SAVE_PATH)
 
 
@@ -124,8 +231,10 @@ func load_game() -> void:
 	total_rooms_cleared = config.get_value("progress", "total_rooms_cleared", 0)
 	best_location = config.get_value("progress", "best_location", 1)
 	talents = config.get_value("progress", "talents", {})
-	var heroes: Array = config.get_value("progress", "unlocked_heroes", [&"ranger"])
-	unlocked_heroes.assign(heroes)
+	best_run_rooms = config.get_value("progress", "best_run_rooms", 0)
+	selected_hero = StringName(config.get_value("progress", "selected_hero", "ranger"))
+	var saved_heroes: Array = config.get_value("progress", "unlocked_heroes", [&"ranger"])
+	unlocked_heroes.assign(saved_heroes)
 
 
 ## Sterge tot progresul. Doar pentru testare.
@@ -133,7 +242,9 @@ func wipe() -> void:
 	coins = 0
 	total_rooms_cleared = 0
 	best_location = 1
+	best_run_rooms = 0
 	talents.clear()
+	selected_hero = &"ranger"
 	unlocked_heroes = [&"ranger"]
 	save_game()
 	coins_changed.emit(coins)

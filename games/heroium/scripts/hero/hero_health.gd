@@ -57,6 +57,16 @@ func heal(amount: float) -> void:
 	health_changed.emit(current, maximum)
 
 
+## Ridica plafonul de viata. Bonusul vine si plin, nu doar ca potential: o carte
+## care iti da viata maxima fara sa te vindece nu se simte ca o rasplata.
+func increase_maximum(amount: float) -> void:
+	if amount <= 0.0:
+		return
+	maximum += amount
+	current += amount
+	health_changed.emit(current, maximum)
+
+
 ## Foloseste "A doua torță": revine la o parte din viata, cu ragaz de gratie.
 func revive(health_fraction: float = 0.5) -> void:
 	is_dead = false

@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="EnemyType" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/enemies/enemy_type.gd" id="1_type"]
+
+[resource]
+script = ExtResource("1_type")
+id = &"fallen_king"
+display_name = "Bătrânul Rege Căzut"
+behavior = 2
+color = Color(0.58, 0.29, 0.78, 1)
+radius = 34.0
+base_health = 420.0
+health_per_tier = 95.0
+base_speed = 52.0
+speed_per_tier = 1.8
+base_damage = 26.0
+damage_per_tier = 2.2
+defense = 120.0
+xp_reward = 30
+coin_reward = 40
+is_boss = true

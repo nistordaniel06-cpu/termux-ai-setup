@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="Ability" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/abilities/ability.gd" id="1_ability"]
+
+[resource]
+script = ExtResource("1_ability")
+id = &"twin_arrows"
+display_name = "Săgeți Duble"
+description = "Tragi o săgeată în plus la fiecare atac."
+kind = 0
+rarity = 1
+stars = 3
+bonus_projectiles = 1
