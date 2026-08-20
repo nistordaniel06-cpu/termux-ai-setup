@@ -214,6 +214,18 @@
       </div>
 
       <button class="btn" onclick="startGame()">Începe Jocul</button>
+      <button class="btn" style="background: linear-gradient(135deg, #7c3aed, #5b21b6); margin-top: 8px;" onclick="showTalents()">🌟 Calea Legendară (<span id="permGoldText">0</span> 🪙)</button>
+    </div>
+  </div>
+
+  <!-- Talents Modal -->
+  <div id="talentsModal" class="overlay-modal" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-title" style="color: #a855f7;">CALEA LEGENDARĂ</div>
+      <p style="color: #9ca3af; font-size: 13px;">Talente permanente, cumpărate cu monedele adunate. Rămân între rulări.</p>
+      <p style="color: #f59e0b; font-size: 14px; margin: 8px 0;">🪙 <span id="talentsGoldText">0</span></p>
+      <div class="skill-cards" id="talentOptions"></div>
+      <button class="btn" style="background: #374151; margin-top: 12px;" onclick="hideTalents()">Înapoi</button>
     </div>
   </div>
 
@@ -355,6 +367,87 @@ let wave = 1;
 let gold = 0;
 let kills = 0;
 
+const bossImage = new Image();
+let bossImageReady = false;
+bossImage.onload = () => bossImageReady = true;
+bossImage.src = 'assets/skins/dark_lich_king.png';
+
+const TALENT_DEFS = {
+  hp:    { title: '❤️ Vitalitate', desc: '+8% viață maximă / nivel', perLevel: 0.08 },
+  dmg:   { title: '⚡ Putere', desc: '+8% daună / nivel', perLevel: 0.08 },
+  speed: { title: '🥾 Iuțeală', desc: '+4% viteză de mișcare / nivel', perLevel: 0.04 }
+};
+const TALENT_MAX_LEVEL = 10;
+
+let permanentGold = parseInt(localStorage.getItem('heroium_gold') || '0', 10) || 0;
+let talents = { hp: 0, dmg: 0, speed: 0 };
+try {
+  talents = Object.assign(talents, JSON.parse(localStorage.getItem('heroium_talents') || '{}'));
+} catch (e) { /* fisier corupt, pornim de la zero */ }
+
+function talentCost(level) {
+  return 50 + level * 40;
+}
+
+function savePersistent() {
+  localStorage.setItem('heroium_gold', String(permanentGold));
+  localStorage.setItem('heroium_talents', JSON.stringify(talents));
+}
+
+function updatePermGoldLabels() {
+  document.getElementById('permGoldText').innerText = permanentGold;
+  const talentsLabel = document.getElementById('talentsGoldText');
+  if (talentsLabel) talentsLabel.innerText = permanentGold;
+}
+
+function renderTalents() {
+  const container = document.getElementById('talentOptions');
+  container.innerHTML = '';
+  for (const key in TALENT_DEFS) {
+    const def = TALENT_DEFS[key];
+    const level = talents[key] || 0;
+    const maxed = level >= TALENT_MAX_LEVEL;
+    const cost = talentCost(level);
+    const card = document.createElement('div');
+    card.className = 'skill-card';
+    card.style.cursor = maxed ? 'default' : 'pointer';
+    card.style.opacity = maxed ? '0.6' : '1';
+    card.innerHTML = `<div class="skill-title">${def.title} — nivel ${level}/${TALENT_MAX_LEVEL}</div>
+      <div class="skill-desc">${def.desc}${maxed ? ' (nivel maxim)' : ` · cost: 🪙 ${cost}`}</div>`;
+    if (!maxed) card.onclick = () => buyTalent(key);
+    container.appendChild(card);
+  }
+}
+
+function buyTalent(key) {
+  const level = talents[key] || 0;
+  if (level >= TALENT_MAX_LEVEL) return;
+  const cost = talentCost(level);
+  if (permanentGold < cost) return;
+  permanentGold -= cost;
+  talents[key] = level + 1;
+  savePersistent();
+  updatePermGoldLabels();
+  renderTalents();
+}
+
+function showTalents() {
+  updatePermGoldLabels();
+  renderTalents();
+  document.getElementById('talentsModal').style.display = 'flex';
+}
+
+function hideTalents() {
+  document.getElementById('talentsModal').style.display = 'none';
+}
+
+function applyTalents(h) {
+  h.maxHp = Math.round(h.maxHp * (1 + (talents.hp || 0) * TALENT_DEFS.hp.perLevel));
+  h.hp = h.maxHp;
+  h.damage = Math.round(h.damage * (1 + (talents.dmg || 0) * TALENT_DEFS.dmg.perLevel));
+  h.speed = h.speed * (1 + (talents.speed || 0) * TALENT_DEFS.speed.perLevel);
+}
+
 const heroClasses = {
   ranger: { hp: 120, speed: 3.2, attackSpeed: 0.35, damage: 25, color: '#38bdf8' },
   knight: { hp: 200, speed: 2.6, attackSpeed: 0.5, damage: 40, color: '#f59e0b' },
@@ -372,6 +465,7 @@ let hero = {
 };
 
 let projectiles = [];
+let enemyProjectiles = [];
 let enemies = [];
 let particles = [];
 let floatingTexts = [];
@@ -384,9 +478,11 @@ function selectHero(heroClass, element) {
 
 function showStartMenu() {
   gameRunning = false;
+  updatePermGoldLabels();
   document.getElementById('startModal').style.display = 'flex';
   document.getElementById('gameOverModal').style.display = 'none';
   document.getElementById('skillModal').style.display = 'none';
+  document.getElementById('talentsModal').style.display = 'none';
 }
 
 function startGame() {
@@ -406,11 +502,13 @@ function startGame() {
     pierce: false,
     fireArrow: false
   };
+  applyTalents(hero);
 
   wave = 1;
   gold = 0;
   kills = 0;
   projectiles = [];
+  enemyProjectiles = [];
   enemies = [];
   particles = [];
   floatingTexts = [];
@@ -431,8 +529,22 @@ function updateHUD() {
   document.getElementById('goldText').innerText = gold;
 }
 
+const ENEMY_TYPES = {
+  skeleton: { color: '#10b981', hpMult: 1,    speedMult: 1,    dmgMult: 1,   radius: 14 },
+  bat:      { color: '#a855f7', hpMult: 0.55, speedMult: 1.9,  dmgMult: 0.7, radius: 10 },
+  archer:   { color: '#22d3ee', hpMult: 0.75, speedMult: 0.9,  dmgMult: 0.8, radius: 13 }
+};
+
+function pickEnemyType() {
+  const roll = Math.random();
+  if (wave >= 3 && roll < 0.28) return 'archer';
+  if (wave >= 2 && roll < 0.55) return 'bat';
+  return 'skeleton';
+}
+
 function spawnWave() {
   enemies = [];
+  enemyProjectiles = [];
   const count = 4 + wave * 2;
   for (let i = 0; i < count; i++) {
     const edge = Math.floor(Math.random() * 4);
@@ -443,15 +555,24 @@ function spawnWave() {
     else { x = -20; y = Math.random() * height; }
 
     const isBoss = (wave % 5 === 0) && (i === 0);
+    const type = isBoss ? 'skeleton' : pickEnemyType();
+    const def = ENEMY_TYPES[type];
+    const baseHp = (25 + wave * 15) * def.hpMult;
+    const baseDamage = (10 + wave * 2) * def.dmgMult;
+
     enemies.push({
-      x, y,
-      radius: isBoss ? 28 : 14,
-      hp: (25 + wave * 15) * (isBoss ? 5 : 1),
-      maxHp: (25 + wave * 15) * (isBoss ? 5 : 1),
-      speed: isBoss ? 1.2 : 1.5 + Math.random() * 0.8,
-      damage: (10 + wave * 2) * (isBoss ? 1.8 : 1),
-      color: isBoss ? '#ef4444' : '#10b981',
-      isBoss
+      x, y, type,
+      radius: isBoss ? 30 : def.radius,
+      hp: isBoss ? baseHp * 6 : baseHp,
+      maxHp: isBoss ? baseHp * 6 : baseHp,
+      speed: (isBoss ? 1.1 : (1.1 + Math.random() * 0.6)) * (isBoss ? 1 : def.speedMult),
+      damage: isBoss ? baseDamage * 2 : baseDamage,
+      color: isBoss ? '#ef4444' : def.color,
+      isBoss,
+      shootCooldown: 1 + Math.random(),
+      wobble: Math.random() * Math.PI * 2,
+      attackTimer: isBoss ? 2.5 : 0,
+      telegraphTime: 0
     });
   }
 }
@@ -501,7 +622,9 @@ function selectSkill(skillId) {
 function triggerGameOver() {
   gameRunning = false;
   sfx.playHit();
-  document.getElementById('gameOverStats').innerHTML = `Ai rezistat până la <b>Valul ${wave}</b><br>Inamici învinși: <b>${kills}</b><br>Monede colectate: <b>${gold}</b>`;
+  permanentGold += gold;
+  savePersistent();
+  document.getElementById('gameOverStats').innerHTML = `Ai rezistat până la <b>Valul ${wave}</b><br>Inamici învinși: <b>${kills}</b><br>Monede colectate: <b>${gold}</b><br>🪙 Total în Calea Legendară: <b>${permanentGold}</b>`;
   document.getElementById('gameOverModal').style.display = 'flex';
 }
 
@@ -615,17 +738,75 @@ function gameLoop(now) {
   }
 
   for (let e of enemies) {
+    const dstToHero = Math.hypot(e.x - hero.x, e.y - hero.y);
     const angle = Math.atan2(hero.y - e.y, hero.x - e.x);
-    e.x += Math.cos(angle) * e.speed;
-    e.y += Math.sin(angle) * e.speed;
 
-    if (Math.hypot(e.x - hero.x, e.y - hero.y) < e.radius + hero.radius) {
+    if (e.isBoss) {
+      e.attackTimer -= dt;
+      if (e.telegraphTime > 0) {
+        e.telegraphTime -= dt;
+        if (e.telegraphTime <= 0 && dstToHero < 110) {
+          hero.hp -= e.damage;
+          updateHUD();
+          if (hero.hp <= 0) { triggerGameOver(); return; }
+        }
+      } else if (e.attackTimer <= 0) {
+        e.telegraphTime = 0.7;
+        e.attackTimer = 3.5;
+      } else {
+        e.x += Math.cos(angle) * e.speed;
+        e.y += Math.sin(angle) * e.speed;
+      }
+    } else if (e.type === 'archer') {
+      e.shootCooldown -= dt;
+      if (dstToHero > 220) {
+        e.x += Math.cos(angle) * e.speed;
+        e.y += Math.sin(angle) * e.speed;
+      } else if (dstToHero < 150) {
+        e.x -= Math.cos(angle) * e.speed * 0.6;
+        e.y -= Math.sin(angle) * e.speed * 0.6;
+      }
+      if (e.shootCooldown <= 0 && dstToHero < 420) {
+        e.shootCooldown = 1.6;
+        enemyProjectiles.push({
+          x: e.x, y: e.y,
+          vx: Math.cos(angle) * 4.2, vy: Math.sin(angle) * 4.2,
+          damage: e.damage, radius: 4
+        });
+      }
+    } else if (e.type === 'bat') {
+      e.wobble += dt * 6;
+      const perp = angle + Math.PI / 2;
+      e.x += Math.cos(angle) * e.speed + Math.cos(perp) * Math.sin(e.wobble) * 1.4;
+      e.y += Math.sin(angle) * e.speed + Math.sin(perp) * Math.sin(e.wobble) * 1.4;
+    } else {
+      e.x += Math.cos(angle) * e.speed;
+      e.y += Math.sin(angle) * e.speed;
+    }
+
+    if (dstToHero < e.radius + hero.radius) {
       hero.hp -= e.damage * dt;
       updateHUD();
       if (hero.hp <= 0) {
         triggerGameOver();
         return;
       }
+    }
+  }
+
+  for (let i = enemyProjectiles.length - 1; i >= 0; i--) {
+    const ep = enemyProjectiles[i];
+    ep.x += ep.vx;
+    ep.y += ep.vy;
+    if (ep.x < -20 || ep.x > width + 20 || ep.y < -20 || ep.y > height + 20) {
+      enemyProjectiles.splice(i, 1);
+      continue;
+    }
+    if (Math.hypot(ep.x - hero.x, ep.y - hero.y) < ep.radius + hero.radius) {
+      hero.hp -= ep.damage;
+      updateHUD();
+      enemyProjectiles.splice(i, 1);
+      if (hero.hp <= 0) { triggerGameOver(); return; }
     }
   }
 
@@ -687,10 +868,48 @@ function gameLoop(now) {
 
   for (let e of enemies) {
     ctx.save();
-    ctx.beginPath();
-    ctx.arc(e.x, e.y, e.radius, 0, Math.PI * 2);
-    ctx.fillStyle = e.color;
-    ctx.fill();
+
+    if (e.isBoss && e.telegraphTime > 0) {
+      ctx.beginPath();
+      ctx.arc(e.x, e.y, 110, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(239, 68, 68, 0.22)';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(239, 68, 68, 0.7)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+
+    if (e.isBoss && bossImageReady) {
+      ctx.beginPath();
+      ctx.arc(e.x, e.y, e.radius, 0, Math.PI * 2);
+      ctx.closePath();
+      ctx.clip();
+      ctx.drawImage(bossImage, e.x - e.radius, e.y - e.radius, e.radius * 2, e.radius * 2);
+      ctx.strokeStyle = '#ef4444';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    } else {
+      ctx.beginPath();
+      ctx.arc(e.x, e.y, e.radius, 0, Math.PI * 2);
+      ctx.fillStyle = e.color;
+      ctx.fill();
+      if (e.type === 'bat') {
+        ctx.fillStyle = 'rgba(0,0,0,0.4)';
+        ctx.beginPath();
+        ctx.moveTo(e.x - e.radius, e.y);
+        ctx.lineTo(e.x - e.radius * 1.8, e.y - e.radius * 0.6);
+        ctx.lineTo(e.x - e.radius * 0.9, e.y);
+        ctx.lineTo(e.x - e.radius * 1.8, e.y + e.radius * 0.6);
+        ctx.closePath();
+        ctx.fill();
+      } else if (e.type === 'archer') {
+        ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(e.x, e.y, e.radius * 0.55, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
 
     if (e.hp < e.maxHp) {
       const barW = e.radius * 2;
@@ -700,6 +919,13 @@ function gameLoop(now) {
       ctx.fillRect(e.x - e.radius, e.y - e.radius - 8, barW * (e.hp / e.maxHp), 4);
     }
     ctx.restore();
+  }
+
+  for (let ep of enemyProjectiles) {
+    ctx.beginPath();
+    ctx.arc(ep.x, ep.y, ep.radius, 0, Math.PI * 2);
+    ctx.fillStyle = '#22d3ee';
+    ctx.fill();
   }
 
   for (let pt of particles) {
