@@ -133,12 +133,12 @@ func _drop_orb(at: Vector2, xp: int) -> void:
 	if xp_orb_scene == null:
 		return
 
-	var orb: XpOrb = xp_orb_scene.instantiate()
+	var orb: XpOrb = Pool.acquire(xp_orb_scene, _world) as XpOrb
 	orb.xp = xp
-	orb.position = _world.to_local(at)
+	orb.global_position = at
 	# Inamicul moare in mijlocul unei interogari de fizica (l-a lovit o sageata),
 	# iar acolo serverul nu accepta zone noi. Ciobul intra la capatul cadrului.
-	_world.add_child.call_deferred(orb)
+	# Pool.acquire() deja l-a adaugat in arbore; doar sa-i setam datele.
 
 
 func _on_room_cleared() -> void:
@@ -201,7 +201,7 @@ func _collect_remaining_orbs() -> void:
 		if node is XpOrb:
 			_hero.gain_xp(node.xp)
 			Fx.burst(node.global_position, Color("5ef0b6"), 4, 90.0)
-			node.queue_free()
+			Pool.release(node)
 
 
 # ====================== SFARSIT DE RULARE ======================

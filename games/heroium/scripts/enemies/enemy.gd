@@ -101,6 +101,22 @@ func _initial_phase() -> StringName:
 			return &"chase"
 
 
+
+## Chemat de Pool cand inamicul lasat deoparte e dat din nou.
+func pool_activate() -> void:
+	monitoring = true
+	monitorable = true
+	process_mode = Node.PROCESS_MODE_INHERIT
+	visible = true
+
+
+## Chemat de Pool cand inamicul e lasat deoparte, in loc sa fie sters.
+func pool_deactivate() -> void:
+	monitoring = false
+	monitorable = false
+	process_mode = Node.PROCESS_MODE_DISABLED
+	visible = false
+
 func _physics_process(delta: float) -> void:
 	_tick_burn(delta)
 	_tick_frost(delta)
@@ -319,7 +335,7 @@ func _die() -> void:
 	Fx.burst(global_position, _tint(), 22 if is_boss else 14, 260.0 if is_boss else 190.0)
 	Fx.shake(6.0 if is_boss else 2.5, 0.35 if is_boss else 0.1)
 	died.emit(self)
-	queue_free()
+	Pool.release(self)
 
 
 ## Bara de viata. La inamicii obisnuiti apare abia dupa prima lovitura, ca o

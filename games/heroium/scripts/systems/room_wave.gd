@@ -56,10 +56,9 @@ func spawn(type: EnemyType, tier: int, min_distance: float, max_distance: float)
 	if type == null or _enemy_scene == null:
 		return null
 
-	var enemy: Enemy = _enemy_scene.instantiate()
+	var enemy: Enemy = Pool.acquire(_enemy_scene, _world) as Enemy
 	# Datele intra inainte de intrarea in arbore, ca `_ready` sa le gaseasca gata.
 	enemy.setup(type, tier)
-	_world.add_child(enemy)
 	enemy.global_position = _pick_spawn_point(min_distance, max_distance)
 	enemy.died.connect(_on_enemy_died)
 	alive += 1
@@ -107,7 +106,7 @@ func _pick_spawn_point(min_distance: float, max_distance: float) -> Vector2:
 ## continuare bun de dat - si urmatoarea cerere ar primi un nod deja mort.
 func clear_leftovers() -> void:
 	for node in _world.get_children():
-		if node is Projectile or node is EnemyProjectile:
+		if node is Projectile or node is EnemyProjectile or node is Enemy or node is XpOrb:
 			Pool.release(node)
-		elif node is Enemy or node is Telegraph:
+		elif node is Telegraph:
 			node.queue_free()
