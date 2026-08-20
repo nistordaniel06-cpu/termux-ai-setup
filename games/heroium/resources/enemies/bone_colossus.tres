@@ -8,6 +8,7 @@ script = ExtResource("1_type")
 id = &"bone_colossus"
 display_name = "Colosul de Os"
 behavior = 0
+silhouette = 6
 color = Color(0.9, 0.86, 0.72, 1)
 radius = 30.0
 base_health = 300.0

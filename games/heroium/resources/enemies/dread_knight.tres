@@ -7,6 +7,7 @@ script = ExtResource("1_type")
 id = &"dread_knight"
 display_name = "Cavaler Blestemat"
 behavior = 0
+silhouette = 5
 color = Color(0.42, 0.5, 0.68, 1)
 radius = 19.0
 base_health = 62.0

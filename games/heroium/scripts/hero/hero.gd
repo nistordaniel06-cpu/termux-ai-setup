@@ -45,7 +45,7 @@ var _accent: Color = Color("f0b45a")
 @onready var _combat: HeroCombat = $Combat
 @onready var _health: HeroHealth = $Health
 @onready var _xp: HeroXp = $Xp
-@onready var _body: Blob = $Body
+@onready var _body: CharacterArt = $Body
 
 
 func _ready() -> void:
@@ -87,9 +87,16 @@ func _ready() -> void:
 
 	if hero_class != null:
 		_accent = hero_class.accent_color
-		_body.fill = _accent
 		if hero_class.starting_ability != null:
 			grant_ability(hero_class.starting_ability)
+
+	# Infatisarea aleasa bate culoarea clasei. Atat schimba un cosmetic - daca ar
+	# atinge si o statistica, alegerea n-ar mai fi despre cum vrei sa arati.
+	var skin := GameState.selected_skin_resource()
+	if skin != null:
+		_accent = skin.color
+	_body.fill = _accent
+	_body.silhouette = CharacterArt.Silhouette.HERO
 
 
 func _physics_process(delta: float) -> void:

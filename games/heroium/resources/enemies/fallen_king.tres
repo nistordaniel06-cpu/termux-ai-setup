@@ -8,6 +8,7 @@ script = ExtResource("1_type")
 id = &"fallen_king"
 display_name = "Bătrânul Rege Căzut"
 behavior = 2
+silhouette = 7
 color = Color(0.58, 0.29, 0.78, 1)
 radius = 34.0
 base_health = 420.0

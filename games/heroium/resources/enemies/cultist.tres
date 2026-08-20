@@ -7,6 +7,7 @@ script = ExtResource("1_type")
 id = &"cultist"
 display_name = "Cultist"
 behavior = 1
+silhouette = 3
 color = Color(0.78, 0.42, 0.94, 1)
 radius = 14.0
 base_health = 20.0

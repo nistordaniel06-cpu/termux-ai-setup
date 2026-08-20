@@ -52,7 +52,7 @@ var _burn_time: float = 0.0
 var _contact_cooldown: float = 0.0
 var _hero: Node2D = null
 
-@onready var _body: Blob = $Body
+@onready var _body: CharacterArt = $Body
 @onready var _collider: CollisionShape2D = $CollisionShape2D
 
 
@@ -79,6 +79,7 @@ func _ready() -> void:
 	else:
 		_body.radius = radius
 		_body.fill = type.color
+		_body.silhouette = type.silhouette
 		# Forma vine din scena, deci e aceeasi pentru toate instantele: fara
 		# copie, un sef mare ar umfla si scheletele.
 		var shape: CircleShape2D = _collider.shape.duplicate()
