@@ -280,6 +280,89 @@
   .card .nm { font-family: var(--f-display); font-weight: 700; font-size: 14.5px; letter-spacing: 0.03em; }
   .card .ds { font-size: 12.5px; color: var(--text-dim); line-height: 1.35; }
 
+  /* ---------------- Ecrane care pot depasi inaltimea ecranului ---------------- */
+  .overlay.scrollable { align-items: flex-start; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .overlay.scrollable .panel { margin: max(20px, env(safe-area-inset-top)) 0 26px; }
+
+  /* ---------------- Hub-ul profilului ---------------- */
+  .profileCard {
+    width: 100%; text-align: center;
+    background: rgba(16,26,44,0.6);
+    border: 1px solid var(--panel-edge); border-radius: 9px;
+    padding: 10px 12px;
+  }
+  .profileNm { font-family: var(--f-display); font-weight: 700; font-size: 16px; color: var(--text); letter-spacing: 0.04em; }
+  .profileSub { font-family: var(--f-mono); font-size: 11.5px; color: var(--text-dim); margin-top: 3px; }
+  .profileSub b { color: var(--gold); }
+
+  .navRow { display: flex; gap: 7px; width: 100%; }
+  .navBtn {
+    flex: 1; cursor: pointer;
+    font-family: var(--f-display); font-weight: 700;
+    font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase;
+    color: var(--cyan);
+    background: rgba(62,232,255,0.08);
+    border: 1px solid rgba(62,232,255,0.28);
+    border-radius: 8px; padding: 10px 6px;
+  }
+  .navBtn:active { transform: scale(0.97); }
+  .navBtn:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+  .linkBtn {
+    background: none; border: none; cursor: pointer;
+    font-family: var(--f-body); font-size: 12px;
+    color: var(--text-dim); text-decoration: underline;
+    padding: 4px;
+  }
+  .linkBtn:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+  .nameInput {
+    width: 100%; box-sizing: border-box;
+    font-family: var(--f-display); font-size: 16px; font-weight: 700;
+    color: var(--text); text-align: center;
+    background: rgba(7,11,20,0.7);
+    border: 1px solid var(--panel-edge); border-radius: 8px;
+    padding: 12px 14px;
+  }
+  .nameInput:focus { outline: none; border-color: var(--cyan); }
+
+  /* ---------------- Sloturi de profil ---------------- */
+  #slotList, #mapList, #equipList { display: flex; flex-direction: column; gap: 10px; width: 100%; }
+
+  .slotCard {
+    width: 100%; text-align: left;
+    background: linear-gradient(100deg, var(--panel), #0a1220);
+    border: 1px solid var(--panel-edge); border-radius: 9px;
+    padding: 13px 15px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .slotCard .slotTop { display: flex; justify-content: space-between; align-items: baseline; }
+  .slotCard .slotNm { font-family: var(--f-display); font-weight: 700; font-size: 15px; color: var(--text); }
+  .slotCard .slotInfo { font-family: var(--f-mono); font-size: 11.5px; color: var(--text-dim); }
+  .slotCard .slotRow { display: flex; gap: 8px; }
+
+  /* ---------------- Harti ---------------- */
+  .mapCard {
+    width: 100%; text-align: left; cursor: pointer;
+    color: var(--text); font-family: var(--f-body);
+    background: linear-gradient(100deg, var(--panel), #0a1220);
+    border: 1px solid var(--panel-edge); border-left: 3px solid var(--panel-edge);
+    border-radius: 9px; padding: 13px 15px;
+  }
+  .mapCard[aria-pressed="true"] { border-left-color: var(--gold); box-shadow: 0 0 16px rgba(255,207,92,0.12); }
+  .mapCard .mapNm { font-family: var(--f-display); font-weight: 700; font-size: 14.5px; }
+  .mapCard .mapDs { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+  .mapCard .mapDiff { font-family: var(--f-mono); font-size: 11px; color: var(--gold); margin-top: 5px; }
+  .mapCard:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+  /* ---------------- Echipament ---------------- */
+  .equipGroup { width: 100%; text-align: left; }
+  .equipLabel {
+    font-family: var(--f-display); font-size: 11px; font-weight: 700;
+    letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-dim);
+    margin: 4px 0 6px;
+  }
+
   /* ---------------- Tabăra (progres permanent) ---------------- */
   #campOverlay .panel { width: min(460px, 100%); gap: 13px; }
 
@@ -399,10 +482,14 @@
       <div class="kicker">ultimul erou în picioare</div>
       <h1 class="title">Heroium</h1>
       <p class="lede">Tărâmul a fost înghițit de beznă. Scheleți, demoni și creaturi ale nopții năvălesc din toate direcțiile — n-au mai rămas ziduri, n-a mai rămas refugiu, doar tu. Oprit pe loc tragi cu <b>damage plin</b>; din mers, mai slab. Curăță valul, treci mai departe, alege puteri.</p>
-      <div class="modes" id="classes" role="group" aria-label="Clasă">
-        <button class="mode" type="button" data-class="ranger" aria-pressed="true">Ranger<small>iute · tir dublu</small></button>
-        <button class="mode" type="button" data-class="knight" aria-pressed="false">Knight<small>corp la corp · tanc</small></button>
-        <button class="mode" type="button" data-class="mage" aria-pressed="false">Mage<small>vrăji grele · ardere</small></button>
+      <div class="profileCard">
+        <div class="profileNm" id="hubName">Erou</div>
+        <div class="profileSub"><span id="hubClass">Ranger</span> · Nivel <b id="hubLevel">1</b> · <b id="hubShards">0</b> cioburi</div>
+      </div>
+      <div class="navRow">
+        <button class="navBtn" type="button" id="equipBtn">Echipament</button>
+        <button class="navBtn" type="button" id="talentBtn">Talente</button>
+        <button class="navBtn" type="button" id="mapBtn">Hartă: <span id="hubMap">—</span></button>
       </div>
       <div class="modes" id="modes" role="group" aria-label="Mod de tragere">
         <button class="mode" type="button" data-mode="clasic" aria-pressed="false">Clasic<small>doar pe loc · +25%</small></button>
@@ -411,6 +498,7 @@
       </div>
       <button class="btn" id="startBtn">Intră în temniță</button>
       <button class="btn secondary" id="campBtn">Tabăra · <span id="purseStart">0</span> cioburi</button>
+      <button class="linkBtn" type="button" id="switchProfileBtn">Schimbă profilul</button>
       <p class="lede" style="font-size:12px;">Stânga: joystick · Dreapta: tragi (apasă des, e mai rapid decât ținut) · PC: WASD + Spațiu</p>
     </div>
   </div>
@@ -451,6 +539,63 @@
       <p class="lede" style="font-size:11.5px;margin:-8px 0 0;" id="fBonus"></p>
       <button class="btn" id="retryBtn">Din nou</button>
       <button class="btn secondary" id="campBtn2">Tabăra</button>
+    </div>
+  </div>
+
+  <div id="profilesOverlay" class="overlay scrollable hidden">
+    <div class="panel">
+      <div class="kicker">selectează profilul</div>
+      <h2 class="sub">Sloturi</h2>
+      <div id="slotList"></div>
+      <button class="linkBtn" type="button" id="profilesBackBtn">Înapoi</button>
+    </div>
+  </div>
+
+  <div id="createOverlay" class="overlay scrollable hidden">
+    <div class="panel">
+      <div class="kicker" id="createKicker">profil nou</div>
+      <h2 class="sub">Erou nou</h2>
+      <input id="nameInput" class="nameInput" type="text" maxlength="16" placeholder="Numele eroului" autocomplete="off" />
+      <div class="modes" id="createClasses" role="group" aria-label="Clasă">
+        <button class="mode" type="button" data-class="ranger" aria-pressed="true">Ranger<small>iute · tir dublu</small></button>
+        <button class="mode" type="button" data-class="knight" aria-pressed="false">Knight<small>corp la corp · tanc</small></button>
+        <button class="mode" type="button" data-class="mage" aria-pressed="false">Mage<small>vrăji grele · ardere</small></button>
+      </div>
+      <button class="btn" id="createConfirmBtn">Creează profilul</button>
+      <button class="linkBtn" type="button" id="createBackBtn">Înapoi</button>
+    </div>
+  </div>
+
+  <div id="equipOverlay" class="overlay scrollable hidden">
+    <div class="panel">
+      <div class="kicker">echipament</div>
+      <h2 class="sub">Inventar</h2>
+      <div class="statRow" id="equipStats">
+        <div class="stat"><b id="eqAtk">+0</b><span>ATK</span></div>
+        <div class="stat"><b id="eqHp">+0</b><span>HP</span></div>
+        <div class="stat"><b id="eqDef">+0</b><span>DEF</span></div>
+      </div>
+      <div id="equipList"></div>
+      <button class="btn" id="equipBack">Înapoi</button>
+    </div>
+  </div>
+
+  <div id="talentOverlay" class="overlay scrollable hidden">
+    <div class="panel">
+      <div class="kicker">calea legendară</div>
+      <h2 class="sub">Talente</h2>
+      <div class="purse"><span>Cioburi</span> <b id="talentPurse">0</b></div>
+      <div id="talentList"></div>
+      <button class="btn" id="talentBack">Înapoi</button>
+    </div>
+  </div>
+
+  <div id="mapOverlay" class="overlay scrollable hidden">
+    <div class="panel">
+      <div class="kicker">alege tărâmul</div>
+      <h2 class="sub">Hărți</h2>
+      <div id="mapList"></div>
+      <button class="btn" id="mapBack">Înapoi</button>
     </div>
   </div>
 </div>
@@ -571,8 +716,10 @@
       burn: 7
     }
   };
-  var HERO_CLASS_KEY = "heroium.heroClass";
-  var heroClass = "ranger";
+  // Clasa nu mai e o alegere per-runda: e fixata la crearea profilului si
+  // traieste in el (meta.classId). pendingClass e doar starea temporara a
+  // formularului de profil nou, inainte de a fi salvata undeva.
+  var pendingClass = "ranger";
 
   // ====================== SUNET ======================
   // Sintetizat cu Web Audio, fara fisiere externe - consistent cu restul
@@ -618,6 +765,7 @@
     shoot: function () { beep(880, 0.05, "square", 0.16); },
     weakShoot: function () { beep(640, 0.045, "square", 0.11); },
     swing: function () { beep(200, 0.07, "sawtooth", 0.22, 130); },
+    crit: function () { beep(1100, 0.08, "triangle", 0.26, 1500); },
     hit: function () { beep(220, 0.035, "square", 0.13); },
     kill: function () { beep(150, 0.11, "sawtooth", 0.2, 60); },
     hurt: function () { beep(120, 0.16, "sawtooth", 0.28, 55); },
@@ -645,8 +793,85 @@
   syncMuteBtn();
 
   // ====================== PROGRES PERMANENT ======================
-  var META_KEY = "heroium.meta";
-  var meta = { shards: 0, totalRooms: 0, bestRoom: 1, up: {} };
+  // Trei sloturi de profil, complet izolate: fiecare traieste sub propria
+  // cheie in localStorage, deci progresul unuia nu atinge niciodata pe al
+  // altuia. "meta" e mereu profilul ACTIV - restul jocului citeste/scrie in
+  // el fara sa stie de sloturi.
+  var SLOT_COUNT = 3;
+  var ACTIVE_SLOT_KEY = "heroium.activeSlot";
+  function slotKey(n) { return "heroium_slot_" + n; }
+
+  var EQUIP_SLOTS = ["helm", "armor", "boots", "gloves", "weapon", "offhand", "ring1", "ring2"];
+  var SLOT_NAMES = {
+    helm: "Cască", armor: "Armură", boots: "Papuci", gloves: "Mănuși",
+    weapon: "Armă Principală", offhand: "Armă Secundară", ring1: "Inel 1", ring2: "Inel 2"
+  };
+
+  // Doua nivele pe slot - suficient cat echiparea sa fie o alegere reala,
+  // fara sa transforme ecranul intr-un catalog nesfarsit.
+  var ITEMS = [
+    { id: "helm1",    slot: "helm",    nm: "Coif de fier",    cost: 60,  hp: 10, def: 1 },
+    { id: "helm2",    slot: "helm",    nm: "Coif de dragon",  cost: 220, hp: 22, def: 3 },
+    { id: "armor1",   slot: "armor",   nm: "Zale ușoare",     cost: 70,  hp: 16, def: 2 },
+    { id: "armor2",   slot: "armor",   nm: "Platoșă grea",    cost: 240, hp: 34, def: 5 },
+    { id: "boots1",   slot: "boots",   nm: "Cizme de piele",  cost: 50,  hp: 6,  def: 1 },
+    { id: "boots2",   slot: "boots",   nm: "Cizme fermecate", cost: 180, hp: 12, def: 2 },
+    { id: "gloves1",  slot: "gloves",  nm: "Mănuși aspre",    cost: 50,  atk: 1, def: 1 },
+    { id: "gloves2",  slot: "gloves",  nm: "Mănuși ghimpate", cost: 180, atk: 3, def: 2 },
+    { id: "weapon1",  slot: "weapon",  nm: "Lamă ascuțită",   cost: 90,  atk: 3 },
+    { id: "weapon2",  slot: "weapon",  nm: "Lamă legendară",  cost: 320, atk: 8 },
+    { id: "offhand1", slot: "offhand", nm: "Pumnal secundar", cost: 80,  atk: 2 },
+    { id: "offhand2", slot: "offhand", nm: "Talisman de foc", cost: 260, atk: 5, hp: 8 },
+    { id: "ring1a",   slot: "ring1",   nm: "Inel de rubin",   cost: 70,  atk: 2, hp: 6 },
+    { id: "ring1b",   slot: "ring1",   nm: "Inel de safir",   cost: 230, atk: 4, hp: 14 },
+    { id: "ring2a",   slot: "ring2",   nm: "Inel de smarald", cost: 70,  def: 2 },
+    { id: "ring2b",   slot: "ring2",   nm: "Inel de onix",    cost: 230, def: 5, hp: 10 }
+  ];
+  function itemById(id) {
+    for (var i = 0; i < ITEMS.length; i++) if (ITEMS[i].id === id) return ITEMS[i];
+    return null;
+  }
+  function itemsForSlot(slotId) { return ITEMS.filter(function (it) { return it.slot === slotId; }); }
+
+  // Talente permanente, pe doua ramuri: Putere Atac deblocheaza Rezistenta
+  // si Sanatate Maxima; Viteza Atac deblocheaza Sansa Critica. "requires"
+  // cere cel putin un nivel investit in talentul parinte.
+  var TALENTS = [
+    { id: "atkPower",   nm: "Putere Atac",     ds: "+5% daună / nivel",         max: 5, costs: [50, 90, 140, 200, 280] },
+    { id: "resist",     nm: "Rezistență",      ds: "+2 armură / nivel",         max: 5, costs: [60, 100, 150, 210, 290], requires: "atkPower" },
+    { id: "vitality",   nm: "Sănătate Maximă", ds: "+15 viață maximă / nivel",  max: 5, costs: [60, 100, 150, 210, 290], requires: "atkPower" },
+    { id: "atkSpeed",   nm: "Viteză Atac",     ds: "-4% timp de atac / nivel",  max: 5, costs: [55, 95, 145, 205, 285] },
+    { id: "critChance", nm: "Șansă Critică",   ds: "+5% șansă critică / nivel", max: 5, costs: [70, 120, 180, 250, 340], requires: "atkSpeed" }
+  ];
+  function talentById(id) {
+    for (var i = 0; i < TALENTS.length; i++) if (TALENTS[i].id === id) return TALENTS[i];
+    return null;
+  }
+  function talentLevel(id) { return meta.talents[id] | 0; }
+  function talentAvailable(t) { return !t.requires || talentLevel(t.requires) >= 1; }
+
+  // Patru harti: paleta proprie (podea/pereti/contur), multiplicator de
+  // dificultate care scaleaza viata si dauna inamicilor (si rasplata in
+  // cioburi), si o compozitie proprie de tipuri de inamici.
+  var MAPS = [
+    { id: "forest", nm: "Pădurea Umbrită", ds: "Copaci morți, ceață verde", diff: 1.0,
+      floor: "#0e1a12", wall: "#1c3323", edge: "94,214,150",
+      weights: { melee: 0.45, ranged: 0.35, charger: 0.20 } },
+    { id: "castle", nm: "Castelul Întunecat", ds: "Coridoare de piatră, torțe stinse", diff: 1.15,
+      floor: "#0e1626", wall: "#1b2740", edge: "62,232,255",
+      weights: { melee: 0.40, ranged: 0.35, charger: 0.25 } },
+    { id: "desert", nm: "Deșertul Pierdut", ds: "Nisipuri arse, sub un soare mort", diff: 1.3,
+      floor: "#241a0e", wall: "#3a2a1b", edge: "255,180,84",
+      weights: { melee: 0.35, ranged: 0.25, charger: 0.40 } },
+    { id: "shadow", nm: "Tărâmul Umbrelor", ds: "Bezna pură, cel mai greu tărâm", diff: 1.5,
+      floor: "#140e1e", wall: "#241b3a", edge: "178,107,255",
+      weights: { melee: 0.30, ranged: 0.45, charger: 0.25 } }
+  ];
+  function mapById(id) {
+    for (var i = 0; i < MAPS.length; i++) if (MAPS[i].id === id) return MAPS[i];
+    return MAPS[0];
+  }
+  function currentMap() { return mapById(meta.mapId); }
 
   var UPGRADES = [
     { id: "vigoare",     nm: "Vigoare",      ds: "+12 viață maximă",        max: 5, costs: [40, 70, 110, 160, 220] },
@@ -665,27 +890,78 @@
     { rooms: 60, id: "explode",  nm: "Sfârșit exploziv" }
   ];
 
-  function loadMeta() {
-    try {
-      var raw = localStorage.getItem(META_KEY);
-      if (raw) {
-        var m = JSON.parse(raw);
-        if (m && typeof m === "object") {
-          meta.shards = Math.max(0, m.shards | 0);
-          meta.totalRooms = Math.max(0, m.totalRooms | 0);
-          meta.bestRoom = Math.max(1, m.bestRoom | 0);
-          meta.up = (m.up && typeof m.up === "object") ? m.up : {};
-        }
-      }
-      var savedMode = localStorage.getItem("heroium.fireMode");
-      if (savedMode === "clasic" || savedMode === "hibrid" || savedMode === "liber") fireMode = savedMode;
-      var savedClass = localStorage.getItem(HERO_CLASS_KEY);
-      if (CLASSES[savedClass]) heroClass = savedClass;
-    } catch (err) { /* stocarea poate fi blocata - ramanem pe valorile implicite */ }
+  function emptyProfile(name, classId) {
+    var equip = {};
+    EQUIP_SLOTS.forEach(function (s) { equip[s] = null; });
+    return {
+      name: name, classId: classId,
+      shards: 0, totalRooms: 0, bestRoom: 1, bestLevel: 1,
+      up: {}, talents: {}, equip: equip, owned: [], mapId: "forest"
+    };
   }
 
+  // Validare defensiva la incarcare - un profil corupt sau vechi nu trebuie
+  // sa dea crash, doar sa cada pe valori implicite sigure.
+  function sanitizeProfile(p) {
+    if (!p || typeof p !== "object" || !CLASSES[p.classId]) return null;
+    var nm = (typeof p.name === "string" && p.name.trim()) ? p.name.trim().slice(0, 16) : "Erou";
+    var prof = emptyProfile(nm, p.classId);
+    prof.shards = Math.max(0, p.shards | 0);
+    prof.totalRooms = Math.max(0, p.totalRooms | 0);
+    prof.bestRoom = Math.max(1, p.bestRoom | 0);
+    prof.bestLevel = Math.max(1, p.bestLevel | 0);
+    prof.up = (p.up && typeof p.up === "object") ? p.up : {};
+    prof.talents = (p.talents && typeof p.talents === "object") ? p.talents : {};
+    if (p.equip && typeof p.equip === "object") {
+      EQUIP_SLOTS.forEach(function (s) { if (typeof p.equip[s] === "string") prof.equip[s] = p.equip[s]; });
+    }
+    prof.owned = Array.isArray(p.owned) ? p.owned.filter(function (id) { return typeof id === "string"; }) : [];
+    if (typeof p.mapId === "string" && MAPS.some(function (m) { return m.id === p.mapId; })) prof.mapId = p.mapId;
+    return prof;
+  }
+
+  function readSlot(n) {
+    try {
+      var raw = localStorage.getItem(slotKey(n));
+      return raw ? sanitizeProfile(JSON.parse(raw)) : null;
+    } catch (err) { return null; }
+  }
+
+  var activeSlot = null;
+  var meta = emptyProfile("Erou", "ranger");   // profil-placeholder pana se incarca unul real
+
   function saveMeta() {
-    try { localStorage.setItem(META_KEY, JSON.stringify(meta)); } catch (err) {}
+    if (!activeSlot) return;
+    try { localStorage.setItem(slotKey(activeSlot), JSON.stringify(meta)); } catch (err) {}
+  }
+
+  function loadSlot(n) {
+    var prof = readSlot(n);
+    if (!prof) return false;
+    activeSlot = n;
+    meta = prof;
+    try { localStorage.setItem(ACTIVE_SLOT_KEY, String(n)); } catch (err) {}
+    return true;
+  }
+
+  function createProfile(n, name, classId) {
+    if (!CLASSES[classId]) classId = "ranger";
+    activeSlot = n;
+    meta = emptyProfile((name || "").trim().slice(0, 16) || "Erou", classId);
+    saveMeta();
+    try { localStorage.setItem(ACTIVE_SLOT_KEY, String(n)); } catch (err) {}
+  }
+
+  function wipeSlot(n) {
+    try { localStorage.removeItem(slotKey(n)); } catch (err) {}
+    if (activeSlot === n) { activeSlot = null; meta = emptyProfile("Erou", "ranger"); }
+  }
+
+  function loadDevicePrefs() {
+    try {
+      var savedMode = localStorage.getItem("heroium.fireMode");
+      if (savedMode === "clasic" || savedMode === "hibrid" || savedMode === "liber") fireMode = savedMode;
+    } catch (err) { /* stocarea poate fi blocata - ramanem pe valorile implicite */ }
   }
 
   function upLevel(id) { return meta.up[id] | 0; }
@@ -704,7 +980,17 @@
     return null;
   }
 
-  loadMeta();
+  // Suma unei statistici peste tot echipamentul purtat curent.
+  function equipSum(stat) {
+    var sum = 0;
+    EQUIP_SLOTS.forEach(function (s) {
+      var it = meta.equip[s] && itemById(meta.equip[s]);
+      if (it) sum += it[stat] || 0;
+    });
+    return sum;
+  }
+
+  loadDevicePrefs();
 
   var player = null;
   var enemies = [], pBullets = [], eBullets = [], particles = [], telegraphs = [], orbs = [], slashes = [];
@@ -713,20 +999,25 @@
   var lastTime = 0, shakeTime = 0, shakeMag = 0;
 
   function newPlayer() {
-    // upgrade-urile permanente cumparate in tabara si multiplicatorii clasei
-    // aleasa se aplica amandoua aici, o data pe rulare
-    var cls = CLASSES[heroClass] || CLASSES.ranger;
-    var maxHp = Math.round((100 + upLevel("vigoare") * 12) * cls.hpMult);
+    // patru straturi combinate o singura data pe rulare: baza clasei,
+    // upgrade-urile din tabara, talentele permanente si echipamentul
+    var cls = CLASSES[meta.classId] || CLASSES.ranger;
+    var talentDmgPct = talentLevel("atkPower") * 0.05;
+    var talentAtkSpeedPct = talentLevel("atkSpeed") * 0.04;
+    var maxHp = Math.round((100 + upLevel("vigoare") * 12 + equipSum("hp") + talentLevel("vitality") * 15) * cls.hpMult);
+    var dmg = Math.round((14 * (1 + upLevel("tais") * 0.08) + equipSum("atk")) * (1 + talentDmgPct) * cls.dmgMult * 10) / 10;
     return {
       classId: cls.id,
       x: VW / 2, y: ROOM.y1 - 90, r: 13,
       hp: maxHp, maxHp: maxHp,
       speed: Math.round(205 * (1 + upLevel("iuteala") * 0.05) * cls.spdMult),
-      damage: Math.round(14 * (1 + upLevel("tais") * 0.08) * cls.dmgMult * 10) / 10,
+      damage: dmg,
+      armor: equipSum("def") + talentLevel("resist") * 2,
+      critChance: Math.min(0.75, talentLevel("critChance") * 0.05),
       cardCount: 3 + upLevel("clarviziune"),
       revives: upLevel("torta"),
       explode: 0,
-      atkInterval: Math.round(420 * cls.atkMult),   // ms
+      atkInterval: Math.round(420 * cls.atkMult * (1 - talentAtkSpeedPct)),   // ms
       atkTimer: 0,
       manualCd: 0,        // racire pentru focurile trase manual, din mers
       settle: 0,          // mica intarziere dupa oprire, ca in Archero
@@ -772,12 +1063,15 @@
     }
   }
 
+  // Primele camere raman un tutorial fix (mai mult "melee", ca regula de
+  // baza sa se invete usor); dupa aceea, compozitia vine din harta aleasa.
   function pickType() {
     var r = Math.random();
     if (room <= 1) return "melee";
     if (room <= 3) return r < 0.65 ? "melee" : "ranged";
-    if (r < 0.45) return "melee";
-    if (r < 0.8) return "ranged";
+    var w = currentMap().weights;
+    if (r < w.melee) return "melee";
+    if (r < w.melee + w.ranged) return "ranged";
     return "charger";
   }
 
@@ -790,6 +1084,7 @@
     } while (tries < 30 && Math.hypot(x - player.x, y - player.y) < 190);
 
     var tier = room - 1;
+    var diff = currentMap().diff;
     var e = {
       type: type, x: x, y: y,
       hp: 1, maxHp: 1, r: 13,
@@ -800,12 +1095,12 @@
     };
 
     if (type === "melee") {
-      e.maxHp = 26 + tier * 7; e.speed = 74 + tier * 3.2; e.damage = 9 + tier; e.r = 13; e.xp = 2;
+      e.maxHp = (26 + tier * 7) * diff; e.speed = 74 + tier * 3.2; e.damage = (9 + tier) * diff; e.r = 13; e.xp = 2;
     } else if (type === "ranged") {
-      e.maxHp = 20 + tier * 5; e.speed = 52 + tier * 2; e.damage = 11 + tier; e.r = 12; e.xp = 3;
+      e.maxHp = (20 + tier * 5) * diff; e.speed = 52 + tier * 2; e.damage = (11 + tier) * diff; e.r = 12; e.xp = 3;
       e.phase = "reposition"; e.phaseT = 0.5 + Math.random();
     } else { // charger
-      e.maxHp = 40 + tier * 9; e.speed = 46 + tier * 1.6; e.damage = 16 + tier * 1.4; e.r = 16; e.xp = 4;
+      e.maxHp = (40 + tier * 9) * diff; e.speed = 46 + tier * 1.6; e.damage = (16 + tier * 1.4) * diff; e.r = 16; e.xp = 4;
       e.phase = "stalk"; e.phaseT = 0.9 + Math.random() * 0.7;
     }
     e.hp = e.maxHp;
@@ -818,14 +1113,15 @@
   // existente pentru inamici obisnuiti, doar la scara mai mare.
   function spawnBoss() {
     var tier = room - 1;
+    var diff = currentMap().diff;
     var e = {
       type: "boss", x: VW / 2, y: ROOM.y0 + 130, r: 26,
-      hp: 1, maxHp: 1, speed: 58 + tier * 1.2, damage: 15 + tier * 1.6,
+      hp: 1, maxHp: 1, speed: 58 + tier * 1.2, damage: (15 + tier * 1.6) * diff,
       touchCd: 0, phase: "stalk", phaseT: 1.2,
       aimX: 0, aimY: 0, burnT: 0, burnDps: 0, flash: 0,
       xp: 14 + tier * 2
     };
-    e.maxHp = 160 + tier * 34;
+    e.maxHp = (160 + tier * 34) * diff;
     e.hp = e.maxHp;
     enemies.push(e);
   }
@@ -1064,8 +1360,13 @@
     return best;
   }
 
+  var CRIT_MULT = 2;
+  var lastMeleeCrit = false;   // ultima lovitura corp la corp a fost critica? (Knight nu are bullets unde sa stea flagul)
+
   function fireAt(target, mult) {
     var m = mult === undefined ? 1 : mult;
+    var crit = Math.random() < (player.critChance || 0);
+    var cm = crit ? CRIT_MULT : 1;
     var base = Math.atan2(target.y - player.y, target.x - player.x);
     player.facing = base;
     var n = player.projCount, spread = 0.14;
@@ -1076,15 +1377,16 @@
         x: player.x + Math.cos(a) * 16, y: player.y + Math.sin(a) * 16,
         vx: Math.cos(a) * player.projSpeed, vy: Math.sin(a) * player.projSpeed,
         r: m < 1 ? 3.6 : 4.5,          // focurile din mers arata vizibil mai slabe
-        dmg: player.damage * m, life: 2.2,
+        dmg: player.damage * m * cm, life: 2.2,
         pierce: player.pierce, bounces: player.bounces,
         burn: player.burn * m, hitIds: [], trail: [], weak: m < 1,
-        cls: player.classId
+        cls: player.classId, crit: crit
       });
     }
     var rgb = player.classId === "mage" ? "178,107,255" : "62,232,255";
-    burst(player.x + Math.cos(base) * 18, player.y + Math.sin(base) * 18, rgb, m < 1 ? 2 : 3, 90);
+    burst(player.x + Math.cos(base) * 18, player.y + Math.sin(base) * 18, crit ? "255,207,92" : rgb, m < 1 ? 2 : 3, crit ? 130 : 90);
     if (m < 1) sfx.weakShoot(); else sfx.shoot();
+    if (crit) sfx.crit();
   }
 
   // Knight nu trage - loveste in arc toti inamicii aflati in raza si unghiul
@@ -1093,6 +1395,8 @@
   // pentru toate clasele.
   function meleeAttack(target, mult) {
     var m = mult === undefined ? 1 : mult;
+    var crit = Math.random() < (player.critChance || 0);
+    var cm = crit ? CRIT_MULT : 1;
     var base = Math.atan2(target.y - player.y, target.x - player.x);
     player.facing = base;
     var range = player.meleeRange, arc = player.meleeArc;
@@ -1104,15 +1408,17 @@
       var ang = Math.atan2(dy, dx);
       var diff = Math.abs(Math.atan2(Math.sin(ang - base), Math.cos(ang - base)));
       if (diff > arc / 2) continue;
-      e.hp -= player.damage * m;
+      e.hp -= player.damage * m * cm;
       e.flash = 0.12;
       if (player.burn > 0) { e.burnDps = player.burn * m; e.burnT = 2.2; }
-      burst(e.x, e.y, "255,207,92", 4, 110);
+      burst(e.x, e.y, crit ? "255,235,150" : "255,207,92", 4, crit ? 150 : 110);
       sfx.hit();
       if (e.hp <= 0) killEnemy(i, e);
     }
     slashes.push({ x: player.x, y: player.y, angle: base, range: range, arc: arc, t: 0.16, max: 0.16 });
+    lastMeleeCrit = crit;
     sfx.swing();
+    if (crit) sfx.crit();
   }
 
   // Punct unic de atac: dirijeaza spre tragere la distanta sau lovitura corp
@@ -1234,7 +1540,7 @@
 
   function nextRoom() {
     transitioning = true;
-    runShards += 8 + room * 2;          // rasplata pentru camera tocmai curatata
+    runShards += Math.round((8 + room * 2) * currentMap().diff);   // rasplata pentru camera tocmai curatata
     meta.totalRooms++;                  // progresul spre deblocari nu se pierde niciodata
     saveMeta();
     room++;
@@ -1365,7 +1671,7 @@
     shake(3, 0.12);
 
     if (e.type === "boss") {
-      runShards += 20 + room * 3;
+      runShards += Math.round((20 + room * 3) * currentMap().diff);
       shake(10, 0.32);
       toast("Gardian învins!");
       sfx.bossDown();
@@ -1389,7 +1695,7 @@
   }
 
   function hurtPlayer(dmg) {
-    player.hp -= dmg;
+    player.hp -= Math.max(1, Math.round(dmg - player.armor));
     player.hurtCd = 0.45;
     player.flash = 0.22;
     burst(player.x, player.y, "255,51,85", 9, 150);
@@ -1555,12 +1861,14 @@
   }
 
   function drawRoom(time) {
+    var mp = currentMap();
+
     // podea
-    ctx.fillStyle = "#0e1626";
+    ctx.fillStyle = mp.floor;
     ctx.fillRect(ROOM.x0, ROOM.y0, ROOM.x1 - ROOM.x0, ROOM.y1 - ROOM.y0);
 
     // dale
-    ctx.strokeStyle = "rgba(62,232,255,0.045)";
+    ctx.strokeStyle = "rgba(" + mp.edge + ",0.06)";
     ctx.lineWidth = 1;
     ctx.beginPath();
     for (var x = ROOM.x0 + 45; x < ROOM.x1; x += 45) { ctx.moveTo(x, ROOM.y0); ctx.lineTo(x, ROOM.y1); }
@@ -1568,14 +1876,14 @@
     ctx.stroke();
 
     // ziduri
-    ctx.fillStyle = "#243352";
+    ctx.fillStyle = mp.wall;
     ctx.fillRect(ROOM.x0 - WALL, ROOM.y0 - WALL, (ROOM.x1 - ROOM.x0) + WALL * 2, WALL); // sus
     ctx.fillRect(ROOM.x0 - WALL, ROOM.y1, (ROOM.x1 - ROOM.x0) + WALL * 2, WALL);        // jos
     ctx.fillRect(ROOM.x0 - WALL, ROOM.y0, WALL, ROOM.y1 - ROOM.y0);                     // stanga
     ctx.fillRect(ROOM.x1, ROOM.y0, WALL, ROOM.y1 - ROOM.y0);                            // dreapta
 
-    // muchie luminata - contureaza clar arena
-    ctx.strokeStyle = "rgba(62,232,255,0.28)";
+    // muchie luminata - contureaza clar arena, culoare specifica hartii
+    ctx.strokeStyle = "rgba(" + mp.edge + ",0.28)";
     ctx.lineWidth = 2;
     ctx.strokeRect(ROOM.x0, ROOM.y0, ROOM.x1 - ROOM.x0, ROOM.y1 - ROOM.y0);
 
@@ -1813,10 +2121,8 @@
 
   // ====================== FLUX ======================
   function startRun() {
-    document.getElementById("startOverlay").classList.add("hidden");
-    document.getElementById("overOverlay").classList.add("hidden");
-    document.getElementById("levelOverlay").classList.add("hidden");
-    document.getElementById("campOverlay").classList.add("hidden");
+    if (!activeSlot) return;   // fara profil activ nu exista nimic de pornit
+    hideAllOverlays();
     resetRun();
     state = S_PLAY;
   }
@@ -1844,6 +2150,7 @@
     var earned = Math.round(runShards * (MODE_BONUS[fireMode] || 1));
     meta.shards += earned;
     if (room > meta.bestRoom) meta.bestRoom = room;
+    if (player.level > meta.bestLevel) meta.bestLevel = player.level;
     saveMeta();
 
     document.getElementById("fRoom").textContent = String(room);
@@ -1928,8 +2235,7 @@
   function openCamp(from) {
     cameFrom = from;
     renderCamp();
-    document.getElementById("startOverlay").classList.add("hidden");
-    document.getElementById("overOverlay").classList.add("hidden");
+    hideAllOverlays();
     campOverlay.classList.remove("hidden");
   }
 
@@ -1938,7 +2244,7 @@
   document.getElementById("campBack").addEventListener("click", function () {
     campOverlay.classList.add("hidden");
     document.getElementById(cameFrom === "over" ? "overOverlay" : "startOverlay").classList.remove("hidden");
-    document.getElementById("purseStart").textContent = String(meta.shards);
+    syncHub();
   });
 
   // ---------- selector de mod de tragere ----------
@@ -1960,22 +2266,283 @@
   });
   setMode(fireMode);
 
-  // ---------- selector de clasa ----------
-  var classBtns = Array.prototype.slice.call(document.querySelectorAll("#classes .mode"));
+  // ---------- hub-ul profilului activ ----------
+  function syncHub() {
+    document.getElementById("hubName").textContent = meta.name;
+    document.getElementById("hubClass").textContent = (CLASSES[meta.classId] || CLASSES.ranger).nm;
+    document.getElementById("hubLevel").textContent = String(meta.bestLevel);
+    document.getElementById("hubShards").textContent = String(meta.shards);
+    document.getElementById("hubMap").textContent = currentMap().nm;
+    document.getElementById("purseStart").textContent = String(meta.shards);
+  }
 
-  function setClass(c) {
+  var ALL_OVERLAYS = ["startOverlay", "overOverlay", "levelOverlay", "campOverlay",
+    "profilesOverlay", "createOverlay", "equipOverlay", "talentOverlay", "mapOverlay"];
+
+  // Fiecare ecran secundar porneste ascunzand-le pe TOATE, nu doar hub-ul -
+  // altfel navigarea directa intre ele (din teste sau din hook-uri) lasa
+  // ecranul anterior vizibil dedesubt.
+  function hideAllOverlays() {
+    ALL_OVERLAYS.forEach(function (id) { document.getElementById(id).classList.add("hidden"); });
+  }
+
+  function goToHub() {
+    hideAllOverlays();
+    syncHub();
+    document.getElementById("startOverlay").classList.remove("hidden");
+  }
+
+  // ---------- sloturi de profil ----------
+  var profilesOverlay = document.getElementById("profilesOverlay");
+  var slotListEl = document.getElementById("slotList");
+
+  function renderSlots() {
+    slotListEl.innerHTML = "";
+    for (var n = 1; n <= SLOT_COUNT; n++) {
+      (function (n) {
+        var prof = readSlot(n);
+        var card = document.createElement("div");
+        card.className = "slotCard";
+        if (prof) {
+          card.innerHTML =
+            '<div class="slotTop"><div class="slotNm">Slot ' + n + ' · ' + prof.name + '</div></div>' +
+            '<div class="slotInfo">' + (CLASSES[prof.classId] || CLASSES.ranger).nm + ' · Nivel ' + prof.bestLevel +
+            ' · ' + prof.shards + ' cioburi</div>' +
+            '<div class="slotRow"><button class="btn" type="button" data-act="play">Joacă</button>' +
+            '<button class="linkBtn" type="button" data-act="wipe">Șterge</button></div>';
+          card.querySelector('[data-act="play"]').addEventListener("click", function () {
+            loadSlot(n);
+            profilesOverlay.classList.add("hidden");
+            goToHub();
+          });
+          card.querySelector('[data-act="wipe"]').addEventListener("click", function () {
+            if (!window.confirm("Ștergi definitiv profilul \"" + prof.name + "\" din slotul " + n + "?")) return;
+            wipeSlot(n);
+            renderSlots();
+          });
+        } else {
+          card.innerHTML =
+            '<div class="slotTop"><div class="slotNm">Slot ' + n + ' · gol</div></div>' +
+            '<div class="slotInfo">Niciun profil salvat aici</div>' +
+            '<div class="slotRow"><button class="btn" type="button">Profil Nou</button></div>';
+          card.querySelector("button").addEventListener("click", function () { openCreate(n); });
+        }
+        slotListEl.appendChild(card);
+      })(n);
+    }
+    document.getElementById("profilesBackBtn").style.display = activeSlot ? "" : "none";
+  }
+
+  function openProfiles() {
+    renderSlots();
+    hideAllOverlays();
+    profilesOverlay.classList.remove("hidden");
+  }
+
+  document.getElementById("switchProfileBtn").addEventListener("click", openProfiles);
+  document.getElementById("profilesBackBtn").addEventListener("click", function () {
+    if (!activeSlot) return;
+    profilesOverlay.classList.add("hidden");
+    goToHub();
+  });
+
+  // ---------- creare profil nou ----------
+  var createOverlay = document.getElementById("createOverlay");
+  var createTargetSlot = 1;
+  var createClassBtns = Array.prototype.slice.call(document.querySelectorAll("#createClasses .mode"));
+
+  function setPendingClass(c) {
     if (!CLASSES[c]) return;
-    heroClass = c;
-    try { localStorage.setItem(HERO_CLASS_KEY, c); } catch (err) {}
-    classBtns.forEach(function (b) {
+    pendingClass = c;
+    createClassBtns.forEach(function (b) {
       b.setAttribute("aria-pressed", String(b.dataset.class === c));
     });
   }
-
-  classBtns.forEach(function (b) {
-    b.addEventListener("click", function () { setClass(b.dataset.class); });
+  createClassBtns.forEach(function (b) {
+    b.addEventListener("click", function () { setPendingClass(b.dataset.class); });
   });
-  setClass(heroClass);
+
+  function openCreate(n) {
+    createTargetSlot = n;
+    document.getElementById("nameInput").value = "";
+    setPendingClass("ranger");
+    hideAllOverlays();
+    createOverlay.classList.remove("hidden");
+  }
+
+  document.getElementById("createConfirmBtn").addEventListener("click", function () {
+    var nm = document.getElementById("nameInput").value;
+    createProfile(createTargetSlot, nm, pendingClass);
+    createOverlay.classList.add("hidden");
+    goToHub();
+  });
+  document.getElementById("createBackBtn").addEventListener("click", function () {
+    createOverlay.classList.add("hidden");
+    openProfiles();
+  });
+
+  // ---------- echipament ----------
+  var equipOverlay = document.getElementById("equipOverlay");
+
+  function renderEquip() {
+    document.getElementById("eqAtk").textContent = "+" + equipSum("atk");
+    document.getElementById("eqHp").textContent = "+" + equipSum("hp");
+    document.getElementById("eqDef").textContent = "+" + equipSum("def");
+
+    var box = document.getElementById("equipList");
+    box.innerHTML = "";
+    EQUIP_SLOTS.forEach(function (slotId) {
+      var group = document.createElement("div");
+      group.className = "equipGroup";
+      var equippedId = meta.equip[slotId];
+      var label = document.createElement("div");
+      label.className = "equipLabel";
+      label.textContent = SLOT_NAMES[slotId] + " · " + (equippedId ? itemById(equippedId).nm : "gol");
+      group.appendChild(label);
+
+      itemsForSlot(slotId).forEach(function (it) {
+        var owned = meta.owned.indexOf(it.id) >= 0;
+        var equipped = equippedId === it.id;
+        var affordable = meta.shards >= it.cost;
+        var stats = [];
+        if (it.atk) stats.push("+" + it.atk + " ATK");
+        if (it.hp) stats.push("+" + it.hp + " HP");
+        if (it.def) stats.push("+" + it.def + " DEF");
+
+        var b = document.createElement("button");
+        b.className = "buy"; b.type = "button";
+        b.disabled = !owned && !affordable;
+        b.innerHTML =
+          '<div class="info"><div class="nm">' + it.nm + '</div>' +
+          '<div class="ds">' + stats.join(" · ") + '</div></div>' +
+          '<div class="price ' + (equipped ? "maxed" : (owned ? "" : (affordable ? "" : "short"))) + '">' +
+          (equipped ? "ECHIPAT" : (owned ? "ECHIPEAZĂ" : it.cost)) + '</div>';
+        b.addEventListener("click", function () {
+          if (equipped) { meta.equip[slotId] = null; }
+          else if (owned) { meta.equip[slotId] = it.id; }
+          else {
+            if (meta.shards < it.cost) return;
+            meta.shards -= it.cost;
+            meta.owned.push(it.id);
+            meta.equip[slotId] = it.id;
+          }
+          saveMeta();
+          renderEquip();
+        });
+        group.appendChild(b);
+      });
+      box.appendChild(group);
+    });
+  }
+
+  function openEquip() {
+    renderEquip();
+    hideAllOverlays();
+    equipOverlay.classList.remove("hidden");
+  }
+  document.getElementById("equipBtn").addEventListener("click", openEquip);
+  document.getElementById("equipBack").addEventListener("click", function () {
+    equipOverlay.classList.add("hidden");
+    goToHub();
+  });
+
+  // ---------- talente permanente ----------
+  var talentOverlay = document.getElementById("talentOverlay");
+
+  function talentCostOf(t) {
+    var lv = talentLevel(t.id);
+    return lv >= t.max ? null : t.costs[lv];
+  }
+
+  function renderTalents() {
+    document.getElementById("talentPurse").textContent = String(meta.shards);
+    var box = document.getElementById("talentList");
+    box.innerHTML = "";
+    TALENTS.forEach(function (t) {
+      var lv = talentLevel(t.id), cost = talentCostOf(t);
+      var avail = talentAvailable(t);
+      var affordable = avail && cost !== null && meta.shards >= cost;
+      var pips = "";
+      for (var i = 0; i < t.max; i++) pips += '<div class="pip' + (i < lv ? " on" : "") + '"></div>';
+      var priceTxt = !avail ? "Necesită " + talentById(t.requires).nm : (cost === null ? "MAXIM" : String(cost));
+
+      var b = document.createElement("button");
+      b.className = "buy"; b.type = "button";
+      b.disabled = !avail || cost === null || !affordable;
+      b.innerHTML =
+        '<div class="info"><div class="nm">' + t.nm + '</div>' +
+        '<div class="ds">' + t.ds + '</div>' +
+        '<div class="pips">' + pips + '</div></div>' +
+        '<div class="price ' + (!avail || cost === null ? (cost === null ? "maxed" : "short") : (affordable ? "" : "short")) + '">' +
+        priceTxt + '</div>';
+      b.addEventListener("click", function () {
+        var c = talentCostOf(t);
+        if (!talentAvailable(t) || c === null || meta.shards < c) return;
+        meta.shards -= c;
+        meta.talents[t.id] = talentLevel(t.id) + 1;
+        saveMeta();
+        renderTalents();
+      });
+      box.appendChild(b);
+    });
+  }
+
+  function openTalents() {
+    renderTalents();
+    hideAllOverlays();
+    talentOverlay.classList.remove("hidden");
+  }
+  document.getElementById("talentBtn").addEventListener("click", openTalents);
+  document.getElementById("talentBack").addEventListener("click", function () {
+    talentOverlay.classList.add("hidden");
+    goToHub();
+  });
+
+  // ---------- selectia hartii ----------
+  var mapOverlay = document.getElementById("mapOverlay");
+
+  function renderMaps() {
+    var box = document.getElementById("mapList");
+    box.innerHTML = "";
+    MAPS.forEach(function (m) {
+      var b = document.createElement("button");
+      b.className = "mapCard"; b.type = "button";
+      b.setAttribute("aria-pressed", String(meta.mapId === m.id));
+      b.innerHTML =
+        '<div class="mapNm" style="color:rgb(' + m.edge + ')">' + m.nm + '</div>' +
+        '<div class="mapDs">' + m.ds + '</div>' +
+        '<div class="mapDiff">Dificultate ×' + m.diff.toFixed(2) + '</div>';
+      b.addEventListener("click", function () {
+        meta.mapId = m.id;
+        saveMeta();
+        renderMaps();
+      });
+      box.appendChild(b);
+    });
+  }
+
+  function openMaps() {
+    renderMaps();
+    hideAllOverlays();
+    mapOverlay.classList.remove("hidden");
+  }
+  document.getElementById("mapBtn").addEventListener("click", openMaps);
+  document.getElementById("mapBack").addEventListener("click", function () {
+    mapOverlay.classList.add("hidden");
+    goToHub();
+  });
+
+  // ---------- pornirea aplicatiei: reia profilul activ sau cere unul ----------
+  function bootProfile() {
+    var saved = null;
+    try { saved = parseInt(localStorage.getItem(ACTIVE_SLOT_KEY), 10); } catch (err) {}
+    if (saved >= 1 && saved <= SLOT_COUNT && loadSlot(saved)) {
+      syncHub();
+    } else {
+      openProfiles();
+    }
+  }
+  bootProfile();
 
   resize();
   player = newPlayer();      // exista de la primul frame, ca render-ul sa nu cada
@@ -2004,19 +2571,27 @@
         meleeRange: player ? player.meleeRange : 0,
         meleeArc: player ? player.meleeArc : 0,
         burn: player ? player.burn : 0,
-        bulletCls: pBullets.length ? pBullets[pBullets.length - 1].cls : null
+        bulletCls: pBullets.length ? pBullets[pBullets.length - 1].cls : null,
+        lastCrit: pBullets.length ? !!pBullets[pBullets.length - 1].crit : lastMeleeCrit,
+        armor: player ? player.armor : 0,
+        critChance: player ? player.critChance : 0,
+        activeSlot: activeSlot, profileName: meta.name, mapId: meta.mapId, bestLevel: meta.bestLevel
       };
     },
     start: startRun,
     buildRoomAt: function (n) { room = n; buildRoom(); syncHud(); },
     setMode: setMode,
-    setClass: setClass,
     tapFire: manualShot,
     openCamp: openCamp,
     grantShards: function (n) { meta.shards += n; saveMeta(); renderCamp(); },
+    // Reface un profil de test curat, in acelasi slot activ (sau creeaza
+    // slotul 1 daca inca nu exista niciunul) - pastrat pentru compatibilitate
+    // cu restul suitei, care presupune un profil Ranger gata de folosit.
     wipeMeta: function () {
-      meta = { shards: 0, totalRooms: 0, bestRoom: 1, up: {} };
-      saveMeta(); renderCamp();
+      if (!activeSlot) createProfile(1, "Erou", "ranger");
+      else { meta = emptyProfile(meta.name, meta.classId); saveMeta(); }
+      goToHub();
+      renderCamp();
     },
     setTotalRooms: function (n) { meta.totalRooms = n; saveMeta(); renderCamp(); },
     unlocked: isUnlocked,
@@ -2029,7 +2604,53 @@
     clearBullets: function () { pBullets.length = 0; eBullets.length = 0; },
     collectOrbs: function () { orbs.forEach(function (o) { gainXp(o.xp); }); orbs.length = 0; },
     setPos: function (x, y) { player.x = x; player.y = y; },
-    hurt: function (n) { player.hp -= n; }
+    hurt: function (n) { player.hp -= n; },
+    // ---------- sloturi de profil ----------
+    wipeAllSlots: function () {
+      for (var n = 1; n <= SLOT_COUNT; n++) { try { localStorage.removeItem(slotKey(n)); } catch (err) {} }
+      try { localStorage.removeItem(ACTIVE_SLOT_KEY); } catch (err) {}
+      activeSlot = null;
+      meta = emptyProfile("Erou", "ranger");
+    },
+    slotSummary: function (n) { return readSlot(n); },
+    createProfile: createProfile,
+    loadSlot: loadSlot,
+    wipeSlot: wipeSlot,
+    goToHub: goToHub,
+    openProfiles: openProfiles,
+    // ---------- echipament / talente / harti ----------
+    equipStats: function () { return { atk: equipSum("atk"), hp: equipSum("hp"), def: equipSum("def") }; },
+    buyItem: function (id) {
+      var it = itemById(id);
+      if (!it) return false;
+      if (meta.owned.indexOf(id) < 0) {
+        if (meta.shards < it.cost) return false;
+        meta.shards -= it.cost;
+        meta.owned.push(id);
+      }
+      meta.equip[it.slot] = id;
+      saveMeta();
+      return true;
+    },
+    unequip: function (slotId) { meta.equip[slotId] = null; saveMeta(); },
+    buyTalent: function (id) {
+      var t = talentById(id);
+      if (!t || !talentAvailable(t)) return false;
+      var c = talentCostOf(t);
+      if (c === null || meta.shards < c) return false;
+      meta.shards -= c;
+      meta.talents[id] = talentLevel(id) + 1;
+      saveMeta();
+      return true;
+    },
+    talentLevel: talentLevel,
+    setMap: function (id) {
+      if (!MAPS.some(function (m) { return m.id === id; })) return;
+      meta.mapId = id; saveMeta();
+    },
+    openEquip: openEquip,
+    openTalents: openTalents,
+    openMaps: openMaps
   };
 })();
 </script>
