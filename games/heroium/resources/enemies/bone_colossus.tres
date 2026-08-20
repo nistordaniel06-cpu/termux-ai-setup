@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="EnemyType" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/enemies/enemy_type.gd" id="1_type"]
+[ext_resource type="Resource" path="res://resources/enemies/bat.tres" id="2_bat"]
+
+[resource]
+script = ExtResource("1_type")
+id = &"bone_colossus"
+display_name = "Colosul de Os"
+behavior = 0
+color = Color(0.9, 0.86, 0.72, 1)
+radius = 30.0
+base_health = 300.0
+health_per_tier = 70.0
+base_speed = 62.0
+speed_per_tier = 1.5
+base_damage = 22.0
+damage_per_tier = 1.8
+defense = 80.0
+xp_reward = 24
+coin_reward = 30
+is_boss = true
+phase_two_at = 0.45
+phase_two_damage_multiplier = 1.3
+phase_two_speed_multiplier = 1.45
+summons = ExtResource("2_bat")
+summon_count = 5

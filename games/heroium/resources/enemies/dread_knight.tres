@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="EnemyType" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/enemies/enemy_type.gd" id="1_type"]
+
+[resource]
+script = ExtResource("1_type")
+id = &"dread_knight"
+display_name = "Cavaler Blestemat"
+behavior = 0
+color = Color(0.42, 0.5, 0.68, 1)
+radius = 19.0
+base_health = 62.0
+health_per_tier = 13.0
+base_speed = 58.0
+speed_per_tier = 2.0
+base_damage = 18.0
+damage_per_tier = 1.6
+defense = 60.0
+xp_reward = 5
+coin_reward = 4

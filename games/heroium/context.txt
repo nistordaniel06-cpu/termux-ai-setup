@@ -1,0 +1,1890 @@
+
+--- ./README.md ---
+# Heroium
+
+Action-roguelike top-down în stil Archero, într-o lume medievală întunecată.
+Proiect Godot 4, orientat vertical (720×1280), gândit pentru telefon.
+
+> **Luptă. Adună. Evoluează. Devino legendar.**
+
+## Regula centrală
+
+Te **miști** sau **ataci**, niciodată amândouă. Când ridici degetul de pe joystick,
+eroul se oprește, își caută singur cea mai apropiată țintă și trage. Mișcarea e
+deci mereu o alegere: eviți lovituri, dar renunți la daună.
+
+Regula trăiește într-un singur loc — `hero.gd` decide, iar `hero_combat.gd` doar
+execută. Dacă vrei s-o schimbi (de exemplu tragere manuală din mers), se schimbă
+o singură linie.
+
+## Structura
+
+```
+games/heroium/
+├── project.godot              rezoluție verticală, acțiuni de input, layere de coliziune
+├── addons/
+│   └── virtual_joystick/      MarcoFazioRandom/Virtual-Joystick-Godot (MIT)
+├── scenes/
+│   ├── main.tscn              arena + erou + HUD cu joystick
+│   ├── hero/hero.tscn         eroul cu componentele Combat și Health
+│   └── abilities/projectile.tscn
+├── scripts/
+│   ├── hero/
+│   │   ├── hero.gd            mișcare, citire input, regula mișcare-sau-atac
+│   │   ├── hero_stats.gd      ATK / HP / DEF / crit, în trei straturi
+│   │   ├── hero_class.gd      definiția unei clase (Ranger / Knight / Mage)
+│   │   ├── hero_combat.gd     țintire automată, tragere, fuziunea abilităților
+│   │   └── hero_health.gd     viață, cadre de grație, revenire
+│   ├── abilities/
+│   │   ├── ability.gd         abilitate + regula de fuziune, descrisă în date
+│   │   └── projectile.gd      săgeata: perforare, ricoșeu, arsură, explozie
+│   ├── enemies/enemy.gd       inamic de bază; boșii moștenesc de aici
+│   └── systems/
+│       ├── game_state.gd      autoload: monede, Calea Legendară, salvare
+│       └── arena.gd           camera curentă: spawn, numărătoare, curățare
+└── resources/heroes/          ranger.tres, knight.tres, mage.tres
+```
+
+## Cum sunt împărțite statisticile
+
+Fiecare statistică finală se compune din trei straturi, recalculate la fiecare
+schimbare (`HeroStats.recalculate()`):
+
+1. **baza clasei** — din `.tres`-ul eroului
+2. **talentele permanente** — Calea Legendară, rămân între rulări
+3. **abilitățile și echipamentul** — doar pentru runda curentă
+
+Nimic nu scrie direct în valorile finale. Altfel, un efect care expiră ar lăsa
+bonusuri fantomă în urma lui — bug-ul clasic din jocurile cu buff-uri.
+
+Apărarea reduce dauna procentual (`def / (def + 400)`), nu fix. Un inamic cu 850
+apărare încasează ~68% din lovitură; oricât ar crește, nu devine invulnerabil.
+
+## Eroii
+
+| | ATK | HP | DEF | Viteză atac | Rază | Deblocare |
+|---|---|---|---|---|---|---|
+| **Ranger** | 125 | 550 | 35 | 1.8/s | 560 | din start |
+| **Knight** | 165 | 950 | 90 | 1.1/s | 360 | 1500 monede |
+| **Mage** | 190 | 430 | 25 | 1.0/s | 620 | 2500 monede |
+
+Sunt valori de **bază**, la nivel 1 fără echipament. Cifrele din conceptul vizual
+(ATK 1250 / HP 4500 / DEF 850) corespund unui erou echipat, la câteva zeci de
+nivele de talente — nu valorilor de pornire.
+
+## Fuziunea abilităților
+
+Combinațiile sunt descrise în resurse, nu în cod: fiecare `Ability` are
+`fuses_with` și `fusion_result`. Ca să adaugi o evoluție nouă (de exemplu
+*Săgeată Perforantă* + *Meteor Infernal* = *Săgeată Explozivă*) creezi trei
+fișiere `.tres` și legi câmpurile — nu se atinge nicio linie de GDScript.
+
+## Ce urmează
+
+- [ ] Resursele de abilități (`resources/abilities/`) și primele lanțuri de fuziune
+- [ ] Scenele de inamici: schelet, liliac, demon, arcaș
+- [ ] Boss: Bătrânul Rege Căzut, cu atacuri telegrafiate
+- [ ] HUD: bară de viață, XP, monede, sloturi de abilități pasive
+- [ ] Cele patru locații și progresia de campanie
+- [ ] Ecranul Calea Legendară pentru cheltuit monede
+
+## Rulare
+
+Deschide `games/heroium/` ca proiect în **Godot 4.3+**, activează pluginul
+*Virtual Joystick* din `Project → Project Settings → Plugins`, apoi apasă Play.
+
+Arena pornește goală până îi dai o `enemy_scene` în Inspector pe nodul `Main` —
+eroul se mișcă și funcționează, dar nu are în ce trage.
+
+> Notă: proiectul a fost scris fără Godot instalat pe mașina de build, deci
+> scripturile n-au fost rulate în editor. Referințele `res://` sunt verificate
+> automat, dar așteaptă-te la mici ajustări la prima deschidere.
+
+## Licență addon
+
+`addons/virtual_joystick/` provine din
+[MarcoFazioRandom/Virtual-Joystick-Godot](https://github.com/MarcoFazioRandom/Virtual-Joystick-Godot),
+licență MIT — vezi `addons/virtual_joystick/LICENSE`.
+
+
+--- ./addons/virtual_joystick/virtual_joystick.gd ---
+class_name VirtualJoystick
+
+extends Control
+
+## A simple virtual joystick for touchscreens, with useful options.
+## Github: https://github.com/MarcoFazioRandom/Virtual-Joystick-Godot
+
+# EXPORTED VARIABLE
+
+## The color of the button when the joystick is pressed.
+@export var pressed_color := Color.GRAY
+
+## If the input is inside this range, the output is zero.
+@export_range(0, 200, 1) var deadzone_size : float = 10
+
+## The max distance the tip can reach.
+@export_range(0, 500, 1) var clampzone_size : float = 75
+
+enum Joystick_mode {
+	FIXED, ## The joystick doesn't move.
+	DYNAMIC, ## Every time the joystick area is pressed, the joystick position is set on the touched position.
+	FOLLOWING ## When the finger moves outside the joystick area, the joystick will follow it.
+}
+
+## If the joystick stays in the same position or appears on the touched position when touch is started
+@export var joystick_mode := Joystick_mode.FIXED
+
+enum Visibility_mode {
+	ALWAYS, ## Always visible
+	TOUCHSCREEN_ONLY, ## Visible on touch screens only
+	WHEN_TOUCHED ## Visible only when touched
+}
+
+## If the joystick is always visible, or is shown only if there is a touchscreen
+@export var visibility_mode := Visibility_mode.ALWAYS
+
+## If true, the joystick uses Input Actions (Project -> Project Settings -> Input Map)
+@export var use_input_actions := true
+
+@export var action_left := "ui_left"
+@export var action_right := "ui_right"
+@export var action_up := "ui_up"
+@export var action_down := "ui_down"
+
+# PUBLIC VARIABLES
+
+## If the joystick is receiving inputs.
+var is_pressed := false
+
+# The joystick output.
+var output := Vector2.ZERO
+
+# PRIVATE VARIABLES
+
+var _touch_index : int = -1
+
+@onready var _base := $Base
+@onready var _tip := $Base/Tip
+
+@onready var _base_default_position : Vector2 = _base.position
+@onready var _tip_default_position : Vector2 = _tip.position
+
+@onready var _default_color : Color = _tip.modulate
+
+# FUNCTIONS
+
+func _ready() -> void:
+	if ProjectSettings.get_setting("input_devices/pointing/emulate_mouse_from_touch"):
+		printerr("The Project Setting 'emulate_mouse_from_touch' should be set to False")
+	if not ProjectSettings.get_setting("input_devices/pointing/emulate_touch_from_mouse"):
+		printerr("The Project Setting 'emulate_touch_from_mouse' should be set to True")
+	
+	if not DisplayServer.is_touchscreen_available() and visibility_mode == Visibility_mode.TOUCHSCREEN_ONLY :
+		hide()
+	
+	if visibility_mode == Visibility_mode.WHEN_TOUCHED:
+		hide()
+
+	_reset()
+
+func _input(event: InputEvent) -> void:
+	if event is InputEventScreenTouch:
+		if event.pressed:
+			if _is_point_inside_joystick_area(event.position) and _touch_index == -1:
+				if joystick_mode == Joystick_mode.DYNAMIC or joystick_mode == Joystick_mode.FOLLOWING or (joystick_mode == Joystick_mode.FIXED and _is_point_inside_base(event.position)):
+					if joystick_mode == Joystick_mode.DYNAMIC or joystick_mode == Joystick_mode.FOLLOWING:
+						_move_base(event.position)
+					if visibility_mode == Visibility_mode.WHEN_TOUCHED:
+						show()
+					_touch_index = event.index
+					_tip.modulate = pressed_color
+					_update_joystick(event.position)
+					get_viewport().set_input_as_handled()
+		elif event.index == _touch_index:
+			_reset()
+			if visibility_mode == Visibility_mode.WHEN_TOUCHED:
+				hide()
+			get_viewport().set_input_as_handled()
+	elif event is InputEventScreenDrag:
+		if event.index == _touch_index:
+			_update_joystick(event.position)
+			get_viewport().set_input_as_handled()
+
+func _move_base(new_position: Vector2) -> void:
+	_base.global_position = new_position - _base.pivot_offset * get_global_transform_with_canvas().get_scale()
+
+func _move_tip(new_position: Vector2) -> void:
+	_tip.global_position = new_position - _tip.pivot_offset * _base.get_global_transform_with_canvas().get_scale()
+
+func _is_point_inside_joystick_area(point: Vector2) -> bool:
+	var x: bool = point.x >= global_position.x and point.x <= global_position.x + (size.x * get_global_transform_with_canvas().get_scale().x)
+	var y: bool = point.y >= global_position.y and point.y <= global_position.y + (size.y * get_global_transform_with_canvas().get_scale().y)
+	return x and y
+
+func _get_base_radius() -> Vector2:
+	return _base.size * _base.get_global_transform_with_canvas().get_scale() / 2
+
+func _is_point_inside_base(point: Vector2) -> bool:
+	var _base_radius = _get_base_radius()
+	var center : Vector2 = _base.global_position + _base_radius
+	var vector : Vector2 = point - center
+	if vector.length_squared() <= _base_radius.x * _base_radius.x:
+		return true
+	else:
+		return false
+
+func _update_joystick(touch_position: Vector2) -> void:
+	var _base_radius = _get_base_radius()
+	var center : Vector2 = _base.global_position + _base_radius
+	var vector : Vector2 = touch_position - center
+	vector = vector.limit_length(clampzone_size)
+	
+	if joystick_mode == Joystick_mode.FOLLOWING and touch_position.distance_to(center) > clampzone_size:
+		_move_base(touch_position - vector)
+	
+	_move_tip(center + vector)
+	
+	if vector.length_squared() > deadzone_size * deadzone_size:
+		is_pressed = true
+		output = (vector - (vector.normalized() * deadzone_size)) / (clampzone_size - deadzone_size)
+	else:
+		is_pressed = false
+		output = Vector2.ZERO
+	
+	if use_input_actions:
+		# Release actions
+		if output.x >= 0 and Input.is_action_pressed(action_left):
+			Input.action_release(action_left)
+		if output.x <= 0 and Input.is_action_pressed(action_right):
+			Input.action_release(action_right)
+		if output.y >= 0 and Input.is_action_pressed(action_up):
+			Input.action_release(action_up)
+		if output.y <= 0 and Input.is_action_pressed(action_down):
+			Input.action_release(action_down)
+		# Press actions
+		if output.x < 0:
+			Input.action_press(action_left, -output.x)
+		if output.x > 0:
+			Input.action_press(action_right, output.x)
+		if output.y < 0:
+			Input.action_press(action_up, -output.y)
+		if output.y > 0:
+			Input.action_press(action_down, output.y)
+
+func _reset():
+	is_pressed = false
+	output = Vector2.ZERO
+	_touch_index = -1
+	_tip.modulate = _default_color
+	_base.position = _base_default_position
+	_tip.position = _tip_default_position
+	# Release actions
+	if use_input_actions:
+		for action in [action_left, action_right, action_down, action_up]:
+			if Input.is_action_pressed(action):
+				Input.action_release(action)
+
+
+--- ./addons/virtual_joystick/virtual_joystick_instantiator.gd ---
+@tool
+extends Control
+
+var scene
+
+func _enter_tree():
+	scene = preload("res://addons/virtual_joystick/virtual_joystick_scene.tscn").instantiate()
+	add_child(scene)
+	
+	if ProjectSettings.get_setting("input_devices/pointing/emulate_mouse_from_touch"):
+		printerr("The Project Setting 'emulate_mouse_from_touch' should be set to False")
+	if not ProjectSettings.get_setting("input_devices/pointing/emulate_touch_from_mouse"):
+		printerr("The Project Setting 'emulate_touch_from_mouse' should be set to True")
+
+
+func _exit_tree():
+	scene.free()
+
+
+--- ./addons/virtual_joystick/virtual_joystick_plugin.gd ---
+@tool
+extends EditorPlugin
+
+
+func _enter_tree():
+	add_custom_type("Virtual Joystick", "Control", preload("virtual_joystick_instantiator.gd"), preload("virtual_joystick_icon.png"))
+
+
+func _exit_tree():
+	remove_custom_type("Virtual Joystick")
+
+
+--- ./addons/virtual_joystick/virtual_joystick_scene.tscn ---
+[gd_scene load_steps=4 format=3 uid="uid://dmr0fcamx7t56"]
+
+[ext_resource type="Script" path="res://addons/virtual_joystick/virtual_joystick.gd" id="1_8x4dy"]
+[ext_resource type="Texture2D" uid="uid://bm30au8mjfc2f" path="res://addons/virtual_joystick/textures/joystick_base_outline.png" id="2_jhjs2"]
+[ext_resource type="Texture2D" uid="uid://dt13r06u87fib" path="res://addons/virtual_joystick/textures/joystick_tip_arrows.png" id="3_3etdg"]
+
+[node name="Virtual Joystick" type="Control"]
+layout_mode = 3
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_top = -308.0
+offset_right = 300.0
+offset_bottom = -8.0
+grow_vertical = 0
+script = ExtResource("1_8x4dy")
+
+[node name="Base" type="TextureRect" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -100.0
+offset_top = -100.0
+offset_right = 100.0
+offset_bottom = 100.0
+grow_horizontal = 2
+grow_vertical = 2
+pivot_offset = Vector2(100, 100)
+mouse_force_pass_scroll_events = false
+texture = ExtResource("2_jhjs2")
+stretch_mode = 5
+
+[node name="Tip" type="TextureRect" parent="Base"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -50.0
+offset_top = -50.0
+offset_right = 50.0
+offset_bottom = 50.0
+grow_horizontal = 2
+grow_vertical = 2
+pivot_offset = Vector2(50, 50)
+texture = ExtResource("3_3etdg")
+stretch_mode = 5
+
+
+--- ./resources/heroes/knight.tres ---
+[gd_resource type="Resource" script_class="HeroClass" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/hero/hero_class.gd" id="1_class"]
+[ext_resource type="Script" path="res://scripts/hero/hero_stats.gd" id="2_stats"]
+
+[sub_resource type="Resource" id="Resource_knight_stats"]
+script = ExtResource("2_stats")
+base_attack = 165.0
+base_health = 950.0
+base_defense = 90.0
+base_attack_speed = 1.1
+base_crit_chance = 0.04
+base_crit_multiplier = 2.2
+base_range = 360.0
+base_move_speed = 235.0
+
+[resource]
+script = ExtResource("1_class")
+id = &"knight"
+display_name = "Knight"
+description = "Zid ambulant. Lovituri rare și grele, rază scurtă — trebuie să intre în mijloc ca să conteze."
+archetype = 1
+accent_color = Color(0.72, 0.76, 0.85, 1)
+stats = SubResource("Resource_knight_stats")
+unlocked_by_default = false
+unlock_cost = 1500
+
+
+--- ./resources/heroes/mage.tres ---
+[gd_resource type="Resource" script_class="HeroClass" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/hero/hero_class.gd" id="1_class"]
+[ext_resource type="Script" path="res://scripts/hero/hero_stats.gd" id="2_stats"]
+
+[sub_resource type="Resource" id="Resource_mage_stats"]
+script = ExtResource("2_stats")
+base_attack = 190.0
+base_health = 430.0
+base_defense = 25.0
+base_attack_speed = 1.0
+base_crit_chance = 0.06
+base_crit_multiplier = 2.5
+base_range = 620.0
+base_move_speed = 250.0
+
+[resource]
+script = ExtResource("1_class")
+id = &"mage"
+display_name = "Mage"
+description = "Cea mai mare daună și cea mai puțină viață. O greșeală de poziționare îl costă runda."
+archetype = 2
+accent_color = Color(0.66, 0.45, 0.92, 1)
+stats = SubResource("Resource_mage_stats")
+unlocked_by_default = false
+unlock_cost = 2500
+
+
+--- ./resources/heroes/ranger.tres ---
+[gd_resource type="Resource" script_class="HeroClass" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/hero/hero_class.gd" id="1_class"]
+[ext_resource type="Script" path="res://scripts/hero/hero_stats.gd" id="2_stats"]
+
+[sub_resource type="Resource" id="Resource_ranger_stats"]
+script = ExtResource("2_stats")
+base_attack = 125.0
+base_health = 550.0
+base_defense = 35.0
+base_attack_speed = 1.8
+base_crit_chance = 0.08
+base_crit_multiplier = 2.0
+base_range = 560.0
+base_move_speed = 275.0
+
+[resource]
+script = ExtResource("1_class")
+id = &"ranger"
+display_name = "Ranger"
+description = "Arcaș iute și fragil. Cadență mare, șansă critică bună, dar cade repede dacă e prins."
+archetype = 0
+accent_color = Color(0.94, 0.71, 0.35, 1)
+stats = SubResource("Resource_ranger_stats")
+unlocked_by_default = true
+unlock_cost = 0
+
+
+--- ./scenes/main.tscn ---
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/hero/hero.tscn" id="1_hero"]
+[ext_resource type="PackedScene" path="res://addons/virtual_joystick/virtual_joystick_scene.tscn" id="2_joystick"]
+[ext_resource type="Script" path="res://scripts/systems/arena.gd" id="3_arena"]
+[ext_resource type="Script" path="res://scripts/systems/arena_floor.gd" id="4_floor"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/enemy.tscn" id="5_enemy"]
+[ext_resource type="Script" path="res://scripts/ui/hud.gd" id="6_hud"]
+
+[node name="Main" type="Node2D"]
+script = ExtResource("3_arena")
+enemy_scene = ExtResource("5_enemy")
+
+[node name="Floor" type="Node2D" parent="."]
+position = Vector2(360, 900)
+script = ExtResource("4_floor")
+
+[node name="Arena" type="Node2D" parent="."]
+
+[node name="Hero" parent="." instance=ExtResource("1_hero")]
+position = Vector2(360, 900)
+joystick_path = NodePath("../HUD/VirtualJoystick")
+
+[node name="Camera2D" type="Camera2D" parent="Hero"]
+position_smoothing_enabled = true
+position_smoothing_speed = 8.0
+
+[node name="HUD" type="CanvasLayer" parent="."]
+
+[node name="VirtualJoystick" parent="HUD" instance=ExtResource("2_joystick")]
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 60.0
+offset_top = -320.0
+offset_right = 260.0
+offset_bottom = -120.0
+joystick_mode = 1
+visibility_mode = 1
+use_input_actions = true
+action_left = "move_left"
+action_right = "move_right"
+action_up = "move_up"
+action_down = "move_down"
+
+[node name="Readout" type="Control" parent="HUD"]
+process_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("6_hud")
+hero_path = NodePath("../../Hero")
+arena_path = NodePath("../..")
+
+
+--- ./scenes/abilities/projectile.tscn ---
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/abilities/projectile.gd" id="1_projectile"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_proj"]
+radius = 7.0
+
+[node name="Projectile" type="Area2D"]
+collision_layer = 8
+collision_mask = 4
+script = ExtResource("1_projectile")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_proj")
+
+
+--- ./scenes/enemies/enemy.tscn ---
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/enemies/enemy.gd" id="1_enemy"]
+[ext_resource type="Script" path="res://scripts/visual/blob.gd" id="2_blob"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_enemy"]
+radius = 16.0
+
+[node name="Enemy" type="CharacterBody2D"]
+collision_layer = 4
+collision_mask = 5
+motion_mode = 1
+script = ExtResource("1_enemy")
+
+[node name="Body" type="Node2D" parent="."]
+script = ExtResource("2_blob")
+radius = 16.0
+fill = Color(0.85, 0.27, 0.31, 1)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_enemy")
+
+
+--- ./scenes/hero/hero.tscn ---
+[gd_scene load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://scripts/hero/hero.gd" id="1_hero"]
+[ext_resource type="Script" path="res://scripts/hero/hero_combat.gd" id="2_combat"]
+[ext_resource type="Script" path="res://scripts/hero/hero_health.gd" id="3_health"]
+[ext_resource type="PackedScene" path="res://scenes/abilities/projectile.tscn" id="4_projectile"]
+[ext_resource type="Resource" path="res://resources/heroes/ranger.tres" id="5_ranger"]
+[ext_resource type="Script" path="res://scripts/visual/blob.gd" id="6_blob"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_body"]
+radius = 18.0
+
+[node name="Hero" type="CharacterBody2D"]
+collision_layer = 2
+collision_mask = 1
+motion_mode = 1
+script = ExtResource("1_hero")
+hero_class = ExtResource("5_ranger")
+
+[node name="Body" type="Node2D" parent="."]
+script = ExtResource("6_blob")
+radius = 18.0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_body")
+
+[node name="Combat" type="Node2D" parent="."]
+script = ExtResource("2_combat")
+projectile_scene = ExtResource("4_projectile")
+
+[node name="Health" type="Node" parent="."]
+script = ExtResource("3_health")
+
+
+--- ./scripts/abilities/ability.gd ---
+class_name Ability
+extends Resource
+
+## O abilitate luata in timpul unei rulari (Săgeată Perforantă, Meteor Infernal...).
+##
+## Abilitatile au stele (1-5) si se pot combina: doua abilitati compatibile
+## fuzioneaza intr-una evoluata, exact ca in ecranul "Abilități & Evoluții".
+## Fuziunea e descrisa aici, in date - nu in cod - ca sa poti adauga combinatii
+## noi doar cu fisiere .tres.
+
+enum Kind {
+	PROJECTILE,   ## modifica sagetile trase
+	ON_HIT,       ## se declanseaza la lovire (foc, otrava)
+	AREA,         ## dauna in zona (meteor)
+	PASSIVE,      ## doar statistici
+}
+
+enum Rarity { COMMON, RARE, EPIC, LEGENDARY }
+
+@export var id: StringName = &""
+@export var display_name: String = ""
+@export_multiline var description: String = ""
+@export var icon: Texture2D
+@export var kind: Kind = Kind.PROJECTILE
+@export var rarity: Rarity = Rarity.COMMON
+@export_range(1, 5) var stars: int = 3
+
+@export_group("Efect")
+## Modificari aditive aplicate statisticilor eroului cand abilitatea e luata.
+@export var bonus_projectiles: int = 0
+@export var bonus_pierce: int = 0
+@export var bonus_bounces: int = 0
+@export var damage_multiplier: float = 1.0
+## Dauna pe secunda aplicata ca arsura, daca e cazul.
+@export var burn_dps: float = 0.0
+## Raza exploziei la impact; 0 inseamna fara explozie.
+@export var explosion_radius: float = 0.0
+
+@export_group("Fuziune")
+## Abilitatea cu care se combina. Gol = nu fuzioneaza.
+@export var fuses_with: Ability
+## Rezultatul fuziunii (ex. Perforantă + Meteor = Săgeată Explozivă).
+@export var fusion_result: Ability
+
+@export_group("Deblocare")
+## Cate camere trebuie curatate in total ca sa apara in pachetul de alegeri.
+@export var unlock_at_total_rooms: int = 0
+
+
+## Poate fuziona cu abilitatea data?
+func can_fuse_with(other: Ability) -> bool:
+	if other == null or fuses_with == null or fusion_result == null:
+		return false
+	return other.id == fuses_with.id
+
+
+## Aplica efectul abilitatii peste statisticile rularii curente.
+func apply_to(stats: HeroStats) -> void:
+	stats.projectile_count += bonus_projectiles
+	stats.pierce += bonus_pierce
+	stats.bounces += bonus_bounces
+	if not is_equal_approx(damage_multiplier, 1.0):
+		stats.mult_attack *= damage_multiplier
+	stats.recalculate()
+
+
+--- ./scripts/abilities/projectile.gd ---
+class_name Projectile
+extends Area2D
+
+## Sageata trasa de erou. Traieste in arena, nu sub erou.
+##
+## Se sterge in clipa in care nu mai are ce lovi (a iesit din arena, i-a expirat
+## viata, si-a consumat perforarile). Pe telefon proiectilele uitate in memorie
+## sunt prima cauza de lag intr-un joc de genul asta.
+
+@export var speed: float = 900.0
+@export var lifetime: float = 2.2
+
+var damage: float = 10.0
+var crit_multiplier: float = 2.0
+var crit_chance: float = 0.05
+var pierce_left: int = 0
+var bounces_left: int = 0
+var effects: Dictionary = {}
+
+var _direction: Vector2 = Vector2.RIGHT
+var _age: float = 0.0
+var _already_hit: Array[Node] = []
+
+
+func _ready() -> void:
+	body_entered.connect(_on_body_entered)
+	area_entered.connect(_on_area_entered)
+
+
+## Nodul e deja rotit pe directia de zbor, deci desenul e mereu orientat pe +X.
+func _draw() -> void:
+	draw_line(Vector2(-20.0, 0.0), Vector2.ZERO, Color(1.0, 0.85, 0.5, 0.35), 5.0, true)
+	draw_circle(Vector2.ZERO, 5.0, Color(1.0, 0.93, 0.72))
+	draw_circle(Vector2.ZERO, 2.4, Color.WHITE)
+
+
+## Porneste proiectilul. Copiaza din statistici doar ce-i trebuie, ca sa nu
+## depinda de erou dupa ce a plecat din arc.
+func launch(direction: Vector2, stats: HeroStats, hit_effects: Dictionary = {}) -> void:
+	_direction = direction.normalized()
+	rotation = _direction.angle()
+
+	damage = stats.attack
+	crit_chance = stats.crit_chance
+	crit_multiplier = stats.crit_multiplier
+	pierce_left = stats.pierce
+	bounces_left = stats.bounces
+	effects = hit_effects
+
+
+func _physics_process(delta: float) -> void:
+	global_position += _direction * speed * delta
+
+	_age += delta
+	if _age >= lifetime:
+		queue_free()
+
+
+func _on_body_entered(body: Node) -> void:
+	_resolve_hit(body)
+
+
+func _on_area_entered(area: Area2D) -> void:
+	_resolve_hit(area)
+
+
+func _resolve_hit(node: Node) -> void:
+	if node in _already_hit:
+		return
+	if not node.is_in_group(&"enemy"):
+		return
+
+	_already_hit.append(node)
+
+	var target_defense := 0.0
+	if node.has_method(&"get_defense"):
+		target_defense = node.get_defense()
+
+	var is_crit := randf() < crit_chance
+	var mitigation := target_defense / (target_defense + 400.0)
+	var final_damage: float = maxf(1.0, damage * (crit_multiplier if is_crit else 1.0) * (1.0 - mitigation))
+
+	if node.has_method(&"take_damage"):
+		node.take_damage(final_damage, is_crit)
+
+	var burn: float = effects.get("burn_dps", 0.0)
+	if burn > 0.0 and node.has_method(&"apply_burn"):
+		node.apply_burn(burn, 2.5)
+
+	var radius: float = effects.get("explosion_radius", 0.0)
+	if radius > 0.0:
+		_explode(radius, final_damage * 0.6)
+
+	if pierce_left > 0:
+		pierce_left -= 1
+	else:
+		queue_free()
+
+
+func _explode(radius: float, splash: float) -> void:
+	for node in get_tree().get_nodes_in_group(&"enemy"):
+		var enemy := node as Node2D
+		if enemy == null or enemy in _already_hit:
+			continue
+		if global_position.distance_to(enemy.global_position) <= radius and enemy.has_method(&"take_damage"):
+			enemy.take_damage(splash, false)
+
+
+--- ./scripts/enemies/enemy.gd ---
+class_name Enemy
+extends CharacterBody2D
+
+## Inamic de baza: schelete, lilieci, demoni. Bosii mostenesc de aici.
+##
+## Trebuie sa fie in grupul "enemy" - dupa el isi cauta eroul tinta si tot dupa
+## el se orienteaza proiectilele.
+
+signal died(enemy: Enemy)
+
+@export var max_health: float = 60.0
+@export var defense: float = 0.0
+@export var move_speed: float = 90.0
+@export var contact_damage: float = 12.0
+@export var coin_reward: int = 1
+@export var xp_reward: int = 2
+
+var health: float = 0.0
+
+var _burn_dps: float = 0.0
+var _burn_time: float = 0.0
+var _contact_cooldown: float = 0.0
+var _hero: Node2D = null
+
+@onready var _body: Blob = $Body
+
+
+func _ready() -> void:
+	add_to_group(&"enemy")
+	health = max_health
+	_hero = get_tree().get_first_node_in_group(&"hero")
+
+
+func _physics_process(delta: float) -> void:
+	_tick_burn(delta)
+	_contact_cooldown = maxf(0.0, _contact_cooldown - delta)
+
+	if _hero == null or not is_instance_valid(_hero):
+		_hero = get_tree().get_first_node_in_group(&"hero")
+		return
+
+	var to_hero := _hero.global_position - global_position
+	velocity = to_hero.normalized() * move_speed
+	move_and_slide()
+
+	if to_hero.length() < 34.0 and _contact_cooldown <= 0.0:
+		_contact_cooldown = 0.6
+		if _hero.has_method(&"take_damage"):
+			_hero.take_damage(contact_damage)
+
+
+func get_defense() -> float:
+	return defense
+
+
+func take_damage(amount: float, _is_crit: bool = false) -> void:
+	if health <= 0.0:
+		return
+	health -= amount
+	_body.flash()
+	queue_redraw()
+	if health <= 0.0:
+		_die()
+
+
+## Bara de viata apare abia dupa prima lovitura, ca o camera plina de inamici
+## nedeteriorati sa nu fie un zid de bare.
+func _draw() -> void:
+	if health >= max_health or health <= 0.0:
+		return
+
+	var width := 34.0
+	var corner := Vector2(-width * 0.5, -30.0)
+	var fraction := clampf(health / max_health, 0.0, 1.0)
+	draw_rect(Rect2(corner, Vector2(width, 5.0)), Color(0.0, 0.0, 0.0, 0.55))
+	draw_rect(Rect2(corner, Vector2(width * fraction, 5.0)), Color(0.95, 0.34, 0.34))
+
+
+func apply_burn(dps: float, duration: float) -> void:
+	# Arsura nu se aduna la infinit: ramane cea mai puternica sursa.
+	_burn_dps = maxf(_burn_dps, dps)
+	_burn_time = maxf(_burn_time, duration)
+
+
+func _tick_burn(delta: float) -> void:
+	if _burn_time <= 0.0:
+		return
+	_burn_time -= delta
+	take_damage(_burn_dps * delta)
+	if _burn_time <= 0.0:
+		_burn_dps = 0.0
+
+
+func _die() -> void:
+	GameState.add_coins(coin_reward)
+	died.emit(self)
+	queue_free()
+
+
+--- ./scripts/hero/hero.gd ---
+class_name Hero
+extends CharacterBody2D
+
+## Eroul controlat de jucator.
+##
+## Regula centrala a genului: te MISTI sau ATACI, niciodata amandoua. Cand ridici
+## degetul de pe joystick eroul se opreste, isi cauta singur cea mai apropiata
+## tinta si incepe sa traga. Miscarea e deci mereu o alegere: eviti lovituri, dar
+## renunti la dauna.
+##
+## Nodul asta nu contine si lupta si viata - le tine in componente-copil
+## (HeroCombat, HeroHealth), ca fiecare bucata sa poata fi testata separat.
+
+signal died
+signal stats_changed(stats: HeroStats)
+signal moving_changed(is_moving: bool)
+signal health_changed(current: float, maximum: float)
+
+## Sub aceasta valoare joystick-ul e considerat neatins.
+const MOVE_DEADZONE := 0.15
+## Cat trebuie sa stea nemiscat inainte sa porneasca tragerea. Fara pauza asta
+## jucatorul ar putea trage la fiecare pas ciupind joystick-ul.
+const SETTLE_TIME := 0.12
+## Raza inelului care arata daca eroul e in stare sa traga.
+const RING_RADIUS := 27.0
+
+@export var hero_class: HeroClass
+## Joystick-ul virtual din HUD. Lasat gol, eroul merge doar pe taste.
+@export var joystick_path: NodePath
+
+var stats: HeroStats
+var is_moving: bool = false
+## Adevarat doar cand eroul chiar sta pe loc - atunci ii merg atacurile.
+var can_attack: bool = false
+
+var _settle_timer: float = 0.0
+var _joystick: Node = null
+var _facing: Vector2 = Vector2.DOWN
+var _accent: Color = Color("f0b45a")
+
+@onready var _combat: HeroCombat = $Combat
+@onready var _health: HeroHealth = $Health
+@onready var _body: Blob = $Body
+
+
+func _ready() -> void:
+	add_to_group(&"hero")
+
+	if joystick_path != NodePath():
+		_joystick = get_node_or_null(joystick_path)
+
+	_setup_stats()
+
+	_health.died.connect(func() -> void: died.emit())
+	_health.health_changed.connect(
+		func(current: float, maximum: float) -> void: health_changed.emit(current, maximum)
+	)
+	_health.setup(stats.max_health)
+
+	_combat.setup(self, stats)
+
+	if hero_class != null:
+		_accent = hero_class.accent_color
+		_body.fill = _accent
+		if hero_class.starting_ability != null:
+			grant_ability(hero_class.starting_ability)
+
+
+func _physics_process(delta: float) -> void:
+	var direction := _read_input()
+	var wants_to_move := direction.length() > MOVE_DEADZONE
+
+	if wants_to_move != is_moving:
+		is_moving = wants_to_move
+		moving_changed.emit(is_moving)
+
+	if is_moving:
+		velocity = direction * stats.move_speed
+		_settle_timer = SETTLE_TIME
+		_face(direction)
+	else:
+		# oprire scurta in loc de frana brusca, ca sa nu para lipit de podea
+		velocity = velocity.move_toward(Vector2.ZERO, stats.move_speed * 8.0 * delta)
+		_settle_timer = maxf(0.0, _settle_timer - delta)
+
+	move_and_slide()
+
+	# Aici se aplica regula: atacul merge doar cand chiar stai pe loc.
+	can_attack = not is_moving and is_zero_approx(_settle_timer)
+	_combat.set_can_attack(can_attack)
+	queue_redraw()
+
+
+## Inelul si sageata de tintire. Sunt singurul mod prin care jucatorul vede
+## regula genului fara sa i-o explice cineva: aprins = stai si faci dauna,
+## stins = te misti si nu faci.
+func _draw() -> void:
+	var ring := _accent
+	ring.a = 0.85 if can_attack else 0.16
+	draw_arc(Vector2.ZERO, RING_RADIUS, 0.0, TAU, 32, ring, 2.5, true)
+
+	if not can_attack:
+		# Cand se misca, un varf mic arata incotro merge.
+		draw_line(_facing * 20.0, _facing * 27.0, Color(1, 1, 1, 0.35), 3.0, true)
+		return
+
+	var target := _combat.current_target
+	if target == null or not is_instance_valid(target):
+		return
+
+	var aim := global_position.direction_to(target.global_position)
+	draw_line(aim * (RING_RADIUS + 3.0), aim * (RING_RADIUS + 14.0), ring, 3.0, true)
+
+
+## Citeste directia din joystick sau de la tastatura, oricare e activa.
+## Addonul poate alimenta chiar el actiunile de input, deci `Input.get_vector`
+## acopera de obicei ambele; joystick-ul e citit direct ca sa mearga si cand
+## optiunea aceea e oprita.
+func _read_input() -> Vector2:
+	if _joystick != null and _joystick.get(&"is_pressed"):
+		var output: Vector2 = _joystick.get(&"output")
+		if output.length() > MOVE_DEADZONE:
+			return output.limit_length(1.0)
+	return Input.get_vector(&"move_left", &"move_right", &"move_up", &"move_down")
+
+
+func _face(direction: Vector2) -> void:
+	_facing = direction.normalized()
+
+
+func _setup_stats() -> void:
+	var base: HeroStats = null
+	if hero_class != null and hero_class.stats != null:
+		base = hero_class.stats
+	else:
+		push_warning("Hero fara HeroClass - pornesc pe statistici implicite.")
+		base = HeroStats.new()
+
+	stats = base.duplicate_for_run()
+
+	# Talentele permanente (Calea Legendară) se aplica peste baza clasei.
+	if Engine.has_singleton(&"GameState") or GameState != null:
+		GameState.apply_talents(stats)
+
+	stats.recalculate()
+	stats.changed.connect(func() -> void: stats_changed.emit(stats))
+	stats_changed.emit(stats)
+
+
+## Unde sa astepte proiectilele plecate - un nod care nu se misca odata cu eroul.
+func set_projectile_container(node: Node) -> void:
+	_combat.projectile_container = node
+
+
+## Adauga o abilitate rularii curente, fuzionand-o daca e cazul.
+func grant_ability(ability: Ability) -> void:
+	_combat.add_ability(ability)
+
+
+func take_damage(amount: float) -> void:
+	_health.take_damage(amount)
+
+
+func heal(amount: float) -> void:
+	_health.heal(amount)
+
+
+func get_health() -> float:
+	return _health.current
+
+
+func get_max_health() -> float:
+	return _health.maximum
+
+
+--- ./scripts/hero/hero_class.gd ---
+class_name HeroClass
+extends Resource
+
+## Definitia unei clase de erou: Ranger, Knight sau Mage.
+##
+## Un fisier .tres per clasa, in res://resources/heroes/. Adaugarea unui erou
+## nou inseamna un resource nou, nu cod nou.
+
+enum Archetype {
+	RANGER,   ## distanta, cadenta mare, fragil
+	KNIGHT,   ## corp la corp, rezistent, lovituri rare si grele
+	MAGE,     ## dauna mare in zona, cea mai putina viata
+}
+
+@export var id: StringName = &"ranger"
+@export var display_name: String = "Ranger"
+@export_multiline var description: String = ""
+@export var archetype: Archetype = Archetype.RANGER
+
+@export_group("Vizual")
+@export var portrait: Texture2D
+@export var sprite: Texture2D
+## Culoarea proiectilelor si a aurei, ca fiecare erou sa se citeasca dintr-o privire.
+@export var accent_color: Color = Color("f0b45a")
+
+@export_group("Joc")
+@export var stats: HeroStats
+## Abilitatea cu care intra in temnita (ex. Săgeată Perforantă pentru Ranger).
+@export var starting_ability: Ability
+## Deblocat din start sau cumparat cu monede.
+@export var unlocked_by_default: bool = false
+@export var unlock_cost: int = 0
+
+
+--- ./scripts/hero/hero_combat.gd ---
+class_name HeroCombat
+extends Node2D
+
+## Tintirea automata si tragerea eroului.
+##
+## Nu decide singur DACA are voie sa traga - Hero ii spune prin `set_can_attack()`,
+## dupa regula "te misti sau ataci". Aici se rezolva doar pe cine si cu ce.
+
+signal fired(target: Node2D)
+signal ability_gained(ability: Ability)
+signal abilities_fused(a: Ability, b: Ability, result: Ability)
+
+@export var projectile_scene: PackedScene
+
+var abilities: Array[Ability] = []
+## Tinta pe care e fixat eroul acum, sau null. Citita si de Hero, ca sa deseneze
+## sageata de tintire si intre doua trageri, nu doar in clipa lovirii.
+var current_target: Node2D = null
+## Nodul in care ajung proiectilele plecate. Arena il aseaza in `_ready`; trebuie
+## sa fie un nod care sta pe loc, altfel sagetile s-ar misca odata cu eroul.
+var projectile_container: Node = null
+
+var _hero: Hero
+var _stats: HeroStats
+var _can_attack: bool = false
+var _cooldown: float = 0.0
+
+
+func setup(hero: Hero, stats: HeroStats) -> void:
+	_hero = hero
+	_stats = stats
+
+
+func set_can_attack(value: bool) -> void:
+	_can_attack = value
+
+
+func _physics_process(delta: float) -> void:
+	if _stats == null:
+		return
+
+	_cooldown = maxf(0.0, _cooldown - delta)
+	current_target = find_nearest_enemy() if _can_attack else null
+
+	if not _can_attack or _cooldown > 0.0 or current_target == null:
+		return
+
+	_fire_at(current_target)
+	_cooldown = _stats.attack_interval()
+
+
+## Cel mai apropiat inamic aflat in raza de atac, sau null.
+## Compar distantele la patrat: acelasi rezultat, fara radical pe fiecare inamic.
+func find_nearest_enemy() -> Node2D:
+	var best: Node2D = null
+	var best_distance := _stats.attack_range * _stats.attack_range
+
+	for node in get_tree().get_nodes_in_group(&"enemy"):
+		var enemy := node as Node2D
+		if enemy == null or not is_instance_valid(enemy):
+			continue
+		var distance := global_position.distance_squared_to(enemy.global_position)
+		if distance < best_distance:
+			best_distance = distance
+			best = enemy
+
+	return best
+
+
+func _fire_at(target: Node2D) -> void:
+	if projectile_scene == null:
+		push_warning("HeroCombat fara projectile_scene - nu am ce trage.")
+		return
+
+	var container := _projectile_container()
+	if container == null:
+		push_warning("HeroCombat fara loc unde sa lase proiectilele.")
+		return
+
+	var base_angle := global_position.angle_to_point(target.global_position)
+	var count := maxi(1, _stats.projectile_count)
+	var spread := 0.14
+
+	for i in count:
+		var offset := 0.0 if count == 1 else (float(i) - (count - 1) * 0.5) * spread
+		var projectile := projectile_scene.instantiate()
+		container.add_child(projectile)
+		projectile.global_position = global_position
+		projectile.launch(Vector2.RIGHT.rotated(base_angle + offset), _stats, _collect_hit_effects())
+
+	fired.emit(target)
+
+
+## Arena spune unde merg proiectilele. Daca nimeni n-a spus, parintele eroului e
+## o rezerva buna: sta pe loc si traieste cat camera.
+func _projectile_container() -> Node:
+	if projectile_container != null and is_instance_valid(projectile_container):
+		return projectile_container
+	return _hero.get_parent() if _hero != null else null
+
+
+## Efectele care se aplica la impact, stranse din abilitatile luate.
+func _collect_hit_effects() -> Dictionary:
+	var effects := {"burn_dps": 0.0, "explosion_radius": 0.0}
+	for ability in abilities:
+		effects["burn_dps"] += ability.burn_dps
+		effects["explosion_radius"] = maxf(effects["explosion_radius"], ability.explosion_radius)
+	return effects
+
+
+## Adauga o abilitate. Daca formeaza o pereche cu una deja detinuta, cele doua
+## se transforma in evolutia lor (Perforantă + Meteor = Săgeată Explozivă).
+func add_ability(ability: Ability) -> void:
+	if ability == null:
+		return
+
+	for i in abilities.size():
+		var owned := abilities[i]
+		var result: Ability = null
+		if owned.can_fuse_with(ability):
+			result = owned.fusion_result
+		elif ability.can_fuse_with(owned):
+			result = ability.fusion_result
+
+		if result != null:
+			abilities.remove_at(i)
+			abilities.append(result)
+			result.apply_to(_stats)
+			abilities_fused.emit(owned, ability, result)
+			return
+
+	abilities.append(ability)
+	ability.apply_to(_stats)
+	ability_gained.emit(ability)
+
+
+--- ./scripts/hero/hero_health.gd ---
+class_name HeroHealth
+extends Node
+
+## Viata eroului, cu o scurta invulnerabilitate dupa fiecare lovitura.
+##
+## Fara acele cadre de gratie, doi inamici lipiti de erou l-ar goli instant si
+## jucatorul n-ar avea cum sa reactioneze.
+
+signal health_changed(current: float, maximum: float)
+signal damaged(amount: float)
+signal died
+
+const INVULNERABLE_TIME := 0.45
+
+var maximum: float = 100.0
+var current: float = 100.0
+var is_dead: bool = false
+
+var _invulnerable: float = 0.0
+
+
+func setup(max_health: float) -> void:
+	maximum = maxf(1.0, max_health)
+	current = maximum
+	is_dead = false
+	_invulnerable = 0.0
+	health_changed.emit(current, maximum)
+
+
+func _process(delta: float) -> void:
+	_invulnerable = maxf(0.0, _invulnerable - delta)
+
+
+func is_invulnerable() -> bool:
+	return _invulnerable > 0.0
+
+
+func take_damage(amount: float) -> void:
+	if is_dead or is_invulnerable() or amount <= 0.0:
+		return
+
+	current = maxf(0.0, current - amount)
+	_invulnerable = INVULNERABLE_TIME
+
+	damaged.emit(amount)
+	health_changed.emit(current, maximum)
+
+	if current <= 0.0:
+		is_dead = true
+		died.emit()
+
+
+func heal(amount: float) -> void:
+	if is_dead or amount <= 0.0:
+		return
+	current = minf(maximum, current + amount)
+	health_changed.emit(current, maximum)
+
+
+## Foloseste "A doua torță": revine la o parte din viata, cu ragaz de gratie.
+func revive(health_fraction: float = 0.5) -> void:
+	is_dead = false
+	current = maximum * clampf(health_fraction, 0.1, 1.0)
+	_invulnerable = 1.6
+	health_changed.emit(current, maximum)
+
+
+--- ./scripts/hero/hero_stats.gd ---
+class_name HeroStats
+extends Resource
+
+## Statisticile eroului pentru o singura rulare.
+##
+## Valoarea finala a fiecarei statistici se compune din trei straturi:
+##   1. baza clasei (Ranger / Knight / Mage)
+##   2. talentele permanente din Calea Legendara (raman intre rulari)
+##   3. bonusurile din echipament si din abilitatile luate in rularea curenta
+##
+## Nimic nu scrie direct in valorile finale - se recalculeaza din straturi cu
+## `recalculate()`, ca sa nu ramana bonusuri fantoma dupa ce expira un efect.
+
+## Nu declara aici un semnal "changed": Resource are deja unul nativ, iar
+## redefinirea lui e eroare de parsare - adica scriptul nu compileaza deloc si
+## cade cu el tot ce-l importa. Se anunta cu `emit_changed()`.
+
+@export_group("Bază")
+@export var base_attack: float = 100.0
+@export var base_health: float = 600.0
+@export var base_defense: float = 40.0
+
+@export_group("Luptă")
+## Atacuri pe secunda, inainte de bonusuri.
+@export var base_attack_speed: float = 1.6
+@export_range(0.0, 1.0) var base_crit_chance: float = 0.05
+@export var base_crit_multiplier: float = 2.0
+## Cat de departe cauta eroul o tinta, in pixeli.
+@export var base_range: float = 520.0
+
+@export_group("Mișcare")
+@export var base_move_speed: float = 260.0
+
+# --- bonusuri aditive (talente, echipament, abilitati) ---
+var bonus_attack: float = 0.0
+var bonus_health: float = 0.0
+var bonus_defense: float = 0.0
+var bonus_attack_speed: float = 0.0
+var bonus_crit_chance: float = 0.0
+var bonus_move_speed: float = 0.0
+
+# --- multiplicatori (procente din talente / abilitati) ---
+var mult_attack: float = 1.0
+var mult_health: float = 1.0
+var mult_attack_speed: float = 1.0
+var mult_move_speed: float = 1.0
+
+# --- valorile finale, singurele citite de restul jocului ---
+var attack: float = 0.0
+var max_health: float = 0.0
+var defense: float = 0.0
+var attack_speed: float = 0.0
+var crit_chance: float = 0.0
+var crit_multiplier: float = 2.0
+var attack_range: float = 0.0
+var move_speed: float = 0.0
+
+## Numarul de proiectile trase odata (Săgeți Duble, Tir Triplu...).
+var projectile_count: int = 1
+## De cate ori mai poate trece un proiectil prin inamici.
+var pierce: int = 0
+## De cate ori ricoseaza din pereti.
+var bounces: int = 0
+
+
+func _init() -> void:
+	recalculate()
+
+
+## Reface valorile finale din straturi. De apelat dupa orice modificare.
+func recalculate() -> void:
+	attack = (base_attack + bonus_attack) * mult_attack
+	max_health = (base_health + bonus_health) * mult_health
+	defense = base_defense + bonus_defense
+	attack_speed = maxf(0.1, (base_attack_speed + bonus_attack_speed) * mult_attack_speed)
+	crit_chance = clampf(base_crit_chance + bonus_crit_chance, 0.0, 1.0)
+	crit_multiplier = base_crit_multiplier
+	attack_range = base_range
+	move_speed = (base_move_speed + bonus_move_speed) * mult_move_speed
+	emit_changed()
+
+
+## Secundele dintre doua atacuri.
+func attack_interval() -> float:
+	return 1.0 / attack_speed
+
+
+## Rostogoleste o lovitura: intoarce dauna si daca a fost critica.
+## Apararea tintei reduce dauna procentual, nu fix - altfel inamicii tarzii
+## ar deveni invulnerabili in loc de doar rezistenti.
+func roll_damage(target_defense: float = 0.0) -> Dictionary:
+	var is_crit := randf() < crit_chance
+	var raw := attack * (crit_multiplier if is_crit else 1.0)
+	var mitigation := target_defense / (target_defense + 400.0)
+	return {
+		"amount": maxf(1.0, raw * (1.0 - mitigation)),
+		"crit": is_crit,
+	}
+
+
+## Copie proaspata, ca fiecare rulare sa porneasca de la zero.
+func duplicate_for_run() -> HeroStats:
+	var copy: HeroStats = duplicate(true)
+	copy.recalculate()
+	return copy
+
+
+--- ./scripts/systems/arena.gd ---
+class_name Arena
+extends Node2D
+
+## Arena unei camere: aduce inamicii, numara cat au mai ramas si deschide iesirea.
+##
+## Schela minima cat sa poti apasa Play si sa vezi eroul mișcându-se și trăgând.
+## Locațiile din concept (Pădurea Blestemată, Castelul Întunecat, Deșertul Pierdut,
+## Tărâmul Umbrelor) vor inlocui valorile de aici cu propriile lor date.
+
+signal room_cleared(room_index: int)
+
+@export var enemy_scene: PackedScene
+@export var enemies_per_room: int = 5
+@export var spawn_radius: float = 420.0
+## Cat de aproape de erou are voie sa apara un inamic.
+@export var min_spawn_distance: float = 260.0
+
+var room_index: int = 1
+var _alive: int = 0
+
+@onready var _hero: Hero = $Hero
+@onready var _arena: Node2D = $Arena
+@onready var _floor: ArenaFloor = $Floor
+
+
+func _ready() -> void:
+	randomize()
+	_hero.died.connect(_on_hero_died)
+	_hero.set_projectile_container(_arena)
+	build_room()
+
+
+func build_room() -> void:
+	if enemy_scene == null:
+		push_warning("Arena fara enemy_scene - camera ramane goala. Setează-l în Inspector.")
+		return
+
+	_alive = 0
+	for i in enemies_per_room + room_index:
+		_spawn_enemy()
+
+
+func _spawn_enemy() -> void:
+	var enemy := enemy_scene.instantiate()
+	_arena.add_child(enemy)
+	enemy.global_position = _pick_spawn_point()
+
+	if enemy.has_signal(&"died"):
+		enemy.died.connect(_on_enemy_died)
+	_alive += 1
+
+
+## Punct la distanta de erou, dar tot inauntrul camerei - altfel inamicii ar
+## aparea dincolo de pereti si n-ar mai avea cum sa ajunga la el.
+func _pick_spawn_point() -> Vector2:
+	var bounds := _floor.room_rect().grow(-60.0)
+
+	for attempt in 24:
+		var angle := randf() * TAU
+		var distance := randf_range(min_spawn_distance, spawn_radius)
+		var point := _hero.global_position + Vector2.RIGHT.rotated(angle) * distance
+		if bounds.has_point(point):
+			return point
+
+	# Camera e prea stramta pentru inelul cerut: pune-l oriunde inauntru.
+	return Vector2(
+		randf_range(bounds.position.x, bounds.end.x),
+		randf_range(bounds.position.y, bounds.end.y),
+	)
+
+
+func _on_enemy_died(_enemy: Node) -> void:
+	_alive -= 1
+	if _alive > 0:
+		return
+
+	GameState.register_room_cleared()
+	room_cleared.emit(room_index)
+	room_index += 1
+
+	# O clipa de respiro: fara ea valul urmator apare peste ultima lovitura.
+	await get_tree().create_timer(1.2).timeout
+	build_room()
+
+
+func _on_hero_died() -> void:
+	# Ingheata camera. HUD-ul ruleaza mai departe (process_mode "always") si
+	# preia atingerea care reia jocul.
+	get_tree().paused = true
+
+
+--- ./scripts/systems/arena_floor.gd ---
+class_name ArenaFloor
+extends Node2D
+
+## Podeaua camerei: o deseneaza si tot din aceleasi masuri ii ridica peretii,
+## ca desenul si coliziunile sa nu poata ajunge niciodata sa nu se potriveasca.
+##
+## Fara nodul asta scena nu avea nimic de desenat sub personaje (de unde
+## ecranul gri) si nimic pe stratul "world", deci eroul pleca la nesfarsit in gol.
+
+## Cat de mare e camera jucabila, in pixeli.
+@export var room_size: Vector2 = Vector2(900.0, 1440.0)
+## Latura unei celule din grila de podea.
+@export var cell: float = 90.0
+@export var floor_color: Color = Color("1b1726")
+@export var grid_color: Color = Color("272138")
+@export var border_color: Color = Color("f0b45a")
+
+## Peretii sunt grosi ca eroul sa nu-i poata traversa la viteza mare.
+const WALL_THICKNESS := 64.0
+
+
+func _ready() -> void:
+	_build_walls()
+
+
+## Dreptunghiul jucabil, in coordonate globale.
+func room_rect() -> Rect2:
+	return Rect2(global_position - room_size * 0.5, room_size)
+
+
+func _draw() -> void:
+	var rect := Rect2(-room_size * 0.5, room_size)
+	draw_rect(rect, floor_color)
+
+	# Grila da simtul deplasarii: fara ea, mersul pe un fond plat nu se citeste.
+	var x := rect.position.x + cell
+	while x < rect.end.x:
+		draw_line(Vector2(x, rect.position.y), Vector2(x, rect.end.y), grid_color, 1.0)
+		x += cell
+	var y := rect.position.y + cell
+	while y < rect.end.y:
+		draw_line(Vector2(rect.position.x, y), Vector2(rect.end.x, y), grid_color, 1.0)
+		y += cell
+
+	draw_rect(rect, border_color, false, 4.0)
+
+
+## Ridica cei patru pereti pe stratul "world" (1), pe care eroul il are in masca.
+func _build_walls() -> void:
+	var walls := StaticBody2D.new()
+	walls.name = "Walls"
+	walls.collision_layer = 1
+	walls.collision_mask = 0
+	add_child(walls)
+
+	var half := room_size * 0.5
+	var t := WALL_THICKNESS
+	var plan := {
+		Vector2(0.0, -half.y - t * 0.5): Vector2(room_size.x + t * 2.0, t),
+		Vector2(0.0, half.y + t * 0.5): Vector2(room_size.x + t * 2.0, t),
+		Vector2(-half.x - t * 0.5, 0.0): Vector2(t, room_size.y + t * 2.0),
+		Vector2(half.x + t * 0.5, 0.0): Vector2(t, room_size.y + t * 2.0),
+	}
+
+	for offset: Vector2 in plan:
+		var shape := RectangleShape2D.new()
+		shape.size = plan[offset]
+		var collider := CollisionShape2D.new()
+		collider.shape = shape
+		collider.position = offset
+		walls.add_child(collider)
+
+
+--- ./scripts/systems/game_state.gd ---
+extends Node
+
+## Progresul care supravietuieste intre rulari (autoload: GameState).
+##
+## Aici stau monedele, talentele permanente din Calea Legendară si deblocarile.
+## Regula de baza a genului: ce se pierde la moarte e doar rularea; talentele si
+## deblocarile raman, ca fiecare incercare sa lase ceva in urma.
+
+signal coins_changed(amount: int)
+signal talents_changed
+signal hero_unlocked(hero_id: StringName)
+
+const SAVE_PATH := "user://heroium_save.cfg"
+
+## Calea Legendară din poza: doua ramuri care pornesc din Putere Atac.
+const TALENTS := {
+	&"attack_power":  {"name": "Putere Atac",     "max": 10, "cost": 60,  "step": 0.04, "requires": &""},
+	&"resistance":    {"name": "Rezistență",      "max": 8,  "cost": 80,  "step": 25.0, "requires": &"attack_power"},
+	&"max_health":    {"name": "Sănătate Maximă", "max": 10, "cost": 70,  "step": 0.05, "requires": &"attack_power"},
+	&"attack_speed":  {"name": "Viteză Atac",     "max": 8,  "cost": 90,  "step": 0.03, "requires": &"attack_power"},
+	&"crit_chance":   {"name": "Șansă Critică",   "max": 6,  "cost": 120, "step": 0.02, "requires": &"attack_speed"},
+}
+
+var coins: int = 0
+var total_rooms_cleared: int = 0
+var best_location: int = 1
+var talents: Dictionary = {}
+var unlocked_heroes: Array[StringName] = [&"ranger"]
+
+
+func _ready() -> void:
+	load_game()
+
+
+func talent_level(id: StringName) -> int:
+	return talents.get(id, 0)
+
+
+## Un talent e disponibil doar daca parintele lui are macar un nivel.
+func is_talent_available(id: StringName) -> bool:
+	var data: Dictionary = TALENTS.get(id, {})
+	if data.is_empty():
+		return false
+	var requires: StringName = data.get("requires", &"")
+	return requires == &"" or talent_level(requires) > 0
+
+
+func talent_cost(id: StringName) -> int:
+	var data: Dictionary = TALENTS.get(id, {})
+	if data.is_empty():
+		return 0
+	# Fiecare nivel costa cu 35% mai mult decat precedentul.
+	return int(round(data["cost"] * pow(1.35, talent_level(id))))
+
+
+func can_buy_talent(id: StringName) -> bool:
+	var data: Dictionary = TALENTS.get(id, {})
+	if data.is_empty() or not is_talent_available(id):
+		return false
+	if talent_level(id) >= int(data["max"]):
+		return false
+	return coins >= talent_cost(id)
+
+
+func buy_talent(id: StringName) -> bool:
+	if not can_buy_talent(id):
+		return false
+	add_coins(-talent_cost(id))
+	talents[id] = talent_level(id) + 1
+	talents_changed.emit()
+	save_game()
+	return true
+
+
+## Aplica talentele peste statisticile unei rulari noi.
+func apply_talents(stats: HeroStats) -> void:
+	stats.mult_attack *= 1.0 + talent_level(&"attack_power") * TALENTS[&"attack_power"]["step"]
+	stats.bonus_defense += talent_level(&"resistance") * TALENTS[&"resistance"]["step"]
+	stats.mult_health *= 1.0 + talent_level(&"max_health") * TALENTS[&"max_health"]["step"]
+	stats.mult_attack_speed *= 1.0 + talent_level(&"attack_speed") * TALENTS[&"attack_speed"]["step"]
+	stats.bonus_crit_chance += talent_level(&"crit_chance") * TALENTS[&"crit_chance"]["step"]
+	stats.recalculate()
+
+
+func add_coins(amount: int) -> void:
+	coins = maxi(0, coins + amount)
+	coins_changed.emit(coins)
+
+
+func register_room_cleared() -> void:
+	total_rooms_cleared += 1
+	save_game()
+
+
+func is_hero_unlocked(id: StringName) -> bool:
+	return id in unlocked_heroes
+
+
+func unlock_hero(id: StringName, cost: int) -> bool:
+	if is_hero_unlocked(id) or coins < cost:
+		return false
+	add_coins(-cost)
+	unlocked_heroes.append(id)
+	hero_unlocked.emit(id)
+	save_game()
+	return true
+
+
+func save_game() -> void:
+	var config := ConfigFile.new()
+	config.set_value("progress", "coins", coins)
+	config.set_value("progress", "total_rooms_cleared", total_rooms_cleared)
+	config.set_value("progress", "best_location", best_location)
+	config.set_value("progress", "talents", talents)
+	config.set_value("progress", "unlocked_heroes", unlocked_heroes)
+	config.save(SAVE_PATH)
+
+
+func load_game() -> void:
+	var config := ConfigFile.new()
+	if config.load(SAVE_PATH) != OK:
+		return
+	coins = config.get_value("progress", "coins", 0)
+	total_rooms_cleared = config.get_value("progress", "total_rooms_cleared", 0)
+	best_location = config.get_value("progress", "best_location", 1)
+	talents = config.get_value("progress", "talents", {})
+	var heroes: Array = config.get_value("progress", "unlocked_heroes", [&"ranger"])
+	unlocked_heroes.assign(heroes)
+
+
+## Sterge tot progresul. Doar pentru testare.
+func wipe() -> void:
+	coins = 0
+	total_rooms_cleared = 0
+	best_location = 1
+	talents.clear()
+	unlocked_heroes = [&"ranger"]
+	save_game()
+	coins_changed.emit(coins)
+	talents_changed.emit()
+
+
+--- ./scripts/ui/hud.gd ---
+extends Control
+
+## Viata, monedele, camera curenta si ecranul de infrangere.
+##
+## Deseneaza tot in cod, cu fontul implicit al motorului: asa nu depinde de o
+## tema sau de fonturi importate, si arata la fel pe telefon si pe Web.
+
+## Distanta fata de marginile ecranului.
+const MARGIN := 24.0
+const BAR_HEIGHT := 24.0
+
+@export var hero_path: NodePath
+@export var arena_path: NodePath
+
+var _hero: Hero = null
+var _health: float = 0.0
+var _max_health: float = 1.0
+var _coins: int = 0
+var _room: int = 1
+var _dead: bool = false
+
+
+func _ready() -> void:
+	# HUD-ul acopera tot ecranul: daca ar prinde atingerile, joystick-ul de
+	# dedesubt n-ar mai primi niciuna.
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	resized.connect(queue_redraw)
+
+	_coins = GameState.coins
+	GameState.coins_changed.connect(_on_coins_changed)
+
+	var arena := get_node_or_null(arena_path) as Arena
+	if arena != null:
+		_room = arena.room_index
+		arena.room_cleared.connect(_on_room_cleared)
+
+	_hero = get_node_or_null(hero_path) as Hero
+	if _hero != null:
+		_hero.health_changed.connect(_on_health_changed)
+		_hero.died.connect(_on_hero_died)
+		# Eroul e gata inaintea HUD-ului, deci semnalul initial a trecut deja.
+		_on_health_changed(_hero.get_health(), _hero.get_max_health())
+
+
+func _on_health_changed(current: float, maximum: float) -> void:
+	_health = current
+	_max_health = maxf(1.0, maximum)
+	queue_redraw()
+
+
+func _on_coins_changed(amount: int) -> void:
+	_coins = amount
+	queue_redraw()
+
+
+func _on_room_cleared(index: int) -> void:
+	_room = index + 1
+	queue_redraw()
+
+
+func _on_hero_died() -> void:
+	_dead = true
+	queue_redraw()
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if not _dead:
+		return
+
+	var pressed: bool = (
+		(event is InputEventScreenTouch and event.pressed)
+		or (event is InputEventMouseButton and event.pressed)
+	)
+	if not pressed:
+		return
+
+	# Arena a inghetat scena la moarte; fara dezghetare, si cea noua ar porni oprita.
+	get_tree().paused = false
+	get_tree().reload_current_scene()
+
+
+func _draw() -> void:
+	var font := ThemeDB.fallback_font
+	var width := size.x - MARGIN * 2.0
+
+	var bar := Rect2(MARGIN, MARGIN, width, BAR_HEIGHT)
+	draw_rect(bar, Color(0.0, 0.0, 0.0, 0.5))
+	var fraction := clampf(_health / _max_health, 0.0, 1.0)
+	draw_rect(Rect2(bar.position, Vector2(bar.size.x * fraction, bar.size.y)), Color("e2574c"))
+	draw_rect(bar, Color(1, 1, 1, 0.22), false, 2.0)
+	draw_string(
+		font,
+		bar.position + Vector2(10.0, 17.0),
+		"%d / %d" % [roundi(_health), roundi(_max_health)],
+		HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(1, 1, 1, 0.92)
+	)
+
+	var line := Vector2(MARGIN, bar.end.y + 26.0)
+	draw_string(font, line, "Camera %d" % _room,
+		HORIZONTAL_ALIGNMENT_LEFT, width, 18, Color("f0b45a"))
+	draw_string(font, line, "%d monede" % _coins,
+		HORIZONTAL_ALIGNMENT_RIGHT, width, 18, Color("f0b45a"))
+
+	if _dead:
+		_draw_defeat(font, width)
+
+
+func _draw_defeat(font: Font, width: float) -> void:
+	draw_rect(Rect2(Vector2.ZERO, size), Color(0.02, 0.02, 0.04, 0.78))
+
+	var middle := size.y * 0.5
+	draw_string(font, Vector2(MARGIN, middle), "Ai căzut în camera %d" % _room,
+		HORIZONTAL_ALIGNMENT_CENTER, width, 30, Color("f0b45a"))
+	draw_string(font, Vector2(MARGIN, middle + 42.0), "Atinge ecranul ca să reîncerci",
+		HORIZONTAL_ALIGNMENT_CENTER, width, 18, Color(1, 1, 1, 0.75))
+
+
+--- ./scripts/visual/blob.gd ---
+class_name Blob
+extends Node2D
+
+## Corpul vizibil al unei entitati, desenat in cod.
+##
+## Jocul a pornit fara fisiere de arta, iar un Sprite2D fara textura nu
+## deseneaza nimic - exact de acolo venea ecranul gri. Formele desenate se vad
+## intotdeauna, se coloreaza per clasa si nu cer pipeline de import. Cand apare
+## arta adevarata, nodul asta se inlocuieste cu un Sprite2D si nimic altceva
+## nu se schimba.
+
+## Cat tine licarirea alba de la o lovitura.
+const FLASH_TIME := 0.18
+
+@export var radius: float = 18.0:
+	set(value):
+		radius = value
+		_refresh()
+@export var fill: Color = Color("f0b45a"):
+	set(value):
+		fill = value
+		_refresh()
+@export var outline: Color = Color(0.04, 0.03, 0.07):
+	set(value):
+		outline = value
+		_refresh()
+@export var outline_width: float = 3.0
+
+var _flash: float = 0.0
+
+
+func _ready() -> void:
+	set_process(false)
+
+
+## Licarire alba la impact - singurul semn ca lovitura a contat.
+func flash() -> void:
+	_flash = FLASH_TIME
+	set_process(true)
+	queue_redraw()
+
+
+func _process(delta: float) -> void:
+	_flash = maxf(0.0, _flash - delta)
+	queue_redraw()
+	if _flash <= 0.0:
+		set_process(false)
+
+
+func _draw() -> void:
+	# Umbra de dedesubt desprinde forma de podea; fara ea totul pare lipit.
+	draw_circle(Vector2(0.0, radius * 0.42), radius * 0.88, Color(0.0, 0.0, 0.0, 0.3))
+
+	var body := fill.lerp(Color.WHITE, _flash / FLASH_TIME)
+	draw_circle(Vector2.ZERO, radius, body)
+	draw_arc(Vector2.ZERO, radius, 0.0, TAU, 28, outline, outline_width, true)
+
+	# Reflexul din stanga-sus da volum unui simplu cerc.
+	draw_circle(Vector2(-radius * 0.3, -radius * 0.34), radius * 0.24, Color(1, 1, 1, 0.26))
+
+
+func _refresh() -> void:
+	if is_node_ready():
+		queue_redraw()
+
