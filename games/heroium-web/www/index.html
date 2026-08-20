@@ -129,6 +129,35 @@
   #lvlTag { color: var(--cyan); }
   #metaRow b { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
 
+  /* sloturile de abilitati - o iconita per putere aleasa in runda curenta */
+  #abilityRow { display: flex; gap: 5px; flex-wrap: wrap; }
+  .abilitySlot {
+    width: 24px; height: 24px; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; color: var(--cyan);
+    background: rgba(62,232,255,0.1);
+    border: 1px solid rgba(62,232,255,0.3);
+  }
+
+  /* bara mare de viata a bossului final - separata de HUD-ul normal */
+  #bossBar { margin-top: 2px; }
+  #bossBar #bossNm {
+    font-family: var(--f-display); font-weight: 700; font-size: 13px;
+    letter-spacing: 0.1em; text-transform: uppercase; color: var(--red);
+    text-shadow: 0 0 14px rgba(255,51,85,0.5);
+  }
+  #bossBar #bossPhase {
+    font-family: var(--f-mono); font-size: 10.5px; color: var(--text-dim);
+    margin: 1px 0 4px;
+  }
+  #bossBar .barOuter { height: 10px; }
+  #bossFill {
+    height: 100%; width: 100%;
+    background: linear-gradient(90deg, var(--red), #ff7a5c);
+    box-shadow: 0 0 12px rgba(255,51,85,0.5);
+    transition: width 160ms ease-out;
+  }
+
   /* ---------------- Joystick ---------------- */
   #joyBase {
     position: absolute; z-index: 3;
@@ -304,6 +333,11 @@
     background: rgba(62,232,255,0.08);
     border: 1px solid rgba(62,232,255,0.28);
     border-radius: 8px; padding: 10px 6px;
+    display: flex; flex-direction: column; gap: 2px; align-items: center;
+  }
+  .navBtn small {
+    font-family: var(--f-body); font-size: 10px; font-weight: 500;
+    letter-spacing: 0; text-transform: none; color: var(--text-dim);
   }
   .navBtn:active { transform: scale(0.97); }
   .navBtn:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
@@ -471,6 +505,12 @@
       <div id="roomTag">Camera <b id="roomNum">1</b></div>
       <div id="lvlTag">Nivel <b id="lvlNum">1</b></div>
     </div>
+    <div id="abilityRow"></div>
+    <div id="bossBar" class="hidden">
+      <div id="bossNm">Bătrânul Rege Căzut</div>
+      <div id="bossPhase">Faza I</div>
+      <div class="barOuter"><div id="bossFill"></div></div>
+    </div>
   </div>
 
   <div id="joyBase"><div id="joyKnob"></div></div>
@@ -489,7 +529,14 @@
       <div class="navRow">
         <button class="navBtn" type="button" id="equipBtn">Echipament</button>
         <button class="navBtn" type="button" id="talentBtn">Talente</button>
-        <button class="navBtn" type="button" id="mapBtn">Hartă: <span id="hubMap">—</span></button>
+      </div>
+      <div class="navRow">
+        <button class="navBtn" type="button" id="mapBtn">Hartă<small id="hubMap">—</small></button>
+        <button class="navBtn" type="button" id="modeSelBtn">Regim<small id="hubGameMode">—</small></button>
+      </div>
+      <div class="navRow">
+        <button class="navBtn" type="button" id="chestBtn">Ladă de Război<small id="hubChests">0 lăzi</small></button>
+        <button class="navBtn" type="button" id="seasonBtn">Traseu Sezon<small id="hubSeason">0</small></button>
       </div>
       <div class="modes" id="modes" role="group" aria-label="Mod de tragere">
         <button class="mode" type="button" data-mode="clasic" aria-pressed="false">Clasic<small>doar pe loc · +25%</small></button>
@@ -598,6 +645,54 @@
       <button class="btn" id="mapBack">Înapoi</button>
     </div>
   </div>
+
+  <div id="gameModeOverlay" class="overlay scrollable hidden">
+    <div class="panel">
+      <div class="kicker">alege regimul</div>
+      <h2 class="sub">Regim de joc</h2>
+      <div id="gameModeList"></div>
+      <button class="btn" id="gameModeBack">Înapoi</button>
+    </div>
+  </div>
+
+  <div id="victoryOverlay" class="overlay hidden">
+    <div class="panel">
+      <div class="kicker">campania s-a încheiat</div>
+      <h1 class="title" style="font-size:clamp(30px,9vw,44px);">Victorie</h1>
+      <p class="lede">Bătrânul Rege Căzut zace din nou nemișcat. Tărâmul respiră o clipă.</p>
+      <div class="statRow">
+        <div class="stat"><b id="vRoom">1</b><span>Camere</span></div>
+        <div class="stat"><b id="vKills">0</b><span>Uciși</span></div>
+        <div class="stat"><b id="vLvl">1</b><span>Nivel</span></div>
+      </div>
+      <div class="purse"><span>Câștigat</span> <b id="vShards">+0</b></div>
+      <button class="btn" id="victoryBackBtn">Înapoi la tărâm</button>
+    </div>
+  </div>
+
+  <div id="chestOverlay" class="overlay scrollable hidden">
+    <div class="panel">
+      <div class="kicker">recompense · fără clan real, fără bani reali</div>
+      <h2 class="sub">Ladă de Război</h2>
+      <div class="purse"><span>Cioburi</span> <b id="chestPurse">0</b></div>
+      <div class="statRow"><div class="stat"><b id="chestCount">0</b><span>Lăzi deținute</span></div></div>
+      <button class="btn" id="openChestBtn">Deschide o ladă</button>
+      <p class="lede" id="chestResult" style="font-size:13px; min-height: 1.6em;"></p>
+      <h2 class="sub" style="font-size:19px; margin-top:4px;">Cosmetice</h2>
+      <div id="cosmeticList"></div>
+      <button class="btn" id="chestBack">Înapoi</button>
+    </div>
+  </div>
+
+  <div id="seasonOverlay" class="overlay scrollable hidden">
+    <div class="panel">
+      <div class="kicker">traseu de sezon · plătit din cioburi, nu bani reali</div>
+      <h2 class="sub">Recompense</h2>
+      <div class="purse"><span>Cioburi adunate</span> <b id="seasonEarned">0</b></div>
+      <div id="seasonList"></div>
+      <button class="btn" id="seasonBack">Înapoi</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -666,6 +761,22 @@
   var GLOW_MINT = makeGlow("94,240,182");
   var GLOW_VIOLET = makeGlow("178,107,255");
 
+  // Cosmetice pentru erou - doar culoare, platite din cioburi (nu bani
+  // reali). "default" e mereu detinut si e cyan-ul original al jocului.
+  var COSMETICS = [
+    { id: "default", nm: "Cyan (implicit)", cost: 0,   rgb: "62,232,255" },
+    { id: "gold",    nm: "Auriu Regal",      cost: 150, rgb: "255,207,92" },
+    { id: "crimson", nm: "Purpuriu Sângeriu", cost: 150, rgb: "255,51,85" },
+    { id: "emerald", nm: "Smarald",          cost: 150, rgb: "94,240,182" },
+    { id: "violet",  nm: "Violet Arcan",     cost: 200, rgb: "178,107,255" }
+  ];
+  var SKIN_GLOWS = {};
+  COSMETICS.forEach(function (c) { SKIN_GLOWS[c.id] = makeGlow(c.rgb); });
+  function cosmeticById(id) {
+    for (var i = 0; i < COSMETICS.length; i++) if (COSMETICS[i].id === id) return COSMETICS[i];
+    return COSMETICS[0];
+  }
+
   function drawGlow(sprite, x, y, radius, alpha) {
     ctx.globalAlpha = alpha === undefined ? 1 : alpha;
     ctx.drawImage(sprite, x - radius, y - radius, radius * 2, radius * 2);
@@ -673,7 +784,7 @@
   }
 
   // ====================== STARE ======================
-  var S_MENU = "menu", S_PLAY = "play", S_LEVEL = "level", S_OVER = "over";
+  var S_MENU = "menu", S_PLAY = "play", S_LEVEL = "level", S_OVER = "over", S_VICTORY = "victory";
   var state = S_MENU;
 
   // O singura regula de echilibru, valabila in toate modurile: un foc tras din
@@ -775,6 +886,11 @@
     },
     doorOpen: function () { beep(300, 0.18, "sine", 0.2, 520); },
     bossDown: function () { beep(90, 0.4, "sawtooth", 0.34, 40); },
+    victory: function () {
+      beep(440, 0.12, "triangle", 0.28, 660);
+      setTimeout(function () { beep(660, 0.12, "triangle", 0.28, 880); }, 110);
+      setTimeout(function () { beep(880, 0.3, "triangle", 0.3, 1320); }, 220);
+    },
     gameOver: function () { beep(200, 0.5, "sawtooth", 0.28, 60); },
     revive: function () { beep(400, 0.3, "triangle", 0.3, 900); }
   };
@@ -850,6 +966,49 @@
   function talentLevel(id) { return meta.talents[id] | 0; }
   function talentAvailable(t) { return !t.requires || talentLevel(t.requires) >= 1; }
 
+  // ====================== ECONOMIE (fara clan multiplayer, fara bani reali) ======================
+  // O lada de razboi single-player, castigata la fiecare victorie de
+  // Campanie - contine cioburi si, uneori, un cosmetic. Nu exista clan real
+  // (ar necesita cont si server); asta e echivalentul jucabil fara backend.
+  var CHEST_REWARD_MIN = 40, CHEST_REWARD_MAX = 120;
+  function openChest() {
+    if (meta.chests <= 0) return null;
+    meta.chests--;
+    var shardsWon = CHEST_REWARD_MIN + Math.floor(Math.random() * (CHEST_REWARD_MAX - CHEST_REWARD_MIN + 1));
+    meta.shards += shardsWon;
+    meta.seasonEarned += shardsWon;
+    var locked = COSMETICS.filter(function (c) { return c.id !== "default" && meta.cosmetics.indexOf(c.id) < 0; });
+    var wonCosmetic = null;
+    if (locked.length && Math.random() < 0.25) {
+      wonCosmetic = locked[Math.floor(Math.random() * locked.length)];
+      meta.cosmetics.push(wonCosmetic.id);
+    }
+    saveMeta();
+    return { shards: shardsWon, cosmetic: wonCosmetic };
+  }
+
+  // Traseul de sezon - echivalentul Battle Pass, dar platit din cioburile
+  // adunate de-a lungul rundelor (meta.seasonEarned), nu din bani reali.
+  var SEASON_TIERS = [
+    { at: 200,  reward: 60,  nm: "Treapta 1" },
+    { at: 500,  reward: 100, nm: "Treapta 2" },
+    { at: 1000, reward: 150, cosmetic: "gold",    nm: "Treapta 3" },
+    { at: 2000, reward: 250, nm: "Treapta 4" },
+    { at: 3500, reward: 400, cosmetic: "violet",  nm: "Treapta 5" }
+  ];
+  function seasonTierId(i) { return "t" + i; }
+  function claimSeasonTier(i) {
+    var t = SEASON_TIERS[i];
+    if (!t) return false;
+    var id = seasonTierId(i);
+    if (meta.seasonClaimed.indexOf(id) >= 0 || meta.seasonEarned < t.at) return false;
+    meta.shards += t.reward;
+    if (t.cosmetic && meta.cosmetics.indexOf(t.cosmetic) < 0) meta.cosmetics.push(t.cosmetic);
+    meta.seasonClaimed.push(id);
+    saveMeta();
+    return true;
+  }
+
   // Patru harti: paleta proprie (podea/pereti/contur), multiplicator de
   // dificultate care scaleaza viata si dauna inamicilor (si rasplata in
   // cioburi), si o compozitie proprie de tipuri de inamici.
@@ -872,6 +1031,37 @@
     return MAPS[0];
   }
   function currentMap() { return mapById(meta.mapId); }
+
+  // Patru regimuri de joc. Supraviețuire e comportamentul original (infinit,
+  // gardian la fiecare 5 camere) - ramane implicit ca sa nu schimbe nimic
+  // pentru cine nu alege explicit altceva.
+  var FINAL_BOSS_ROOM = 20;   // camera Campaniei unde apare Batranul Rege
+  var GAME_MODES = [
+    { id: "survival", nm: "Supraviețuire", ds: "Fără sfârșit — camere tot mai grele, cât reziști" },
+    { id: "campaign", nm: "Campanie", ds: "Camerele 1–" + (FINAL_BOSS_ROOM - 1) + ", apoi Bătrânul Rege Căzut" },
+    { id: "bossrush", nm: "Boss Rush", ds: "Fiecare cameră e un gardian, fără pauză" },
+    { id: "events", nm: "Evenimente", ds: "Modificator zilnic, diferit în fiecare zi" }
+  ];
+  function gameModeById(id) {
+    for (var i = 0; i < GAME_MODES.length; i++) if (GAME_MODES[i].id === id) return GAME_MODES[i];
+    return GAME_MODES[0];
+  }
+  function currentGameMode() { return gameModeById(meta.gameMode); }
+
+  // Evenimentul zilei - determinist (aceeasi zi = acelasi modificator pentru
+  // toata lumea), fara sa fie nevoie de server: doar data curenta ca sursa.
+  var EVENT_MODIFIERS = [
+    { nm: "Val dublu", ds: "Inamici cu +40% viață și daună, recompensă +50%", diffMult: 1.4, rewardMult: 1.5 },
+    { nm: "Comoara uitată", ds: "Dificultate normală, recompensă +80%", diffMult: 1.0, rewardMult: 1.8 },
+    { nm: "Asediu greu", ds: "Inamici cu +70% viață și daună, recompensă +60%", diffMult: 1.7, rewardMult: 1.6 }
+  ];
+  function todayEventIndex() {
+    var d = new Date();
+    return (d.getFullYear() * 372 + d.getMonth() * 31 + d.getDate()) % EVENT_MODIFIERS.length;
+  }
+  function currentEvent() { return EVENT_MODIFIERS[todayEventIndex()]; }
+  function eventDiffMult() { return meta.gameMode === "events" ? currentEvent().diffMult : 1; }
+  function eventRewardMult() { return meta.gameMode === "events" ? currentEvent().rewardMult : 1; }
 
   var UPGRADES = [
     { id: "vigoare",     nm: "Vigoare",      ds: "+12 viață maximă",        max: 5, costs: [40, 70, 110, 160, 220] },
@@ -896,7 +1086,8 @@
     return {
       name: name, classId: classId,
       shards: 0, totalRooms: 0, bestRoom: 1, bestLevel: 1,
-      up: {}, talents: {}, equip: equip, owned: [], mapId: "forest"
+      up: {}, talents: {}, equip: equip, owned: [], mapId: "forest", gameMode: "survival",
+      chests: 0, cosmetics: [], skin: "default", seasonEarned: 0, seasonClaimed: []
     };
   }
 
@@ -917,6 +1108,12 @@
     }
     prof.owned = Array.isArray(p.owned) ? p.owned.filter(function (id) { return typeof id === "string"; }) : [];
     if (typeof p.mapId === "string" && MAPS.some(function (m) { return m.id === p.mapId; })) prof.mapId = p.mapId;
+    if (typeof p.gameMode === "string" && GAME_MODES.some(function (m) { return m.id === p.gameMode; })) prof.gameMode = p.gameMode;
+    prof.chests = Math.max(0, p.chests | 0);
+    prof.cosmetics = Array.isArray(p.cosmetics) ? p.cosmetics.filter(function (id) { return typeof id === "string"; }) : [];
+    if (typeof p.skin === "string" && (p.skin === "default" || prof.cosmetics.indexOf(p.skin) >= 0)) prof.skin = p.skin;
+    prof.seasonEarned = Math.max(0, p.seasonEarned | 0);
+    prof.seasonClaimed = Array.isArray(p.seasonClaimed) ? p.seasonClaimed.filter(function (id) { return typeof id === "string"; }) : [];
     return prof;
   }
 
@@ -993,7 +1190,7 @@
   loadDevicePrefs();
 
   var player = null;
-  var enemies = [], pBullets = [], eBullets = [], particles = [], telegraphs = [], orbs = [], slashes = [];
+  var enemies = [], pBullets = [], eBullets = [], particles = [], telegraphs = [], orbs = [], slashes = [], damageNumbers = [];
   var room = 1, kills = 0, doorOpen = false, transitioning = false;
   var runShards = 0;                    // cioburi stranse in runda curenta
   var lastTime = 0, shakeTime = 0, shakeMag = 0;
@@ -1030,15 +1227,17 @@
       meleeArc: cls.meleeArc || 0,
       level: 1, xp: 0, xpNext: 8,
       hurtCd: 0, flash: 0,
-      facing: -Math.PI / 2
+      facing: -Math.PI / 2,
+      powers: []          // id-urile puterilor alese in runda curenta, pt. HUD
     };
   }
 
   function resetRun() {
     player = newPlayer();
     enemies.length = 0; pBullets.length = 0; eBullets.length = 0;
-    particles.length = 0; telegraphs.length = 0; orbs.length = 0; slashes.length = 0;
+    particles.length = 0; telegraphs.length = 0; orbs.length = 0; slashes.length = 0; damageNumbers.length = 0;
     room = 1; kills = 0; doorOpen = false; transitioning = false;
+    lastPowerCount = -1;   // fortam reafisarea sloturilor de abilitati la runda noua
     runShards = 0;
     buildRoom();
     syncHud();
@@ -1046,14 +1245,20 @@
 
   // ====================== CAMERE ======================
   var BOSS_EVERY = 5;                     // o camera de garda la fiecare 5 camere
-  function isBossRoom() { return room % BOSS_EVERY === 0; }
+  // Boss Rush face fiecare camera un gardian; Campania are un boss unic la
+  // FINAL_BOSS_ROOM (verificat separat, are prioritate).
+  function isBossRoom() { return meta.gameMode === "bossrush" || room % BOSS_EVERY === 0; }
+  function isFinalBossRoom() { return meta.gameMode === "campaign" && room === FINAL_BOSS_ROOM; }
 
   function buildRoom() {
     enemies.length = 0; pBullets.length = 0; eBullets.length = 0;
-    telegraphs.length = 0; orbs.length = 0; slashes.length = 0;
+    telegraphs.length = 0; orbs.length = 0; slashes.length = 0; damageNumbers.length = 0;
     doorOpen = false;
 
-    if (isBossRoom()) {
+    if (isFinalBossRoom()) {
+      spawnFinalKing();
+      toast("Bătrânul Rege Căzut");
+    } else if (isBossRoom()) {
       spawnBoss();
       toast("Camera " + room + " · Gardian");
     } else {
@@ -1084,7 +1289,7 @@
     } while (tries < 30 && Math.hypot(x - player.x, y - player.y) < 190);
 
     var tier = room - 1;
-    var diff = currentMap().diff;
+    var diff = currentMap().diff * eventDiffMult();
     var e = {
       type: type, x: x, y: y,
       hp: 1, maxHp: 1, r: 13,
@@ -1113,7 +1318,7 @@
   // existente pentru inamici obisnuiti, doar la scara mai mare.
   function spawnBoss() {
     var tier = room - 1;
-    var diff = currentMap().diff;
+    var diff = currentMap().diff * eventDiffMult();
     var e = {
       type: "boss", x: VW / 2, y: ROOM.y0 + 130, r: 26,
       hp: 1, maxHp: 1, speed: 58 + tier * 1.2, damage: (15 + tier * 1.6) * diff,
@@ -1122,6 +1327,22 @@
       xp: 14 + tier * 2
     };
     e.maxHp = (160 + tier * 34) * diff;
+    e.hp = e.maxHp;
+    enemies.push(e);
+  }
+
+  // Boss-ul unic de final de Campanie. Mult mai multa viata decat un gardian
+  // obisnuit, si o a doua faza (kingPhase) declansata la 50% viata.
+  function spawnFinalKing() {
+    var diff = currentMap().diff * eventDiffMult();
+    var e = {
+      type: "king", x: VW / 2, y: ROOM.y0 + 150, r: 30,
+      hp: 1, maxHp: 1, speed: 50, damage: 20 * diff,
+      touchCd: 0, phase: "stalk", phaseT: 1.4,
+      aimX: 0, aimY: 0, burnT: 0, burnDps: 0, flash: 0,
+      xp: 80, kingPhase: 1
+    };
+    e.maxHp = 900 * diff;
     e.hp = e.maxHp;
     enemies.push(e);
   }
@@ -1308,6 +1529,7 @@
         p.nm + '</div><div class="ds">' + p.ds + '</div></div>';
       b.addEventListener("click", function () {
         p.go();
+        player.powers.push(p.id);
         document.getElementById("levelOverlay").classList.add("hidden");
         state = S_PLAY;
         syncHud();
@@ -1340,6 +1562,27 @@
   }
 
   function shake(mag, time) { shakeMag = Math.max(shakeMag, mag); shakeTime = Math.max(shakeTime, time); }
+
+  // Numere de daună plutitoare - aurii si mai mari la crit, rosii cand
+  // jucatorul e cel lovit. Un singur pool, ca particulele.
+  function spawnDamageNumber(x, y, amount, kind) {
+    if (damageNumbers.length > 80) return;
+    damageNumbers.push({
+      x: x + (Math.random() - 0.5) * 14, y: y - 6,
+      vy: -62, text: String(Math.round(amount)),
+      kind: kind || "hit",          // "hit" | "crit" | "hurt"
+      life: 0.7, max: 0.7
+    });
+  }
+
+  function updateDamageNumbers(dt) {
+    for (var i = damageNumbers.length - 1; i >= 0; i--) {
+      var d = damageNumbers[i];
+      d.y += d.vy * dt; d.vy *= 0.92;
+      d.life -= dt;
+      if (d.life <= 0) damageNumbers.splice(i, 1);
+    }
+  }
 
   var toastEl = document.getElementById("toast");
   function toast(text) {
@@ -1408,10 +1651,12 @@
       var ang = Math.atan2(dy, dx);
       var diff = Math.abs(Math.atan2(Math.sin(ang - base), Math.cos(ang - base)));
       if (diff > arc / 2) continue;
-      e.hp -= player.damage * m * cm;
+      var meleeDmg = player.damage * m * cm;
+      e.hp -= meleeDmg;
       e.flash = 0.12;
       if (player.burn > 0) { e.burnDps = player.burn * m; e.burnT = 2.2; }
       burst(e.x, e.y, crit ? "255,235,150" : "255,207,92", 4, crit ? 150 : 110);
+      spawnDamageNumber(e.x, e.y, meleeDmg, crit ? "crit" : "hit");
       sfx.hit();
       if (e.hp <= 0) killEnemy(i, e);
     }
@@ -1504,6 +1749,7 @@
     updateParticles(dt);
     updateTelegraphs(dt);
     updateSlashes(dt);
+    updateDamageNumbers(dt);
 
     if (shakeTime > 0) { shakeTime -= dt; if (shakeTime <= 0) shakeMag = 0; }
 
@@ -1540,7 +1786,7 @@
 
   function nextRoom() {
     transitioning = true;
-    runShards += Math.round((8 + room * 2) * currentMap().diff);   // rasplata pentru camera tocmai curatata
+    runShards += Math.round((8 + room * 2) * currentMap().diff * eventRewardMult());   // rasplata pentru camera tocmai curatata
     meta.totalRooms++;                  // progresul spre deblocari nu se pierde niciodata
     saveMeta();
     room++;
@@ -1648,6 +1894,56 @@
             e.phase = "stalk"; e.phaseT = 1.3 + Math.random() * 0.5;
           }
         }
+      } else if (e.type === "king") {
+        // faza a II-a se declanseaza o singura data, la 50% viata: cheama doi
+        // sacoliti si accelereaza toate atacurile
+        if (e.kingPhase === 1 && e.hp <= e.maxHp * 0.5) {
+          e.kingPhase = 2;
+          e.phase = "stalk"; e.phaseT = 0.6;
+          toast("Bătrânul Rege: Faza a II-a!");
+          shake(9, 0.3);
+          burst(e.x, e.y, "178,107,255", 20, 220);
+          sfx.bossDown();
+          spawnEnemy("melee"); spawnEnemy("melee");
+        }
+        var fast = e.kingPhase === 2;
+        e.phaseT -= dt;
+        if (e.phase === "stalk") {
+          e.x += (dx / dist) * e.speed * dt;
+          e.y += (dy / dist) * e.speed * dt;
+          if (e.phaseT <= 0) {
+            var pickK = Math.random() < 0.5 ? "windMelee" : "windRanged";
+            e.phase = pickK; e.phaseT = fast ? 0.5 : 0.7;
+            if (pickK === "windMelee") {
+              e.aimX = player.x; e.aimY = player.y;
+              telegraphs.push({ kind: "line", x: e.x, y: e.y, tx: player.x, ty: player.y, t: e.phaseT, max: e.phaseT, owner: e });
+            } else {
+              telegraphs.push({ kind: "spot", x: e.x, y: e.y, r: 150, t: e.phaseT, max: e.phaseT, owner: e });
+            }
+          }
+        } else if (e.phase === "windMelee") {
+          if (e.phaseT <= 0) {
+            var angK = Math.atan2(e.aimY - e.y, e.aimX - e.x);
+            var dashSp = fast ? 560 : 460;
+            e.dashVx = Math.cos(angK) * dashSp; e.dashVy = Math.sin(angK) * dashSp;
+            e.phase = "dash"; e.phaseT = 0.4;
+          }
+        } else if (e.phase === "dash") {
+          e.x += e.dashVx * dt; e.y += e.dashVy * dt;
+          e.dashVx *= 0.92; e.dashVy *= 0.92;
+          if (Math.random() < 0.6) burst(e.x, e.y, "178,107,255", 1, 60);
+          if (e.phaseT <= 0) { e.phase = "stalk"; e.phaseT = (fast ? 0.9 : 1.3) + Math.random() * 0.5; }
+        } else if (e.phase === "windRanged") {
+          if (e.phaseT <= 0) {
+            var raysK = fast ? 12 : 8, spdK = fast ? 260 : 220;
+            for (var rk = 0; rk < raysK; rk++) {
+              var ak = (Math.PI * 2 / raysK) * rk;
+              eBullets.push({ x: e.x, y: e.y, vx: Math.cos(ak) * spdK, vy: Math.sin(ak) * spdK,
+                r: 5.5, dmg: e.damage * 0.7, life: 2.6, trail: [] });
+            }
+            e.phase = "stalk"; e.phaseT = (fast ? 0.9 : 1.3) + Math.random() * 0.5;
+          }
+        }
       }
 
       clampToRoom(e);
@@ -1670,8 +1966,13 @@
     runShards += 1;
     shake(3, 0.12);
 
-    if (e.type === "boss") {
-      runShards += Math.round((20 + room * 3) * currentMap().diff);
+    if (e.type === "king") {
+      runShards += Math.round(120 * currentMap().diff * eventRewardMult());
+      shake(14, 0.4);
+      sfx.victory();
+      victoryRun();
+    } else if (e.type === "boss") {
+      runShards += Math.round((20 + room * 3) * currentMap().diff * eventRewardMult());
       shake(10, 0.32);
       toast("Gardian învins!");
       sfx.bossDown();
@@ -1695,10 +1996,12 @@
   }
 
   function hurtPlayer(dmg) {
-    player.hp -= Math.max(1, Math.round(dmg - player.armor));
+    var taken = Math.max(1, Math.round(dmg - player.armor));
+    player.hp -= taken;
     player.hurtCd = 0.45;
     player.flash = 0.22;
     burst(player.x, player.y, "255,51,85", 9, 150);
+    spawnDamageNumber(player.x, player.y, taken, "hurt");
     shake(7, 0.2);
     sfx.hurt();
   }
@@ -1729,6 +2032,7 @@
             e.flash = 0.12;
             if (b.burn > 0) { e.burnDps = b.burn; e.burnT = 2.2; }
             burst(b.x, b.y, "62,232,255", 5, 130);
+            spawnDamageNumber(e.x, e.y, b.dmg, b.crit ? "crit" : "hit");
             sfx.hit();
             if (e.hp <= 0) { killEnemy(j, e); }
             if (b.pierce > 0) { b.pierce--; b.hitIds.push(e); }
@@ -1814,6 +2118,9 @@
   var hpVal = document.getElementById("hpVal"), hpMax = document.getElementById("hpMax");
   var xpNum = document.getElementById("xpNum");
   var roomNum = document.getElementById("roomNum"), lvlNum = document.getElementById("lvlNum");
+  var abilityRowEl = document.getElementById("abilityRow");
+  var bossBarEl = document.getElementById("bossBar");
+  var lastPowerCount = -1;    // evitam sa rescriem DOM-ul in fiecare frame degeaba
 
   function syncHud() {
     if (!player) return;
@@ -1824,6 +2131,24 @@
     xpNum.textContent = Math.floor(player.xp) + "/" + player.xpNext;
     roomNum.textContent = String(room);
     lvlNum.textContent = String(player.level);
+
+    if (player.powers.length !== lastPowerCount) {
+      lastPowerCount = player.powers.length;
+      abilityRowEl.innerHTML = player.powers.map(function (id) {
+        var p = POWERS.filter(function (x) { return x.id === id; })[0];
+        return p ? '<div class="abilitySlot" title="' + p.nm + '">' + p.glyph + '</div>' : "";
+      }).join("");
+    }
+
+    var king = null;
+    for (var ki = 0; ki < enemies.length; ki++) { if (enemies[ki].type === "king") { king = enemies[ki]; break; } }
+    if (king) {
+      bossBarEl.classList.remove("hidden");
+      document.getElementById("bossFill").style.width = Math.max(0, (king.hp / king.maxHp) * 100) + "%";
+      document.getElementById("bossPhase").textContent = king.kingPhase === 2 ? "Faza a II-a" : "Faza I";
+    } else {
+      bossBarEl.classList.add("hidden");
+    }
   }
 
   // ====================== RENDER ======================
@@ -1856,6 +2181,8 @@
     drawSlashes();
     drawParticles();
     ctx.globalCompositeOperation = "source-over";
+
+    drawDamageNumbers();
 
     ctx.restore();
   }
@@ -2026,19 +2353,47 @@
     });
   }
 
+  function drawDamageNumbers() {
+    ctx.textAlign = "center";
+    damageNumbers.forEach(function (d) {
+      var a = Math.max(0, d.life / d.max);
+      var crit = d.kind === "crit", hurt = d.kind === "hurt";
+      ctx.font = "700 " + (crit ? 18 : 14) + "px " + '"Chakra Petch",sans-serif';
+      var rgb = hurt ? "255,120,130" : (crit ? "255,207,92" : "232,241,255");
+      ctx.fillStyle = "rgba(" + rgb + "," + a.toFixed(3) + ")";
+      ctx.fillText("-" + d.text, d.x, d.y);
+    });
+    ctx.textAlign = "left";
+  }
+
   function drawEnemies() {
     enemies.forEach(function (e) {
       var hurt = e.flash > 0;
       var winding = (e.phase === "aim" || e.phase === "wind");
 
       ctx.globalCompositeOperation = "lighter";
-      drawGlow(GLOW_RED, e.x, e.y, e.r * 2.5, winding ? 0.75 : 0.4);
+      drawGlow(e.type === "king" ? GLOW_VIOLET : GLOW_RED, e.x, e.y, e.r * (e.type === "king" ? 3 : 2.5), winding ? 0.75 : 0.45);
       ctx.globalCompositeOperation = "source-over";
 
       ctx.beginPath();
       ctx.fillStyle = hurt ? "#ffffff" :
-        (e.type === "boss" ? "#ff8a3d" : (e.type === "charger" ? "#c22745" : (e.type === "ranged" ? "#e0405f" : "#ff3355")));
-      if (e.type === "boss") {
+        (e.type === "king" ? "#7a2ea8" : (e.type === "boss" ? "#ff8a3d" : (e.type === "charger" ? "#c22745" : (e.type === "ranged" ? "#e0405f" : "#ff3355"))));
+      if (e.type === "king") {
+        // octogon mare, cu inel dublu (aur + violet) - regele se vede de departe
+        var sides = 8, ang0 = -Math.PI / 2;
+        for (var si = 0; si < sides; si++) {
+          var sa = ang0 + (Math.PI * 2 / sides) * si;
+          var px = e.x + Math.cos(sa) * e.r, py = e.y + Math.sin(sa) * e.r;
+          if (si === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+        }
+        ctx.closePath(); ctx.fill();
+        ctx.beginPath();
+        ctx.strokeStyle = "rgba(255,207,92,0.7)"; ctx.lineWidth = 3;
+        ctx.arc(e.x, e.y, e.r + 8, 0, Math.PI * 2); ctx.stroke();
+        ctx.beginPath();
+        ctx.strokeStyle = "rgba(178,107,255,0.55)"; ctx.lineWidth = 2;
+        ctx.arc(e.x, e.y, e.r + 13, 0, Math.PI * 2); ctx.stroke();
+      } else if (e.type === "boss") {
         // patrat mare rotit, cu inel auriu - se distinge clar de restul
         ctx.save(); ctx.translate(e.x, e.y); ctx.rotate(Math.PI / 4);
         ctx.fillRect(-e.r, -e.r, e.r * 2, e.r * 2);
@@ -2061,8 +2416,8 @@
         ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2); ctx.fill();
       }
 
-      // bara de viata
-      if (e.hp < e.maxHp) {
+      // bara de viata (regele are deja o bara mare separata, in HUD)
+      if (e.hp < e.maxHp && e.type !== "king") {
         var w = e.r * 2.1, pct = Math.max(0, e.hp / e.maxHp);
         ctx.fillStyle = "rgba(5,8,16,0.8)";
         ctx.fillRect(e.x - w / 2, e.y - e.r - 8, w, 3.5);
@@ -2086,16 +2441,19 @@
       ctx.stroke();
     }
 
+    var skinRgb = cosmeticById(meta.skin).rgb;
+    var skinGlow = SKIN_GLOWS[meta.skin] || GLOW_CYAN;
+
     ctx.globalCompositeOperation = "lighter";
-    drawGlow(player.flash > 0 ? GLOW_RED : GLOW_CYAN, player.x, player.y, player.r * 3, 0.6);
+    drawGlow(player.flash > 0 ? GLOW_RED : skinGlow, player.x, player.y, player.r * 3, 0.6);
     ctx.globalCompositeOperation = "source-over";
 
     ctx.beginPath();
-    ctx.fillStyle = player.flash > 0 ? "#ffd7dd" : "#d9fbff";
+    ctx.fillStyle = player.flash > 0 ? "#ffd7dd" : "#fbfeff";
     ctx.arc(player.x, player.y, player.r, 0, Math.PI * 2);
     ctx.fill();
     ctx.lineWidth = 2.5;
-    ctx.strokeStyle = player.flash > 0 ? "#ff3355" : "#3ee8ff";
+    ctx.strokeStyle = player.flash > 0 ? "#ff3355" : "rgb(" + skinRgb + ")";
     ctx.stroke();
 
     // arcul / directia
@@ -2149,6 +2507,7 @@
 
     var earned = Math.round(runShards * (MODE_BONUS[fireMode] || 1));
     meta.shards += earned;
+    meta.seasonEarned += earned;
     if (room > meta.bestRoom) meta.bestRoom = room;
     if (player.level > meta.bestLevel) meta.bestLevel = player.level;
     saveMeta();
@@ -2164,8 +2523,31 @@
     document.getElementById("overOverlay").classList.remove("hidden");
   }
 
+  // Victoria de Campanie: Batranul Rege invins. Distincta de gameOver() - nu
+  // e o moarte, e un final reusit, cu propriul ecran si o lada de razboi.
+  function victoryRun() {
+    state = S_VICTORY;
+    joyUp();
+    document.getElementById("bossBar").classList.add("hidden");
+
+    var earned = Math.round(runShards * (MODE_BONUS[fireMode] || 1));
+    meta.shards += earned;
+    meta.seasonEarned += earned;
+    meta.chests += 1;
+    if (room > meta.bestRoom) meta.bestRoom = room;
+    if (player.level > meta.bestLevel) meta.bestLevel = player.level;
+    saveMeta();
+
+    document.getElementById("vRoom").textContent = String(room);
+    document.getElementById("vKills").textContent = String(kills);
+    document.getElementById("vLvl").textContent = String(player.level);
+    document.getElementById("vShards").textContent = "+" + earned;
+    document.getElementById("victoryOverlay").classList.remove("hidden");
+  }
+
   document.getElementById("startBtn").addEventListener("click", startRun);
   document.getElementById("retryBtn").addEventListener("click", startRun);
+  document.getElementById("victoryBackBtn").addEventListener("click", goToHub);
 
   // ---------- tabara: upgrade-uri permanente ----------
   var campOverlay = document.getElementById("campOverlay");
@@ -2273,11 +2655,15 @@
     document.getElementById("hubLevel").textContent = String(meta.bestLevel);
     document.getElementById("hubShards").textContent = String(meta.shards);
     document.getElementById("hubMap").textContent = currentMap().nm;
+    document.getElementById("hubGameMode").textContent = currentGameMode().nm;
+    document.getElementById("hubChests").textContent = meta.chests + (meta.chests === 1 ? " ladă" : " lăzi");
+    document.getElementById("hubSeason").textContent = meta.seasonEarned + " cioburi";
     document.getElementById("purseStart").textContent = String(meta.shards);
   }
 
   var ALL_OVERLAYS = ["startOverlay", "overOverlay", "levelOverlay", "campOverlay",
-    "profilesOverlay", "createOverlay", "equipOverlay", "talentOverlay", "mapOverlay"];
+    "profilesOverlay", "createOverlay", "equipOverlay", "talentOverlay", "mapOverlay",
+    "gameModeOverlay", "victoryOverlay", "chestOverlay", "seasonOverlay"];
 
   // Fiecare ecran secundar porneste ascunzand-le pe TOATE, nu doar hub-ul -
   // altfel navigarea directa intre ele (din teste sau din hook-uri) lasa
@@ -2532,6 +2918,138 @@
     goToHub();
   });
 
+  // ---------- regimul de joc ----------
+  var gameModeOverlay = document.getElementById("gameModeOverlay");
+
+  function renderGameModes() {
+    var box = document.getElementById("gameModeList");
+    box.innerHTML = "";
+    GAME_MODES.forEach(function (m) {
+      var b = document.createElement("button");
+      b.className = "mapCard"; b.type = "button";
+      b.setAttribute("aria-pressed", String(meta.gameMode === m.id));
+      var extra = "";
+      if (m.id === "events") {
+        var ev = currentEvent();
+        extra = '<div class="mapDiff">Astăzi: ' + ev.nm + ' — ' + ev.ds + '</div>';
+      }
+      b.innerHTML = '<div class="mapNm">' + m.nm + '</div><div class="mapDs">' + m.ds + '</div>' + extra;
+      b.addEventListener("click", function () {
+        meta.gameMode = m.id;
+        saveMeta();
+        renderGameModes();
+      });
+      box.appendChild(b);
+    });
+  }
+
+  function openGameModes() {
+    renderGameModes();
+    hideAllOverlays();
+    gameModeOverlay.classList.remove("hidden");
+  }
+  document.getElementById("modeSelBtn").addEventListener("click", openGameModes);
+  document.getElementById("gameModeBack").addEventListener("click", function () {
+    gameModeOverlay.classList.add("hidden");
+    goToHub();
+  });
+
+  // ---------- lada de razboi + cosmetice ----------
+  var chestOverlay = document.getElementById("chestOverlay");
+
+  function renderCosmetics() {
+    var box = document.getElementById("cosmeticList");
+    box.innerHTML = "";
+    COSMETICS.forEach(function (c) {
+      var owned = c.id === "default" || meta.cosmetics.indexOf(c.id) >= 0;
+      var equipped = meta.skin === c.id;
+      var affordable = meta.shards >= c.cost;
+      var b = document.createElement("button");
+      b.className = "buy"; b.type = "button";
+      b.disabled = !owned && !affordable;
+      b.innerHTML =
+        '<div class="info"><div class="nm">' + c.nm + '</div>' +
+        '<div class="ds" style="color:rgb(' + c.rgb + ')">●●●</div></div>' +
+        '<div class="price ' + (equipped ? "maxed" : (owned ? "" : (affordable ? "" : "short"))) + '">' +
+        (equipped ? "ACTIV" : (owned ? "FOLOSEȘTE" : c.cost)) + '</div>';
+      b.addEventListener("click", function () {
+        if (owned) { meta.skin = c.id; }
+        else {
+          if (meta.shards < c.cost) return;
+          meta.shards -= c.cost;
+          meta.cosmetics.push(c.id);
+          meta.skin = c.id;
+        }
+        saveMeta();
+        renderCosmetics();
+      });
+      box.appendChild(b);
+    });
+  }
+
+  function renderChest() {
+    document.getElementById("chestPurse").textContent = String(meta.shards);
+    document.getElementById("chestCount").textContent = String(meta.chests);
+    document.getElementById("openChestBtn").disabled = meta.chests <= 0;
+    renderCosmetics();
+  }
+
+  function openChestScreen() {
+    document.getElementById("chestResult").textContent = "";
+    renderChest();
+    hideAllOverlays();
+    chestOverlay.classList.remove("hidden");
+  }
+  document.getElementById("chestBtn").addEventListener("click", openChestScreen);
+  document.getElementById("openChestBtn").addEventListener("click", function () {
+    var r = openChest();
+    if (!r) return;
+    document.getElementById("chestResult").textContent = r.cosmetic
+      ? "+" + r.shards + " cioburi și un cosmetic nou: " + r.cosmetic.nm + "!"
+      : "+" + r.shards + " cioburi.";
+    renderChest();
+  });
+  document.getElementById("chestBack").addEventListener("click", function () {
+    chestOverlay.classList.add("hidden");
+    goToHub();
+  });
+
+  // ---------- traseul de sezon ----------
+  var seasonOverlay = document.getElementById("seasonOverlay");
+
+  function renderSeason() {
+    document.getElementById("seasonEarned").textContent = String(meta.seasonEarned);
+    var box = document.getElementById("seasonList");
+    box.innerHTML = "";
+    SEASON_TIERS.forEach(function (t, i) {
+      var id = seasonTierId(i);
+      var claimed = meta.seasonClaimed.indexOf(id) >= 0;
+      var reached = meta.seasonEarned >= t.at;
+      var ds = "+" + t.reward + " cioburi" + (t.cosmetic ? " · " + cosmeticById(t.cosmetic).nm : "") +
+        " · necesită " + t.at + " cioburi adunate";
+      var b = document.createElement("button");
+      b.className = "buy"; b.type = "button";
+      b.disabled = claimed || !reached;
+      b.innerHTML =
+        '<div class="info"><div class="nm">' + t.nm + '</div><div class="ds">' + ds + '</div></div>' +
+        '<div class="price ' + (claimed ? "maxed" : (reached ? "" : "short")) + '">' +
+        (claimed ? "RIDICAT" : (reached ? "RIDICĂ" : "BLOCAT")) + '</div>';
+      b.addEventListener("click", function () { if (claimSeasonTier(i)) renderSeason(); });
+      box.appendChild(b);
+    });
+  }
+
+  function openSeasonScreen() {
+    renderSeason();
+    hideAllOverlays();
+    seasonOverlay.classList.remove("hidden");
+  }
+  document.getElementById("seasonBtn").addEventListener("click", openSeasonScreen);
+  document.getElementById("seasonBack").addEventListener("click", function () {
+    seasonOverlay.classList.add("hidden");
+    goToHub();
+  });
+
   // ---------- pornirea aplicatiei: reia profilul activ sau cere unul ----------
   function bootProfile() {
     var saved = null;
@@ -2575,7 +3093,9 @@
         lastCrit: pBullets.length ? !!pBullets[pBullets.length - 1].crit : lastMeleeCrit,
         armor: player ? player.armor : 0,
         critChance: player ? player.critChance : 0,
-        activeSlot: activeSlot, profileName: meta.name, mapId: meta.mapId, bestLevel: meta.bestLevel
+        activeSlot: activeSlot, profileName: meta.name, mapId: meta.mapId, bestLevel: meta.bestLevel,
+        gameMode: meta.gameMode, chests: meta.chests, seasonEarned: meta.seasonEarned, skin: meta.skin,
+        powersCount: player ? player.powers.length : 0, damageNumberCount: damageNumbers.length
       };
     },
     start: startRun,
@@ -2599,6 +3119,7 @@
       var e = nearestEnemy();
       return e ? { x: e.x, y: e.y, hp: e.hp, maxHp: e.maxHp } : null;
     },
+    anyDamaged: function () { return enemies.some(function (e) { return e.hp < e.maxHp; }); },
     clearRoom: function () { while (enemies.length) killEnemy(enemies.length - 1, enemies[enemies.length - 1]); },
     dropEnemies: function () { enemies.length = 0; },
     clearBullets: function () { pBullets.length = 0; eBullets.length = 0; },
@@ -2650,7 +3171,39 @@
     },
     openEquip: openEquip,
     openTalents: openTalents,
-    openMaps: openMaps
+    openMaps: openMaps,
+    // ---------- moduri de joc / boss final ----------
+    setGameMode: function (id) {
+      if (!GAME_MODES.some(function (m) { return m.id === id; })) return;
+      meta.gameMode = id; saveMeta();
+    },
+    finalBossRoom: function () { return FINAL_BOSS_ROOM; },
+    kingInfo: function () {
+      var k = enemies.filter(function (e) { return e.type === "king"; })[0];
+      return k ? { hp: k.hp, maxHp: k.maxHp, kingPhase: k.kingPhase } : null;
+    },
+    setKingHpPct: function (pct) {
+      var k = enemies.filter(function (e) { return e.type === "king"; })[0];
+      if (k) k.hp = k.maxHp * pct;
+    },
+    openGameModes: openGameModes,
+    currentEventInfo: function () { return currentEvent(); },
+    // ---------- economie ----------
+    openChest: openChest,
+    grantChest: function (n) { meta.chests += (n || 1); saveMeta(); },
+    buyCosmetic: function (id) {
+      var c = cosmeticById(id);
+      if (meta.cosmetics.indexOf(id) < 0) {
+        if (c.id !== "default" && meta.shards < c.cost) return false;
+        meta.cosmetics.push(id);
+      }
+      meta.skin = id; saveMeta();
+      return true;
+    },
+    claimSeasonTier: claimSeasonTier,
+    grantSeasonEarned: function (n) { meta.seasonEarned += n; saveMeta(); },
+    openChestScreen: openChestScreen,
+    openSeasonScreen: openSeasonScreen
   };
 })();
 </script>

@@ -301,16 +301,18 @@ function assert(cond, msg) { if (!cond) throw new Error("ASSERT FAILED: " + msg)
   // citim poziția și teleportăm în aceeași evaluare - altfel inamicul (care
   // urmărește jucătorul) se poate deplasa în intervalul dintre cele doua
   // evaluate()-uri separate, scoțându-l ocazional din raza de atac
-  const nearest1 = await page.evaluate(() => {
+  await page.evaluate(() => {
     const e = window.__game.nearestEnemyPos();
     if (e) window.__game.setPos(e.x, e.y - 20);
-    return e;
   });
   await page.waitForTimeout(700);
-  const nearest2 = await page.evaluate(() => window.__game.nearestEnemyPos());
+  // "cel mai apropiat" se poate schimba in 700ms daca inamicii se misca -
+  // comparam daca EXISTA vreun inamic lovit, nu hp-ul aceluiasi obiect
+  // presupus stabil intre cele doua verificari
+  const anyDamaged = await page.evaluate(() => window.__game.anyDamaged());
   s = await snap();
   assert(s.pBullets === 0, `Knight nu trebuie sa traga proiectile, got ${s.pBullets}`);
-  assert(s.kills > 0 || nearest2.hp < nearest1.hp, "atacul corp la corp trebuie sa loveasca inamicul apropiat");
+  assert(s.kills > 0 || anyDamaged, "atacul corp la corp trebuie sa loveasca inamicul apropiat");
   ok("Knight lovește corp la corp în arc, fără proiectile");
 
   // Mage: ardere garantata din start, proiectile marcate distinct (violet)
@@ -503,6 +505,150 @@ function assert(cond, msg) { if (!cond) throw new Error("ASSERT FAILED: " + msg)
 
   assert(shadowHp > forestHp, `Tărâmul Umbrelor (×1.5) trebuie sa aiba inamici mai puternici decat Pădurea (×1.0): ${shadowHp} vs ${forestHp}`);
   ok(`dificultatea scalează inamicii: Pădure ${Math.round(forestHp)} HP vs Tărâmul Umbrelor ${Math.round(shadowHp)} HP`);
+
+  // ---------- 19. HUD: numere de daună și sloturi de abilități ----------
+  console.log("\n[19] HUD: numere de daună și sloturi de abilități");
+  await page.evaluate(() => window.__game.wipeAllSlots());
+  await page.evaluate(() => window.__game.createProfile(1, "Tester", "ranger"));
+  await page.evaluate(() => window.__game.start());
+  await page.waitForTimeout(150);
+
+  // asteptam pana la o lovitura reala, nu doar un proiectil in zbor - daca
+  // inamicul a aparut departe, proiectilul poate avea nevoie de peste o
+  // secunda sa ajunga la el
+  let dmgSeen = 0;
+  for (let i = 0; i < 26; i++) {
+    await page.waitForTimeout(100);
+    const st = await snap();
+    dmgSeen = Math.max(dmgSeen, st.damageNumberCount);
+    if (dmgSeen > 0) break;
+  }
+  assert(dmgSeen > 0, `trebuie sa apara numere de daună în timpul luptei, got ${dmgSeen}`);
+  ok(`numere de daună plutitoare afișate (${dmgSeen} simultan)`);
+
+  await page.evaluate(() => window.__game.clearRoom());
+  await page.waitForTimeout(120);
+  await page.evaluate(() => window.__game.collectOrbs());
+  await page.waitForTimeout(200);
+  await page.locator("#cards .card").first().click();
+  await page.waitForTimeout(150);
+  s = await snap();
+  assert(s.powersCount === 1, `trebuie sa avem o putere aleasă, got ${s.powersCount}`);
+  const abilitySlots = await page.locator("#abilityRow .abilitySlot").count();
+  assert(abilitySlots === 1, `HUD-ul trebuie sa arate 1 slot de abilitate, got ${abilitySlots}`);
+  ok("puterea aleasă apare ca slot de abilitate în HUD");
+
+  // ---------- 20. moduri de joc și Bătrânul Rege Căzut ----------
+  console.log("\n[20] Moduri de joc și Bătrânul Rege Căzut");
+  await page.evaluate(() => window.__game.wipeAllSlots());
+  await page.evaluate(() => window.__game.createProfile(1, "Tester", "ranger"));
+
+  s = await snap();
+  assert(s.gameMode === "survival", `regimul implicit trebuie sa fie survival, got ${s.gameMode}`);
+  ok("regimul implicit: Supraviețuire");
+
+  await page.evaluate(() => window.__game.openGameModes());
+  await page.waitForTimeout(120);
+  const modeCards = await page.locator("#gameModeList .mapCard").count();
+  assert(modeCards === 4, `trebuie sa existe 4 regimuri, got ${modeCards}`);
+  ok("ecranul de regim afișează toate cele 4 opțiuni");
+
+  await page.evaluate(() => window.__game.setGameMode("bossrush"));
+  await page.evaluate(() => window.__game.start());
+  await page.waitForTimeout(150);
+  s = await snap();
+  assert(s.enemyType === "boss", `în Boss Rush camera 1 trebuie sa fie deja un gardian, got ${s.enemyType}`);
+  ok("Boss Rush: camera 1 e deja un gardian");
+
+  await page.evaluate(() => window.__game.setGameMode("campaign"));
+  await page.evaluate(() => window.__game.start());
+  const finalRoom = await page.evaluate(() => window.__game.finalBossRoom());
+  await page.evaluate((n) => window.__game.buildRoomAt(n), finalRoom);
+  await page.waitForTimeout(150);
+  s = await snap();
+  assert(s.enemyType === "king", `camera finală trebuie sa aiba boss-ul rege, got ${s.enemyType}`);
+  ok(`Bătrânul Rege Căzut apare la camera ${finalRoom} în Campanie`);
+
+  let king = await page.evaluate(() => window.__game.kingInfo());
+  assert(king && king.kingPhase === 1, "regele trebuie sa înceapă în Faza I");
+  const bossBarVisible = await page.locator("#bossBar").isVisible();
+  assert(bossBarVisible, "bara mare de viață a bossului trebuie sa fie vizibilă");
+  ok("Faza I activă, bara mare de viață vizibilă în HUD");
+
+  await page.evaluate(() => window.__game.setKingHpPct(0.4));
+  await page.waitForTimeout(300);
+  king = await page.evaluate(() => window.__game.kingInfo());
+  assert(king && king.kingPhase === 2, `regele trebuie sa treacă în Faza a II-a sub 50% viață, got ${king && king.kingPhase}`);
+  ok("tranziția în Faza a II-a la 50% viață (cu sacoliți chemați)");
+
+  await page.evaluate(() => window.__game.setKingHpPct(0.001));
+  await page.evaluate(() => window.__game.clearRoom());
+  await page.waitForTimeout(200);
+  s = await snap();
+  assert(s.state === "victory", `starea trebuie sa fie victory, got ${s.state}`);
+  assert(await page.locator("#victoryOverlay").isVisible(), "ecranul de Victorie trebuie sa fie vizibil");
+  ok("învingerea regelui declanșează ecranul de Victorie");
+  await page.locator("#victoryBackBtn").click();
+
+  // Evenimente: modificator zilnic, determinist - camera 1 e mereu "melee"
+  // regardless de mod, deci comparatia directa e sigura
+  await page.evaluate(() => window.__game.setGameMode("survival"));
+  await page.evaluate(() => window.__game.start());
+  await page.waitForTimeout(150);
+  const baseHp = (await page.evaluate(() => window.__game.nearestEnemyPos())).maxHp;
+
+  await page.evaluate(() => window.__game.setGameMode("events"));
+  await page.evaluate(() => window.__game.start());
+  await page.waitForTimeout(150);
+  const eventInfo = await page.evaluate(() => window.__game.currentEventInfo());
+  const eventHp = (await page.evaluate(() => window.__game.nearestEnemyPos())).maxHp;
+  assert(Math.abs(eventHp - baseHp * eventInfo.diffMult) < 0.5,
+    `Evenimente trebuie sa aplice multiplicatorul zilei (×${eventInfo.diffMult}): asteptam ~${baseHp * eventInfo.diffMult}, got ${eventHp}`);
+  ok(`Evenimente aplică modificatorul zilei: ${eventInfo.nm} (×${eventInfo.diffMult} dificultate)`);
+
+  // ---------- 21. economie: ladă, cosmetice, traseu de sezon ----------
+  console.log("\n[21] Economie: ladă de recompense, cosmetice, traseu de sezon");
+  await page.evaluate(() => window.__game.wipeAllSlots());
+  await page.evaluate(() => window.__game.createProfile(1, "Tester", "ranger"));
+  await page.evaluate(() => window.__game.grantShards(2000));
+
+  await page.evaluate(() => window.__game.openChestScreen());
+  await page.waitForTimeout(120);
+  assert(await page.locator("#openChestBtn").isDisabled(), "fără lăzi, butonul de deschidere trebuie dezactivat");
+
+  await page.evaluate(() => window.__game.grantChest(1));
+  const chestResult = await page.evaluate(() => window.__game.openChest());
+  assert(chestResult && chestResult.shards > 0, `deschiderea lăzii trebuie sa dea cioburi, got ${JSON.stringify(chestResult)}`);
+  s = await snap();
+  assert(s.chests === 0, `lada trebuie consumată după deschidere, got ${s.chests}`);
+  ok(`ladă deschisă: +${chestResult.shards} cioburi${chestResult.cosmetic ? " și cosmeticul " + chestResult.cosmetic.nm : ""}`);
+
+  const boughtCosmetic = await page.evaluate(() => window.__game.buyCosmetic("gold"));
+  assert(boughtCosmetic === true, "cumpărarea cosmeticului trebuie sa reușească");
+  s = await snap();
+  assert(s.skin === "gold", `cosmeticul cumpărat trebuie echipat automat, got ${s.skin}`);
+  ok("cosmetic cumpărat și echipat automat");
+
+  await page.evaluate(() => window.__game.openChestScreen());
+  await page.waitForTimeout(120);
+  const cosmeticRows = await page.locator("#cosmeticList .buy").count();
+  assert(cosmeticRows === 5, `trebuie sa existe 5 cosmetice afișate, got ${cosmeticRows}`);
+  ok("ecranul de Ladă afișează magazinul de cosmetice");
+
+  let seasonClaim = await page.evaluate(() => window.__game.claimSeasonTier(0));
+  assert(seasonClaim === false, "treapta 1 de sezon trebuie blocată înainte de a atinge pragul");
+  await page.evaluate(() => window.__game.grantSeasonEarned(200));
+  seasonClaim = await page.evaluate(() => window.__game.claimSeasonTier(0));
+  assert(seasonClaim === true, "treapta 1 trebuie ridicabilă la 200 cioburi adunate");
+  seasonClaim = await page.evaluate(() => window.__game.claimSeasonTier(0));
+  assert(seasonClaim === false, "aceeași treaptă nu poate fi ridicată de două ori");
+  ok("traseul de sezon: treaptă blocată → deblocată → ridicată o singură dată");
+
+  await page.evaluate(() => window.__game.openSeasonScreen());
+  await page.waitForTimeout(120);
+  const seasonRows = await page.locator("#seasonList .buy").count();
+  assert(seasonRows === 5, `trebuie sa existe 5 trepte de sezon, got ${seasonRows}`);
+  ok("ecranul de Traseu de Sezon afișează toate treptele");
 
   const real = errors.filter((e) => !/ERR_CONNECTION_RESET|net::ERR|fonts\.googleapis/.test(e));
   if (real.length) { console.log("\nERORI:", real); throw new Error("erori in consola: " + real.join(" | ")); }
