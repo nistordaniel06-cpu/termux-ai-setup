@@ -72,7 +72,7 @@ tools = [
 ]
 
 system_prompt = "Ești un asistent CLI autonom în Termux. Execuți operații pe fișiere și comenzi Git folosind uneltele disponibile. Formatează răspunsurile clar."
-url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key={api_key}"
+url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-latest:generateContent?key={api_key}"
 
 print("🚀 Gemini Copilot CLI gata de lucru. Scrie 'exit' pentru a opri.\n")
 
