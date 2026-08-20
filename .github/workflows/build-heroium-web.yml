@@ -43,7 +43,8 @@ jobs:
           "$GODOT" --headless --path games/heroium --import
 
       - name: Ruleaza testele
-        run: "$GODOT" --headless --path games/heroium --script res://tests/run_tests.gd
+        run: |
+          "$GODOT" --headless --path games/heroium --script res://tests/run_tests.gd
 
   export_web:
     needs: test
