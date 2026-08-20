@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="Ability" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/abilities/ability.gd" id="1_ability"]
+
+[resource]
+script = ExtResource("1_ability")
+id = &"sharp_tip"
+display_name = "Vârf Ascuțit"
+description = "+25% daună. Simplu și mereu bun."
+kind = 3
+rarity = 0
+stars = 2
+damage_multiplier = 1.25

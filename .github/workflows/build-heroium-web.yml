@@ -15,8 +15,39 @@ on:
 permissions:
   contents: write
 
+env:
+  GODOT_VERSION: "4.3"
+
 jobs:
+  # Jocul a plecat odata cu tot stratul de scripturi necompilabil, iar buildul a
+  # reusit oricum - un export nu verifica daca jocul chiar merge. De aceea acum
+  # trece intai prin teste, si abia daca ele trec se mai exporta ceva.
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Ia Godot ${{ env.GODOT_VERSION }} headless
+        run: |
+          url="https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          curl -sSL -o godot.zip "$url"
+          unzip -q godot.zip
+          chmod +x "Godot_v${GODOT_VERSION}-stable_linux.x86_64"
+          echo "GODOT=$PWD/Godot_v${GODOT_VERSION}-stable_linux.x86_64" >> "$GITHUB_ENV"
+
+      - name: Importa proiectul
+        # Prima trecere la rece se plange de iconita pluginului de editor, care
+        # nu are treaba cu jocul exportat; a doua trecere e cea care conteaza.
+        run: |
+          "$GODOT" --headless --path games/heroium --import || true
+          "$GODOT" --headless --path games/heroium --import
+
+      - name: Ruleaza testele
+        run: |
+          "$GODOT" --headless --path games/heroium --script res://tests/run_tests.gd
+
   export_web:
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

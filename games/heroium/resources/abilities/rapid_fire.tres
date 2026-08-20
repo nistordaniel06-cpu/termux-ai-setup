@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="Ability" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/abilities/ability.gd" id="1_ability"]
+
+[resource]
+script = ExtResource("1_ability")
+id = &"rapid_fire"
+display_name = "Tragere Rapidă"
+description = "+18% viteză de atac. Mai multe săgeți în același răgaz."
+kind = 3
+rarity = 1
+stars = 3
+attack_speed_multiplier = 1.18

@@ -7,13 +7,14 @@ config_version=5
 
 config/name="Heroium"
 config/description="Luptă. Adună. Evoluează. Devino legendar."
-run/main_scene="res://scenes/main.tscn"
+run/main_scene="res://scenes/ui/main_menu.tscn"
 config/features=PackedStringArray("4.3", "Mobile")
 config/icon="res://icon.svg"
 
 [autoload]
 
 GameState="*res://scripts/systems/game_state.gd"
+Fx="*res://scripts/systems/fx.gd"
 
 [display]
 
