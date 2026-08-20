@@ -1,4 +1,4 @@
-[gd_scene load_steps=11 format=3]
+[gd_scene load_steps=13 format=3]
 
 [ext_resource type="PackedScene" path="res://scenes/hero/hero.tscn" id="1_hero"]
 [ext_resource type="PackedScene" path="res://addons/virtual_joystick/virtual_joystick_scene.tscn" id="2_joystick"]
@@ -10,6 +10,7 @@
 [ext_resource type="Script" path="res://scripts/ui/level_up_screen.gd" id="8_levelup"]
 [ext_resource type="Script" path="res://scripts/ui/pause_screen.gd" id="9_pause"]
 [ext_resource type="Script" path="res://scripts/ui/game_over_screen.gd" id="10_gameover"]
+[ext_resource type="Script" path="res://scripts/ui/control_overlay.gd" id="11_controls"]
 
 [node name="Main" type="Node2D"]
 script = ExtResource("3_arena")
@@ -25,6 +26,7 @@ script = ExtResource("4_floor")
 [node name="Hero" parent="." instance=ExtResource("1_hero")]
 position = Vector2(360, 900)
 joystick_path = NodePath("../HUD/VirtualJoystick")
+attack_joystick_path = NodePath("../HUD/AttackJoystick")
 
 [node name="Camera2D" type="Camera2D" parent="Hero"]
 position_smoothing_enabled = true
@@ -33,20 +35,35 @@ position_smoothing_speed = 8.0
 [node name="HUD" type="CanvasLayer" parent="."]
 
 [node name="VirtualJoystick" parent="HUD" instance=ExtResource("2_joystick")]
-anchors_preset = 2
+anchors_preset = 0
+anchor_right = 0.5
 anchor_top = 1.0
 anchor_bottom = 1.0
-offset_left = 60.0
-offset_top = -320.0
-offset_right = 260.0
-offset_bottom = -120.0
+offset_top = -360.0
+offset_bottom = -20.0
+grow_horizontal = 2
+grow_vertical = 0
 joystick_mode = 1
-visibility_mode = 1
+visibility_mode = 2
 use_input_actions = true
 action_left = "move_left"
 action_right = "move_right"
 action_up = "move_up"
 action_down = "move_down"
+
+[node name="AttackJoystick" parent="HUD" instance=ExtResource("2_joystick")]
+anchors_preset = 0
+anchor_left = 0.5
+anchor_right = 1.0
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_top = -360.0
+offset_bottom = -20.0
+grow_horizontal = 2
+grow_vertical = 0
+joystick_mode = 1
+visibility_mode = 2
+use_input_actions = false
 
 [node name="Readout" type="Control" parent="HUD"]
 anchors_preset = 15
@@ -94,3 +111,15 @@ grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("10_gameover")
 arena_path = NodePath("../..")
+
+[node name="ControlOverlay" type="Control" parent="HUD"]
+process_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("11_controls")
+hero_path = NodePath("../../Hero")
+attack_joystick_path = NodePath("../AttackJoystick")
