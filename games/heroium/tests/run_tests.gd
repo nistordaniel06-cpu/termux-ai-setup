@@ -619,7 +619,7 @@ func _test_composable_effects(state: Node) -> void:
 func _test_pooling() -> void:
 	print("[13] TEST POOLING")
 	var pool := root.get_node("Pool")
-	var start_idle := pool.idle_count(preload("res://scenes/abilities/projectile.tscn"))
+	var start_idle: int = pool.idle_count(preload("res://scenes/abilities/projectile.tscn"))
 	print("  Idle projectiles at start: ", start_idle)
 
 	# Acquire and release a projectile
@@ -630,12 +630,12 @@ func _test_pooling() -> void:
 	check("acquired projectile is in parent", projectile.get_parent() == parent)
 
 	# At this point, idle count should not have increased (we took one out)
-	var idle_after_acquire := pool.idle_count(preload("res://scenes/abilities/projectile.tscn"))
+	var idle_after_acquire: int = pool.idle_count(preload("res://scenes/abilities/projectile.tscn"))
 	check("idle count unchanged by acquire", idle_after_acquire == start_idle)
 
 	# Release it
 	pool.release(projectile)
-	var idle_after_release := pool.idle_count(preload("res://scenes/abilities/projectile.tscn"))
+	var idle_after_release: int = pool.idle_count(preload("res://scenes/abilities/projectile.tscn"))
 	check("idle count increased after release", idle_after_release == start_idle + 1, "was %d now %d" % [start_idle, idle_after_release])
 
 	# Acquire again should reuse the same node
@@ -648,7 +648,7 @@ func _test_pooling() -> void:
 	# Test release is idempotent
 	pool.release(projectile2)
 	pool.release(projectile2)  # Second call should be no-op
-	var idle_after_double_release := pool.idle_count(preload("res://scenes/abilities/projectile.tscn"))
+	var idle_after_double_release: int = pool.idle_count(preload("res://scenes/abilities/projectile.tscn"))
 	check("double release is safe", idle_after_double_release == start_idle + 1)
 
 	parent.queue_free()
