@@ -1,8 +1,4 @@
-# Godot 4
-.godot/
+node_modules/
 android/
-*.translation
-
-# export_presets.cfg e urmarit intentionat (nu ignorat) - CI-ul de mai jos
-# are nevoie de el ca sa stie ce sa exporte:
-# .github/workflows/build-heroium-web.yml
+ios/
+shot_*.png

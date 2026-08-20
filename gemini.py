@@ -5,7 +5,7 @@ if not api_key:
     print("❌ Eroare: GEMINI_API_KEY nu este setat.")
     sys.exit(1)
 
-TARGET_DIR = os.path.join("games", "heroium-web", "www", "assets", "skins")
+TARGET_DIR = os.path.join("games", "heroium", "www", "assets", "skins")
 MANIFEST_PATH = os.path.join(TARGET_DIR, "skins.json")
 
 def generate_and_save_skin(skin_name, prompt_description):
