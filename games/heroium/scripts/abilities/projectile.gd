@@ -28,6 +28,16 @@ var _direction: Vector2 = Vector2.RIGHT
 var _age: float = 0.0
 var _already_hit: Array[Node] = []
 
+## Prin nod, nu prin identificatorul global "Pool"/"Fx": scriptul asta are
+## class_name, deci Godot il compileaza devreme, cand construieste lista de
+## clase globale a proiectului - posibil inainte ca autoload-urile sa fi fost
+## inregistrate ca identificatori globali. Un "Pool.xxx" scris direct in text
+## a picat exact din acest motiv (compilare esuata o singura data, cache-uita
+## stricata tot procesul). get_node() e o cautare la rulare, nu la compilare,
+## deci nu are cum sa pice indiferent cine se compileaza primul.
+@onready var _pool: Node = get_node("/root/Pool")
+@onready var _fx: Node = get_node("/root/Fx")
+
 ## Viteza si raza dinaintea oricarui bonus de marime/viteza. Un proiectil
 ## refolosit din bazin trebuie sa porneasca mereu de aici, nu de la ce a
 ## ramas dupa ultima rulare - altfel bonusurile s-ar aduna intre folosiri
@@ -114,7 +124,7 @@ func _physics_process(delta: float) -> void:
 
 	_age += delta
 	if _age >= lifetime:
-		Pool.release(self)
+		_pool.release(self)
 
 
 func _on_body_entered(body: Node) -> void:
@@ -159,16 +169,15 @@ func _resolve_hit(node: Node) -> void:
 		for effect in on_hit_effects:
 			if effect != null:
 				effect.on_hit(info)
-		# Efectele compozabile nu deseneaza nimic ele insele (un Resource care
-		# ar referi Fx la nivel de script risca sa nu compileze daca e incarcat
-		# inainte ca autoloadurile sa fie gata - o cursa reala, vazuta in acest
-		# proiect). Scanteia confirma vizual ca "s-a intamplat ceva in plus".
-		Fx.burst(global_position, Color("9ad9ff"), 4, 130.0)
+		# Efectele compozabile nu deseneaza nimic ele insele (aceeasi cursa de
+		# compilare de mai sus - vezi comentariul de la _pool). Scanteia
+		# confirma vizual ca "s-a intamplat ceva in plus".
+		_fx.burst(global_position, Color("9ad9ff"), 4, 130.0)
 
 	if pierce_left > 0:
 		pierce_left -= 1
 	else:
-		Pool.release(self)
+		_pool.release(self)
 
 
 func _explode(radius: float, splash: float) -> void:
