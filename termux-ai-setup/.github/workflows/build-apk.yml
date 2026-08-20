@@ -1,0 +1,55 @@
+name: Build Heroium APK
+
+# Construieste APK-ul in cloud, ca sa nu fie nevoie de PC.
+#
+# DOAR MANUAL, intentionat: jocul e inca in dezvoltare, asa ca nu vrem un
+# build la fiecare commit. Cand vine momentul impachetarii:
+#   tab-ul Actions -> "Build Heroium APK" -> Run workflow.
+on:
+  workflow_dispatch:
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: games/heroium-web
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Instaleaza dependintele
+        run: npm install --no-audit --no-fund
+
+      - name: Genereaza proiectul Android
+        run: npx cap add android
+
+      - name: Blocheaza orientarea pe portret
+        run: |
+          MANIFEST=android/app/src/main/AndroidManifest.xml
+          sed -i '0,/<activity/s//<activity android:screenOrientation="portrait"/' "$MANIFEST"
+          grep -q 'screenOrientation' "$MANIFEST" && echo "orientare blocata pe portret" || echo "atentie: nu am putut seta orientarea"
+
+      - name: Copiaza jocul in proiect
+        run: npx cap sync android
+
+      - name: Compileaza APK-ul
+        run: |
+          chmod +x android/gradlew
+          cd android && ./gradlew assembleDebug --no-daemon
+
+      - name: Publica APK-ul ca artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: heroium-apk
+          path: games/heroium-web/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error

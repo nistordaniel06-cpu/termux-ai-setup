@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Heroium Web - Action Roguelike</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #070b14;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: #fff;
+    }
+    #game-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    canvas {
+      background: #0d1527;
+      display: block;
+      box-shadow: 0 0 20px rgba(0,0,0,0.8);
+      touch-action: none;
+    }
+    .ui-layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 15px;
+    }
+    .hud {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: bold;
+      text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
+    }
+    .hud-bar {
+      background: rgba(15, 23, 42, 0.8);
+      padding: 8px 15px;
+      border-radius: 20px;
+      border: 1px solid #1e293b;
+      display: flex;
+      gap: 15px;
+      align-items: center;
+    }
+    .hp-container {
+      width: 120px;
+      height: 14px;
+      background: #334155;
+      border-radius: 7px;
+      overflow: hidden;
+      border: 1px solid #475569;
+    }
+    .hp-fill {
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, #ef4444, #f87171);
+      transition: width 0.2s ease;
+    }
+    .overlay-modal {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(7, 11, 20, 0.85);
+      backdrop-filter: blur(4px);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      pointer-events: auto;
+      z-index: 100;
+    }
+    .modal-card {
+      background: #111827;
+      border: 2px solid #374151;
+      border-radius: 16px;
+      padding: 24px;
+      width: 90%;
+      max-width: 400px;
+      text-align: center;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+    }
+    .modal-title {
+      font-size: 24px;
+      color: #38bdf8;
+      margin-bottom: 12px;
+      font-weight: 800;
+    }
+    .btn {
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      font-size: 16px;
+      font-weight: bold;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-top: 15px;
+      width: 100%;
+      transition: transform 0.1s, background 0.2s;
+    }
+    .btn:active {
+      transform: scale(0.98);
+    }
+    .hero-select {
+      display: flex;
+      gap: 10px;
+      margin: 15px 0;
+    }
+    .hero-option {
+      flex: 1;
+      background: #1f2937;
+      border: 2px solid #374151;
+      border-radius: 10px;
+      padding: 10px 5px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .hero-option.active {
+      border-color: #38bdf8;
+      background: #1e3a8a;
+    }
+    .skill-cards {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 15px;
+    }
+    .skill-card {
+      background: #1f2937;
+      border: 1px solid #374151;
+      border-radius: 10px;
+      padding: 12px;
+      text-align: left;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .skill-card:hover, .skill-card:active {
+      background: #374151;
+      border-color: #38bdf8;
+    }
+    .skill-title {
+      color: #f59e0b;
+      font-weight: bold;
+      font-size: 15px;
+    }
+    .skill-desc {
+      font-size: 12px;
+      color: #9ca3af;
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+
+<div id="game-container">
+  <canvas id="gameCanvas"></canvas>
+
+  <div class="ui-layer">
+    <div class="hud">
+      <div class="hud-bar">
+        <span>❤️</span>
+        <div class="hp-container"><div id="hpFill" class="hp-fill"></div></div>
+        <span id="hpText" style="font-size: 12px;">100/100</span>
+      </div>
+      <div class="hud-bar">
+        <span>🌊 Val: <span id="waveText" style="color:#38bdf8">1</span></span>
+        <span>🪙 <span id="goldText" style="color:#f59e0b">0</span></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Start Modal -->
+  <div id="startModal" class="overlay-modal">
+    <div class="modal-card">
+      <div class="modal-title">HEROIUM WEB</div>
+      <p style="color: #9ca3af; font-size: 14px;">Action Roguelike - Mișcă-te pentru a te feri, oprește-te pentru a ataca!</p>
+      
+      <div style="margin-top: 15px; font-size: 14px; color: #e5e7eb;">Alege Eroul:</div>
+      <div class="hero-select">
+        <div class="hero-option active" onclick="selectHero('ranger', this)">
+          <div style="font-size: 20px;">🏹</div>
+          <div style="font-size: 12px; font-weight: bold;">Ranger</div>
+        </div>
+        <div class="hero-option" onclick="selectHero('knight', this)">
+          <div style="font-size: 20px;">⚔️</div>
+          <div style="font-size: 12px; font-weight: bold;">Knight</div>
+        </div>
+        <div class="hero-option" onclick="selectHero('mage', this)">
+          <div style="font-size: 20px;">🔮</div>
+          <div style="font-size: 12px; font-weight: bold;">Mage</div>
+        </div>
+      </div>
+
+      <button class="btn" onclick="startGame()">Începe Jocul</button>
+    </div>
+  </div>
+
+  <!-- Level Up Modal -->
+  <div id="skillModal" class="overlay-modal" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-title" style="color: #f59e0b;">NIVEL NOU!</div>
+      <p style="color: #9ca3af; font-size: 13px;">Alege o abilitate pentru a evolua:</p>
+      <div class="skill-cards" id="skillOptions"></div>
+    </div>
+  </div>
+
+  <!-- Game Over Modal -->
+  <div id="gameOverModal" class="overlay-modal" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-title" style="color: #ef4444;">AI FOST ÎNVINS</div>
+      <p id="gameOverStats" style="color: #9ca3af; font-size: 14px; margin: 10px 0;"></p>
+      <button class="btn" onclick="showStartMenu()">Meniu Principal</button>
+    </div>
+  </div>
+</div>
+
+<script>
+class SoundFX {
+  constructor() {
+    this.ctx = null;
+  }
+  init() {
+    if (!this.ctx) {
+      this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+  }
+  playShoot() {
+    if (!this.ctx) return;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(400, this.ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(100, this.ctx.currentTime + 0.1);
+    gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start();
+    osc.stop(this.ctx.currentTime + 0.1);
+  }
+  playHit() {
+    if (!this.ctx) return;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(150, this.ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(40, this.ctx.currentTime + 0.15);
+    gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start();
+    osc.stop(this.ctx.currentTime + 0.15);
+  }
+  playLevelUp() {
+    if (!this.ctx) return;
+    const notes = [261.63, 329.63, 392.00, 523.25];
+    notes.forEach((freq, idx) => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, this.ctx.currentTime + idx * 0.08);
+      gain.gain.setValueAtTime(0.15, this.ctx.currentTime + idx * 0.08);
+      gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + idx * 0.08 + 0.2);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(this.ctx.currentTime + idx * 0.08);
+      osc.stop(this.ctx.currentTime + idx * 0.08 + 0.2);
+    });
+  }
+}
+
+const sfx = new SoundFX();
+
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+let width, height;
+function resize() {
+  width = Math.min(window.innerWidth, 480);
+  height = window.innerHeight;
+  canvas.width = width;
+  canvas.height = height;
+}
+window.addEventListener('resize', resize);
+resize();
+
+const joystick = { active: false, startX: 0, startY: 0, curX: 0, curY: 0, dx: 0, dy: 0 };
+const keys = {};
+
+window.addEventListener('keydown', e => keys[e.code] = true);
+window.addEventListener('keyup', e => keys[e.code] = false);
+
+canvas.addEventListener('touchstart', e => {
+  sfx.init();
+  const touch = e.touches[0];
+  const rect = canvas.getBoundingClientRect();
+  joystick.active = true;
+  joystick.startX = touch.clientX - rect.left;
+  joystick.startY = touch.clientY - rect.top;
+  joystick.curX = joystick.startX;
+  joystick.curY = joystick.startY;
+  joystick.dx = 0;
+  joystick.dy = 0;
+});
+
+canvas.addEventListener('touchmove', e => {
+  if (!joystick.active) return;
+  const touch = e.touches[0];
+  const rect = canvas.getBoundingClientRect();
+  joystick.curX = touch.clientX - rect.left;
+  joystick.curY = touch.clientY - rect.top;
+  const dist = Math.hypot(joystick.curX - joystick.startX, joystick.curY - joystick.startY);
+  const maxRadius = 50;
+  const angle = Math.atan2(joystick.curY - joystick.startY, joystick.curX - joystick.startX);
+  if (dist > maxRadius) {
+    joystick.curX = joystick.startX + Math.cos(angle) * maxRadius;
+    joystick.curY = joystick.startY + Math.sin(angle) * maxRadius;
+  }
+  joystick.dx = Math.cos(angle) * Math.min(dist / maxRadius, 1);
+  joystick.dy = Math.sin(angle) * Math.min(dist / maxRadius, 1);
+});
+
+canvas.addEventListener('touchend', () => {
+  joystick.active = false;
+  joystick.dx = 0;
+  joystick.dy = 0;
+});
+
+let selectedHeroClass = 'ranger';
+let gameRunning = false;
+let wave = 1;
+let gold = 0;
+let kills = 0;
+
+const heroClasses = {
+  ranger: { hp: 120, speed: 3.2, attackSpeed: 0.35, damage: 25, color: '#38bdf8' },
+  knight: { hp: 200, speed: 2.6, attackSpeed: 0.5, damage: 40, color: '#f59e0b' },
+  mage:   { hp: 90,  speed: 2.9, attackSpeed: 0.3, damage: 30, color: '#a855f7' }
+};
+
+let hero = {
+  x: 0, y: 0, radius: 16,
+  hp: 100, maxHp: 100,
+  speed: 3, attackSpeed: 0.4, damage: 25,
+  lastShot: 0,
+  multishot: 1,
+  pierce: false,
+  fireArrow: false
+};
+
+let projectiles = [];
+let enemies = [];
+let particles = [];
+let floatingTexts = [];
+
+function selectHero(heroClass, element) {
+  selectedHeroClass = heroClass;
+  document.querySelectorAll('.hero-option').forEach(el => el.classList.remove('active'));
+  element.classList.add('active');
+}
+
+function showStartMenu() {
+  gameRunning = false;
+  document.getElementById('startModal').style.display = 'flex';
+  document.getElementById('gameOverModal').style.display = 'none';
+  document.getElementById('skillModal').style.display = 'none';
+}
+
+function startGame() {
+  sfx.init();
+  const cfg = heroClasses[selectedHeroClass];
+  hero = {
+    x: width / 2,
+    y: height / 2,
+    radius: 16,
+    hp: cfg.hp,
+    maxHp: cfg.hp,
+    speed: cfg.speed,
+    attackSpeed: cfg.attackSpeed,
+    damage: cfg.damage,
+    lastShot: 0,
+    multishot: 1,
+    pierce: false,
+    fireArrow: false
+  };
+
+  wave = 1;
+  gold = 0;
+  kills = 0;
+  projectiles = [];
+  enemies = [];
+  particles = [];
+  floatingTexts = [];
+
+  document.getElementById('startModal').style.display = 'none';
+  document.getElementById('gameOverModal').style.display = 'none';
+
+  updateHUD();
+  spawnWave();
+  gameRunning = true;
+  requestAnimationFrame(gameLoop);
+}
+
+function updateHUD() {
+  document.getElementById('hpFill').style.width = Math.max(0, (hero.hp / hero.maxHp) * 100) + '%';
+  document.getElementById('hpText').innerText = `${Math.ceil(hero.hp)}/${hero.maxHp}`;
+  document.getElementById('waveText').innerText = wave;
+  document.getElementById('goldText').innerText = gold;
+}
+
+function spawnWave() {
+  enemies = [];
+  const count = 4 + wave * 2;
+  for (let i = 0; i < count; i++) {
+    const edge = Math.floor(Math.random() * 4);
+    let x, y;
+    if (edge === 0) { x = Math.random() * width; y = -20; }
+    else if (edge === 1) { x = width + 20; y = Math.random() * height; }
+    else if (edge === 2) { x = Math.random() * width; y = height + 20; }
+    else { x = -20; y = Math.random() * height; }
+
+    const isBoss = (wave % 5 === 0) && (i === 0);
+    enemies.push({
+      x, y,
+      radius: isBoss ? 28 : 14,
+      hp: (25 + wave * 15) * (isBoss ? 5 : 1),
+      maxHp: (25 + wave * 15) * (isBoss ? 5 : 1),
+      speed: isBoss ? 1.2 : 1.5 + Math.random() * 0.8,
+      damage: (10 + wave * 2) * (isBoss ? 1.8 : 1),
+      color: isBoss ? '#ef4444' : '#10b981',
+      isBoss
+    });
+  }
+}
+
+function triggerLevelUp() {
+  gameRunning = false;
+  sfx.playLevelUp();
+
+  const allSkills = [
+    { id: 'multishot', title: '🏹 Săgeată Dublă', desc: 'Tragi două proiectile simultan' },
+    { id: 'damage', title: '⚡ Daună Augmentată', desc: '+30% Daună pentru toate atacurile' },
+    { id: 'atkSpeed', title: '💨 Viteză de Atac', desc: 'Apar atacuri mai rapide cu 25%' },
+    { id: 'heal', title: '💖 Vindecare', desc: 'Refaci 50% din viața maximă' },
+    { id: 'fire', title: '🔥 Săgeată Arzătoare', desc: 'Proiectilele provoacă arsură' }
+  ];
+
+  const shuffled = [...allSkills].sort(() => 0.5 - Math.random()).slice(0, 3);
+  const container = document.getElementById('skillOptions');
+  container.innerHTML = '';
+
+  shuffled.forEach(skill => {
+    const card = document.createElement('div');
+    card.className = 'skill-card';
+    card.innerHTML = `<div class="skill-title">${skill.title}</div><div class="skill-desc">${skill.desc}</div>`;
+    card.onclick = () => selectSkill(skill.id);
+    container.appendChild(card);
+  });
+
+  document.getElementById('skillModal').style.display = 'flex';
+}
+
+function selectSkill(skillId) {
+  if (skillId === 'multishot') hero.multishot += 1;
+  else if (skillId === 'damage') hero.damage = Math.round(hero.damage * 1.3);
+  else if (skillId === 'atkSpeed') hero.attackSpeed *= 0.75;
+  else if (skillId === 'heal') hero.hp = Math.min(hero.maxHp, hero.hp + hero.maxHp * 0.5);
+  else if (skillId === 'fire') hero.fireArrow = true;
+
+  document.getElementById('skillModal').style.display = 'none';
+  updateHUD();
+  wave++;
+  spawnWave();
+  gameRunning = true;
+  requestAnimationFrame(gameLoop);
+}
+
+function triggerGameOver() {
+  gameRunning = false;
+  sfx.playHit();
+  document.getElementById('gameOverStats').innerHTML = `Ai rezistat până la <b>Valul ${wave}</b><br>Inamici învinși: <b>${kills}</b><br>Monede colectate: <b>${gold}</b>`;
+  document.getElementById('gameOverModal').style.display = 'flex';
+}
+
+let lastTime = performance.now();
+
+function gameLoop(now) {
+  if (!gameRunning) return;
+  const dt = (now - lastTime) / 1000;
+  lastTime = now;
+
+  let moveX = 0, moveY = 0;
+
+  if (joystick.active) {
+    moveX = joystick.dx;
+    moveY = joystick.dy;
+  } else {
+    if (keys['KeyW'] || keys['ArrowUp']) moveY -= 1;
+    if (keys['KeyS'] || keys['ArrowDown']) moveY += 1;
+    if (keys['KeyA'] || keys['ArrowLeft']) moveX -= 1;
+    if (keys['KeyD'] || keys['ArrowRight']) moveX += 1;
+
+    const len = Math.hypot(moveX, moveY);
+    if (len > 0) { moveX /= len; moveY /= len; }
+  }
+
+  const isMoving = Math.abs(moveX) > 0.1 || Math.abs(moveY) > 0.1;
+
+  if (isMoving) {
+    hero.x += moveX * hero.speed;
+    hero.y += moveY * hero.speed;
+    hero.x = Math.max(hero.radius, Math.min(width - hero.radius, hero.x));
+    hero.y = Math.max(hero.radius, Math.min(height - hero.radius, hero.y));
+  } else {
+    if (now - hero.lastShot > hero.attackSpeed * 1000 && enemies.length > 0) {
+      let closestEnemy = null;
+      let minDst = Infinity;
+
+      for (let enemy of enemies) {
+        const dst = Math.hypot(enemy.x - hero.x, enemy.y - hero.y);
+        if (dst < minDst) {
+          minDst = dst;
+          closestEnemy = enemy;
+        }
+      }
+
+      if (closestEnemy && minDst < 450) {
+        const baseAngle = Math.atan2(closestEnemy.y - hero.y, closestEnemy.x - hero.x);
+        const spread = 0.15;
+
+        for (let i = 0; i < hero.multishot; i++) {
+          const angle = baseAngle + (i - (hero.multishot - 1) / 2) * spread;
+          projectiles.push({
+            x: hero.x, y: hero.y,
+            vx: Math.cos(angle) * 8,
+            vy: Math.sin(angle) * 8,
+            damage: hero.damage,
+            fire: hero.fireArrow,
+            radius: 5
+          });
+        }
+
+        sfx.playShoot();
+        hero.lastShot = now;
+      }
+    }
+  }
+
+  for (let i = projectiles.length - 1; i >= 0; i--) {
+    const p = projectiles[i];
+    p.x += p.vx;
+    p.y += p.vy;
+
+    if (p.x < 0 || p.x > width || p.y < 0 || p.y > height) {
+      projectiles.splice(i, 1);
+      continue;
+    }
+
+    for (let j = enemies.length - 1; j >= 0; j--) {
+      const e = enemies[j];
+      if (Math.hypot(p.x - e.x, p.y - e.y) < p.radius + e.radius) {
+        e.hp -= p.damage;
+        sfx.playHit();
+
+        floatingTexts.push({
+          text: Math.round(p.damage),
+          x: e.x, y: e.y,
+          alpha: 1,
+          color: p.fire ? '#f97316' : '#ffffff'
+        });
+
+        for (let k = 0; k < 4; k++) {
+          particles.push({
+            x: e.x, y: e.y,
+            vx: (Math.random() - 0.5) * 4,
+            vy: (Math.random() - 0.5) * 4,
+            life: 0.3,
+            color: p.fire ? '#f97316' : '#38bdf8'
+          });
+        }
+
+        if (e.hp <= 0) {
+          kills++;
+          gold += e.isBoss ? 50 : 10;
+          enemies.splice(j, 1);
+        }
+
+        projectiles.splice(i, 1);
+        break;
+      }
+    }
+  }
+
+  for (let e of enemies) {
+    const angle = Math.atan2(hero.y - e.y, hero.x - e.x);
+    e.x += Math.cos(angle) * e.speed;
+    e.y += Math.sin(angle) * e.speed;
+
+    if (Math.hypot(e.x - hero.x, e.y - hero.y) < e.radius + hero.radius) {
+      hero.hp -= e.damage * dt;
+      updateHUD();
+      if (hero.hp <= 0) {
+        triggerGameOver();
+        return;
+      }
+    }
+  }
+
+  if (enemies.length === 0) {
+    triggerLevelUp();
+    return;
+  }
+
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const pt = particles[i];
+    pt.x += pt.vx; pt.y += pt.vy;
+    pt.life -= dt;
+    if (pt.life <= 0) particles.splice(i, 1);
+  }
+
+  for (let i = floatingTexts.length - 1; i >= 0; i--) {
+    const ft = floatingTexts[i];
+    ft.y -= 1;
+    ft.alpha -= dt;
+    if (ft.alpha <= 0) floatingTexts.splice(i, 1);
+  }
+
+  ctx.clearRect(0, 0, width, height);
+
+  ctx.strokeStyle = '#1e293b';
+  ctx.lineWidth = 1;
+  const gridSize = 40;
+  for (let x = 0; x < width; x += gridSize) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
+  }
+  for (let y = 0; y < height; y += gridSize) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
+  }
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(hero.x, hero.y, hero.radius, 0, Math.PI * 2);
+  ctx.fillStyle = heroClasses[selectedHeroClass].color;
+  ctx.fill();
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  if (!isMoving) {
+    ctx.beginPath();
+    ctx.arc(hero.x, hero.y, hero.radius + 6, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.4)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  for (let p of projectiles) {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+    ctx.fillStyle = p.fire ? '#f97316' : '#38bdf8';
+    ctx.fill();
+  }
+
+  for (let e of enemies) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(e.x, e.y, e.radius, 0, Math.PI * 2);
+    ctx.fillStyle = e.color;
+    ctx.fill();
+
+    if (e.hp < e.maxHp) {
+      const barW = e.radius * 2;
+      ctx.fillStyle = '#334155';
+      ctx.fillRect(e.x - e.radius, e.y - e.radius - 8, barW, 4);
+      ctx.fillStyle = '#ef4444';
+      ctx.fillRect(e.x - e.radius, e.y - e.radius - 8, barW * (e.hp / e.maxHp), 4);
+    }
+    ctx.restore();
+  }
+
+  for (let pt of particles) {
+    ctx.fillStyle = pt.color;
+    ctx.globalAlpha = Math.max(0, pt.life / 0.3);
+    ctx.fillRect(pt.x, pt.y, 3, 3);
+  }
+  ctx.globalAlpha = 1;
+
+  for (let ft of floatingTexts) {
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, ft.alpha);
+    ctx.fillStyle = ft.color;
+    ctx.font = 'bold 14px sans-serif';
+    ctx.fillText(ft.text, ft.x, ft.y);
+    ctx.restore();
+  }
+
+  if (joystick.active) {
+    ctx.beginPath();
+    ctx.arc(joystick.startX, joystick.startY, 50, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(joystick.curX, joystick.curY, 20, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(56, 189, 248, 0.6)';
+    ctx.fill();
+  }
+
+  requestAnimationFrame(gameLoop);
+}
+
+showStartMenu();
+</script>
+
+</body>
+</html>
