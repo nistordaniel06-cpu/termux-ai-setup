@@ -27,6 +27,13 @@ func _ready() -> void:
 	area_entered.connect(_on_area_entered)
 
 
+## Nodul e deja rotit pe directia de zbor, deci desenul e mereu orientat pe +X.
+func _draw() -> void:
+	draw_line(Vector2(-20.0, 0.0), Vector2.ZERO, Color(1.0, 0.85, 0.5, 0.35), 5.0, true)
+	draw_circle(Vector2.ZERO, 5.0, Color(1.0, 0.93, 0.72))
+	draw_circle(Vector2.ZERO, 2.4, Color.WHITE)
+
+
 ## Porneste proiectilul. Copiaza din statistici doar ce-i trebuie, ca sa nu
 ## depinda de erou dupa ce a plecat din arc.
 func launch(direction: Vector2, stats: HeroStats, hit_effects: Dictionary = {}) -> void:

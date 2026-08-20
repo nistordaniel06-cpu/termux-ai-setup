@@ -1,11 +1,19 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=7 format=3]
 
 [ext_resource type="PackedScene" path="res://scenes/hero/hero.tscn" id="1_hero"]
 [ext_resource type="PackedScene" path="res://addons/virtual_joystick/virtual_joystick_scene.tscn" id="2_joystick"]
 [ext_resource type="Script" path="res://scripts/systems/arena.gd" id="3_arena"]
+[ext_resource type="Script" path="res://scripts/systems/arena_floor.gd" id="4_floor"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/enemy.tscn" id="5_enemy"]
+[ext_resource type="Script" path="res://scripts/ui/hud.gd" id="6_hud"]
 
 [node name="Main" type="Node2D"]
 script = ExtResource("3_arena")
+enemy_scene = ExtResource("5_enemy")
+
+[node name="Floor" type="Node2D" parent="."]
+position = Vector2(360, 900)
+script = ExtResource("4_floor")
 
 [node name="Arena" type="Node2D" parent="."]
 
@@ -34,3 +42,15 @@ action_left = "move_left"
 action_right = "move_right"
 action_up = "move_up"
 action_down = "move_down"
+
+[node name="Readout" type="Control" parent="HUD"]
+process_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("6_hud")
+hero_path = NodePath("../../Hero")
+arena_path = NodePath("../..")

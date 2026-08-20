@@ -14,12 +14,15 @@ extends CharacterBody2D
 signal died
 signal stats_changed(stats: HeroStats)
 signal moving_changed(is_moving: bool)
+signal health_changed(current: float, maximum: float)
 
 ## Sub aceasta valoare joystick-ul e considerat neatins.
 const MOVE_DEADZONE := 0.15
 ## Cat trebuie sa stea nemiscat inainte sa porneasca tragerea. Fara pauza asta
 ## jucatorul ar putea trage la fiecare pas ciupind joystick-ul.
 const SETTLE_TIME := 0.12
+## Raza inelului care arata daca eroul e in stare sa traga.
+const RING_RADIUS := 27.0
 
 @export var hero_class: HeroClass
 ## Joystick-ul virtual din HUD. Lasat gol, eroul merge doar pe taste.
@@ -27,13 +30,17 @@ const SETTLE_TIME := 0.12
 
 var stats: HeroStats
 var is_moving: bool = false
+## Adevarat doar cand eroul chiar sta pe loc - atunci ii merg atacurile.
+var can_attack: bool = false
 
 var _settle_timer: float = 0.0
 var _joystick: Node = null
+var _facing: Vector2 = Vector2.DOWN
+var _accent: Color = Color("f0b45a")
 
 @onready var _combat: HeroCombat = $Combat
 @onready var _health: HeroHealth = $Health
-@onready var _sprite: Sprite2D = $Sprite
+@onready var _body: Blob = $Body
 
 
 func _ready() -> void:
@@ -45,14 +52,16 @@ func _ready() -> void:
 	_setup_stats()
 
 	_health.died.connect(func() -> void: died.emit())
+	_health.health_changed.connect(
+		func(current: float, maximum: float) -> void: health_changed.emit(current, maximum)
+	)
 	_health.setup(stats.max_health)
 
 	_combat.setup(self, stats)
 
 	if hero_class != null:
-		if hero_class.sprite != null:
-			_sprite.texture = hero_class.sprite
-		_sprite.modulate = hero_class.accent_color
+		_accent = hero_class.accent_color
+		_body.fill = _accent
 		if hero_class.starting_ability != null:
 			grant_ability(hero_class.starting_ability)
 
@@ -77,7 +86,30 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 
 	# Aici se aplica regula: atacul merge doar cand chiar stai pe loc.
-	_combat.set_can_attack(not is_moving and is_zero_approx(_settle_timer))
+	can_attack = not is_moving and is_zero_approx(_settle_timer)
+	_combat.set_can_attack(can_attack)
+	queue_redraw()
+
+
+## Inelul si sageata de tintire. Sunt singurul mod prin care jucatorul vede
+## regula genului fara sa i-o explice cineva: aprins = stai si faci dauna,
+## stins = te misti si nu faci.
+func _draw() -> void:
+	var ring := _accent
+	ring.a = 0.85 if can_attack else 0.16
+	draw_arc(Vector2.ZERO, RING_RADIUS, 0.0, TAU, 32, ring, 2.5, true)
+
+	if not can_attack:
+		# Cand se misca, un varf mic arata incotro merge.
+		draw_line(_facing * 20.0, _facing * 27.0, Color(1, 1, 1, 0.35), 3.0, true)
+		return
+
+	var target := _combat.current_target
+	if target == null or not is_instance_valid(target):
+		return
+
+	var aim := global_position.direction_to(target.global_position)
+	draw_line(aim * (RING_RADIUS + 3.0), aim * (RING_RADIUS + 14.0), ring, 3.0, true)
 
 
 ## Citeste directia din joystick sau de la tastatura, oricare e activa.
@@ -93,8 +125,7 @@ func _read_input() -> Vector2:
 
 
 func _face(direction: Vector2) -> void:
-	if absf(direction.x) > 0.05:
-		_sprite.flip_h = direction.x < 0.0
+	_facing = direction.normalized()
 
 
 func _setup_stats() -> void:
@@ -114,6 +145,11 @@ func _setup_stats() -> void:
 	stats.recalculate()
 	stats.changed.connect(func() -> void: stats_changed.emit(stats))
 	stats_changed.emit(stats)
+
+
+## Unde sa astepte proiectilele plecate - un nod care nu se misca odata cu eroul.
+func set_projectile_container(node: Node) -> void:
+	_combat.projectile_container = node
 
 
 ## Adauga o abilitate rularii curente, fuzionand-o daca e cazul.

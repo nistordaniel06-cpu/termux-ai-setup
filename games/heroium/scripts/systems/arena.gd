@@ -1,3 +1,4 @@
+class_name Arena
 extends Node2D
 
 ## Arena unei camere: aduce inamicii, numara cat au mai ramas si deschide iesirea.
@@ -19,11 +20,13 @@ var _alive: int = 0
 
 @onready var _hero: Hero = $Hero
 @onready var _arena: Node2D = $Arena
+@onready var _floor: ArenaFloor = $Floor
 
 
 func _ready() -> void:
 	randomize()
 	_hero.died.connect(_on_hero_died)
+	_hero.set_projectile_container(_arena)
 	build_room()
 
 
@@ -47,26 +50,40 @@ func _spawn_enemy() -> void:
 	_alive += 1
 
 
-## Punct la distanta de erou, ca sa nu apara inamici direct in fata lui.
+## Punct la distanta de erou, dar tot inauntrul camerei - altfel inamicii ar
+## aparea dincolo de pereti si n-ar mai avea cum sa ajunga la el.
 func _pick_spawn_point() -> Vector2:
-	for attempt in 20:
+	var bounds := _floor.room_rect().grow(-60.0)
+
+	for attempt in 24:
 		var angle := randf() * TAU
 		var distance := randf_range(min_spawn_distance, spawn_radius)
 		var point := _hero.global_position + Vector2.RIGHT.rotated(angle) * distance
-		if point.distance_to(_hero.global_position) >= min_spawn_distance:
+		if bounds.has_point(point):
 			return point
-	return _hero.global_position + Vector2.RIGHT * spawn_radius
+
+	# Camera e prea stramta pentru inelul cerut: pune-l oriunde inauntru.
+	return Vector2(
+		randf_range(bounds.position.x, bounds.end.x),
+		randf_range(bounds.position.y, bounds.end.y),
+	)
 
 
 func _on_enemy_died(_enemy: Node) -> void:
 	_alive -= 1
-	if _alive <= 0:
-		GameState.register_room_cleared()
-		room_cleared.emit(room_index)
-		room_index += 1
-		build_room()
+	if _alive > 0:
+		return
+
+	GameState.register_room_cleared()
+	room_cleared.emit(room_index)
+	room_index += 1
+
+	# O clipa de respiro: fara ea valul urmator apare peste ultima lovitura.
+	await get_tree().create_timer(1.2).timeout
+	build_room()
 
 
 func _on_hero_died() -> void:
-	set_process(false)
-	print("Eroul a căzut în camera %d." % room_index)
+	# Ingheata camera. HUD-ul ruleaza mai departe (process_mode "always") si
+	# preia atingerea care reia jocul.
+	get_tree().paused = true

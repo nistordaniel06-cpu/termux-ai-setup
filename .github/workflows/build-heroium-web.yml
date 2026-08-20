@@ -37,6 +37,10 @@ jobs:
           rm -rf games/heroium/play
           mkdir -p games/heroium/play
           cp -r "${{ steps.export.outputs.build_directory }}/Web/." games/heroium/play/
+          # play/ sta inauntrul proiectului Godot, dar e rezultat de build, nu
+          # sursa: fara .gdignore, exportul urmator i-ar importa imaginile si
+          # le-ar impacheta in joc, build dupa build.
+          touch games/heroium/play/.gdignore
 
       - name: Commit build-ul jucabil
         run: |
