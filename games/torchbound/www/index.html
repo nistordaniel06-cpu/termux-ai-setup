@@ -60,6 +60,21 @@
     background: radial-gradient(ellipse 82% 66% at 50% 52%, transparent 45%, rgba(3,6,12,0.42) 80%, rgba(3,6,12,0.78) 100%);
   }
 
+  #muteBtn {
+    position: absolute; z-index: 11;
+    top: max(10px, env(safe-area-inset-top));
+    right: max(12px, env(safe-area-inset-right));
+    width: 32px; height: 32px; border-radius: 50%;
+    border: 1px solid var(--panel-edge);
+    background: rgba(16,26,44,0.75);
+    color: var(--text-dim);
+    font-family: var(--f-display); font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+  }
+  #muteBtn[aria-pressed="true"] { color: var(--red); border-color: rgba(255,51,85,0.4); }
+  #muteBtn:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
   /* ---------------- HUD ---------------- */
   #hud {
     position: absolute; top: 0; left: 0; right: 0;
@@ -356,6 +371,7 @@
 <div id="stage">
   <canvas id="game"></canvas>
   <div id="vignette"></div>
+  <button id="muteBtn" type="button" aria-pressed="false" title="Sunet">♪</button>
 
   <div id="hud">
     <div class="barRow">
@@ -522,6 +538,75 @@
   // preferinta, nu o recompensa. In schimb modul greu plateste mai bine, ca sa
   // fie ales din interes, nu din obligatie.
   var MODE_BONUS = { clasic: 1.25, hibrid: 1.10, liber: 1.0 };
+
+  // ====================== SUNET ======================
+  // Sintetizat cu Web Audio, fara fisiere externe - consistent cu restul
+  // jocului, care traieste intr-un singur HTML. Contextul se creeaza abia
+  // la primul gest al utilizatorului, ca politicile de autoplay mobile
+  // sa nu blocheze pornirea.
+  var SFX_KEY = "torchbound.muted";
+  var muted = false;
+  try { muted = localStorage.getItem(SFX_KEY) === "1"; } catch (err) {}
+
+  var actx = null, masterGain = null;
+  function ensureAudio() {
+    if (actx) return;
+    try {
+      actx = new (window.AudioContext || window.webkitAudioContext)();
+      masterGain = actx.createGain();
+      masterGain.gain.value = muted ? 0 : 0.35;
+      masterGain.connect(actx.destination);
+    } catch (err) { actx = null; }
+  }
+  function unlockAudio() {
+    ensureAudio();
+    if (actx && actx.state === "suspended") actx.resume();
+  }
+  window.addEventListener("pointerdown", unlockAudio, { once: true });
+  window.addEventListener("keydown", unlockAudio, { once: true });
+
+  function beep(freq, dur, type, peak, slideTo) {
+    if (!actx || muted) return;
+    var t0 = actx.currentTime;
+    var osc = actx.createOscillator(), g = actx.createGain();
+    osc.type = type || "square";
+    osc.frequency.setValueAtTime(freq, t0);
+    if (slideTo) osc.frequency.exponentialRampToValueAtTime(slideTo, t0 + dur);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.linearRampToValueAtTime(peak || 0.5, t0 + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(g); g.connect(masterGain);
+    osc.start(t0); osc.stop(t0 + dur + 0.02);
+  }
+
+  var sfx = {
+    shoot: function () { beep(880, 0.05, "square", 0.16); },
+    weakShoot: function () { beep(640, 0.045, "square", 0.11); },
+    hit: function () { beep(220, 0.035, "square", 0.13); },
+    kill: function () { beep(150, 0.11, "sawtooth", 0.2, 60); },
+    hurt: function () { beep(120, 0.16, "sawtooth", 0.28, 55); },
+    levelUp: function () {
+      beep(520, 0.09, "triangle", 0.24, 780);
+      setTimeout(function () { beep(780, 0.13, "triangle", 0.24, 1040); }, 90);
+    },
+    doorOpen: function () { beep(300, 0.18, "sine", 0.2, 520); },
+    bossDown: function () { beep(90, 0.4, "sawtooth", 0.34, 40); },
+    gameOver: function () { beep(200, 0.5, "sawtooth", 0.28, 60); },
+    revive: function () { beep(400, 0.3, "triangle", 0.3, 900); }
+  };
+
+  var muteBtn = document.getElementById("muteBtn");
+  function syncMuteBtn() {
+    muteBtn.setAttribute("aria-pressed", String(muted));
+    muteBtn.textContent = muted ? "✕" : "♪";
+  }
+  muteBtn.addEventListener("click", function () {
+    muted = !muted;
+    try { localStorage.setItem(SFX_KEY, muted ? "1" : "0"); } catch (err) {}
+    if (masterGain) masterGain.gain.value = muted ? 0 : 0.35;
+    syncMuteBtn();
+  });
+  syncMuteBtn();
 
   // ====================== PROGRES PERMANENT ======================
   var META_KEY = "torchbound.meta";
@@ -720,6 +805,8 @@
   function joyDown(e) {
     if (state !== S_PLAY) return;
     if (joy.active) return;
+    // butoanele din chrome-ul jocului (ex. mute) nu trebuie sa porneasca un joystick sub ele
+    if (e.target && e.target.closest && e.target.closest("button")) return;
     // in modul hibrid semiecranul drept e rezervat tragerii
     if (fireMode === "hibrid" && e.clientX - stage.getBoundingClientRect().left > stage.clientWidth * 0.5) return;
     joy.active = true; joy.id = e.pointerId;
@@ -772,6 +859,7 @@
 
   function fireDown(e) {
     if (state !== S_PLAY || fireMode !== "hibrid") return;
+    if (e.target && e.target.closest && e.target.closest("button")) return;
     if (!isFireZone(e)) return;
     fire.held = true; fire.id = e.pointerId; fire.holdT = HOLD_MULT * player.atkInterval / 1000;
     manualShot();
@@ -846,6 +934,7 @@
   function offerPowers() {
     state = S_LEVEL;
     joyUp();
+    sfx.levelUp();
     toastEl.classList.remove("show");   // fara text ramas in spatele cartilor
     // doar puterile deblocate intra in pachet - rundele tarzii sunt mai bogate
     var pool = POWERS.filter(function (p) { return !p.max() && isUnlocked(p.id); });
@@ -932,6 +1021,7 @@
       });
     }
     burst(player.x + Math.cos(base) * 18, player.y + Math.sin(base) * 18, "62,232,255", m < 1 ? 2 : 3, 90);
+    if (m < 1) sfx.weakShoot(); else sfx.shoot();
   }
 
   // Un foc manual, tras din miscare. Cadenta maxima e aceeasi cu cea automata,
@@ -1017,6 +1107,7 @@
     if (!doorOpen && enemies.length === 0) {
       doorOpen = true;
       toast("Ușa s-a deschis");
+      sfx.doorOpen();
     }
 
     // trecere prin usa
@@ -1179,6 +1270,9 @@
       runShards += 20 + room * 3;
       shake(10, 0.32);
       toast("Gardian învins!");
+      sfx.bossDown();
+    } else {
+      sfx.kill();
     }
 
     // sfarsit exploziv: mortul raneste ce e in jur (putere deblocabila)
@@ -1202,6 +1296,7 @@
     player.flash = 0.22;
     burst(player.x, player.y, "255,51,85", 9, 150);
     shake(7, 0.2);
+    sfx.hurt();
   }
 
   function updateBullets(dt) {
@@ -1230,6 +1325,7 @@
             e.flash = 0.12;
             if (b.burn > 0) { e.burnDps = b.burn; e.burnT = 2.2; }
             burst(b.x, b.y, "62,232,255", 5, 130);
+            sfx.hit();
             if (e.hp <= 0) { killEnemy(j, e); }
             if (b.pierce > 0) { b.pierce--; b.hitIds.push(e); }
             else { dead = true; }
@@ -1609,6 +1705,7 @@
     player.hurtCd = 1.6;
     burst(player.x, player.y, "255,207,92", 26, 260);
     shake(11, 0.3);
+    sfx.revive();
     for (var i = enemies.length - 1; i >= 0; i--) {
       if (Math.hypot(enemies[i].x - player.x, enemies[i].y - player.y) < 140) killEnemy(i, enemies[i]);
     }
@@ -1619,6 +1716,7 @@
   function gameOver() {
     state = S_OVER;
     joyUp();
+    sfx.gameOver();
 
     var earned = Math.round(runShards * (MODE_BONUS[fireMode] || 1));
     meta.shards += earned;

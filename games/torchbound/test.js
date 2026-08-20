@@ -259,6 +259,16 @@ function assert(cond, msg) { if (!cond) throw new Error("ASSERT FAILED: " + msg)
   assert(s.runShards > purseBeforeBoss + 20, `moartea gardianului trebuie sa dea un bonus mare de cioburi, got ${s.runShards - purseBeforeBoss}`);
   ok(`gardian învins: +${s.runShards - purseBeforeBoss} cioburi în rundă (bonus de boss aplicat)`);
 
+  // ---------- 13. sunet ----------
+  console.log("\n[13] Comutator de sunet");
+  const mutedBefore = await page.locator("#muteBtn").getAttribute("aria-pressed");
+  assert(mutedBefore === "false", `sunetul trebuie sa fie pornit implicit, got ${mutedBefore}`);
+  await page.locator("#muteBtn").click();
+  const mutedAfter = await page.locator("#muteBtn").getAttribute("aria-pressed");
+  assert(mutedAfter === "true", "click-ul trebuie sa opreasca sunetul");
+  ok("comutatorul de sunet schimba starea la click");
+  await page.locator("#muteBtn").click();   // il lasam pornit pentru restul rularii
+
   const real = errors.filter((e) => !/ERR_CONNECTION_RESET|net::ERR|fonts\.googleapis/.test(e));
   if (real.length) { console.log("\nERORI:", real); throw new Error("erori in consola: " + real.join(" | ")); }
 
