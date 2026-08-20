@@ -82,6 +82,32 @@ func release(node: Node) -> void:
 	idle.append(node)
 	_idle[scene] = idle
 
+	# Nodul ramane, pana acum, copil al containerului rularii care tocmai s-a
+	# incheiat (o camera, o arena). Cand acel container e sters (sfarsitul
+	# rularii - moarte, victorie, intoarcere la meniu), tot ce mai era
+	# inauntru piere cu el, INCLUSIV nodurile puse deoparte - dar Pool tot le
+	# crede disponibile in _idle. Urmatorul acquire() ar scoate un nod deja
+	# mort din arbore ("Trying to assign invalid previously freed instance").
+	# Reparentarea sub Pool insusi (autoload, traieste tot procesul) scoate
+	# nodul din pericol - amanata, fiindca release() se cheama uneori chiar
+	# dintr-un semnal de fizica (moartea unui inamic lovit de proiectil),
+	# unde schimbarea arborelui e interzisa pe loc.
+	if node.get_parent() != self:
+		_park.call_deferred(node)
+
+
+## Executata cu o intarziere de un cadru fata de release(), ca sa nu schimbe
+## arborele chiar in mijlocul unei interogari de fizica. Intre timp nodul ar
+## fi putut fi deja redat cuiva (acquire() il scoate din _idle si il muta el
+## insusi) - atunci pool_idle nu mai e true, si parcarea nu mai are ce cauta.
+func _park(node: Node) -> void:
+	if not is_instance_valid(node):
+		return
+	if not node.get_meta(&"pool_idle", false):
+		return
+	if node.get_parent() != self:
+		node.reparent(self)
+
 
 ## Ce e in asteptare, per scena. Doar pentru teste - jocul nu are nevoie sa stie.
 func idle_count(scene: PackedScene) -> int:

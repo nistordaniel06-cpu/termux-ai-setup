@@ -146,6 +146,14 @@ func pool_deactivate() -> void:
 	_collider.disabled = true
 	process_mode = Node.PROCESS_MODE_DISABLED
 	visible = false
+	# RoomWave.spawn() se conecteaza la `died` de fiecare data cand un inamic
+	# intra intr-o camera - inclusiv unul refolosit din bazin. Fara sa taiem
+	# aici legaturile vechi, un inamic pus deoparte de doua ori tot in mana
+	# aceleiasi camere ar pica la a doua conectare ("already connected"), iar
+	# unul refolosit de o camera NOUA ar ramane conectat si la cea veche -
+	# doua semnale la o singura moarte, unul catre o camera care nu mai exista.
+	for connection in died.get_connections():
+		died.disconnect(connection["callable"])
 
 func _physics_process(delta: float) -> void:
 	_tick_burn(delta)
