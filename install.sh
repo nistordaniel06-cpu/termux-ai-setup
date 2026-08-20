@@ -37,7 +37,10 @@ curl -fsSL "${GITHUB_RAW}/codex_helper.py" -o ~/ai-workspace/scripts/codex_helpe
 echo "  → ai_menu.py"
 curl -fsSL "${GITHUB_RAW}/ai_menu.py" -o ~/ai-workspace/scripts/ai_menu.py 2>/dev/null || echo "Warning: ai_menu.py"
 
-chmod +x ~/ai-workspace/scripts/*.py 2>/dev/null || true
+echo "  → games.sh"
+curl -fsSL "${GITHUB_RAW}/games.sh" -o ~/ai-workspace/scripts/games.sh 2>/dev/null || echo "Warning: games.sh"
+
+chmod +x ~/ai-workspace/scripts/*.py ~/ai-workspace/scripts/*.sh 2>/dev/null || true
 
 echo "⚙️  Creating configuration..."
 cat > ~/ai-workspace/config/ai.conf << 'CONF'
@@ -69,6 +72,7 @@ fi
 alias ai='python $AI_WORKSPACE/scripts/ai_menu.py'
 alias chat='python $AI_WORKSPACE/scripts/chat.py'
 alias codex='python $AI_WORKSPACE/scripts/codex_helper.py'
+alias games='bash $AI_WORKSPACE/scripts/games.sh'
 alias aichats='ls -lh $AI_WORKSPACE/chats/ 2>/dev/null || echo "No chats yet"'
 alias goto_ai='cd $AI_WORKSPACE && ls -la'
 alias ai_config='nano $AI_WORKSPACE/config/ai.conf'
@@ -96,6 +100,7 @@ echo "3️⃣  Start using:"
 echo "   ai          → 🎯 Master Menu (recommended!)"
 echo "   chat        → 💬 Chat directly"
 echo "   codex       → 💻 Code generation"
+echo "   games       → 🎮 Open Torchbound / Heroium"
 echo "   aichats     → 📚 View saved chats"
 echo "   ai_config   → ⚙️  Edit config"
 echo ""
