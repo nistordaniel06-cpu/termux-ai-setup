@@ -35,6 +35,8 @@ func _initialize() -> void:
 	await _test_defeat()
 	await _test_legendary_path(state)
 	await _test_heroes(state)
+	await _test_boss_phases(state)
+	await _test_game_modes(state)
 
 	state.wipe()
 
@@ -289,3 +291,100 @@ func _test_heroes(state: Node) -> void:
 	check("Knight e mai rezistent decât Ranger", hero.stats.max_health > 900.0,
 		"%d viață" % hero.stats.max_health)
 	run.free()
+
+
+func _test_boss_phases(state: Node) -> void:
+	print("\n[9] ȘEFII ÎȘI SCHIMBĂ FAZA")
+	state.select_mode(state.Mode.CAMPAIGN)
+	var run := await _open_run()
+
+	run._enter_location(0)
+	run.room = run.location.rooms
+	run.rooms_cleared = 7
+	run.build_room()
+	await process_frame
+
+	var enemies := get_nodes_in_group(&"enemy")
+	check("șeful a apărut", enemies.size() == 1, "%d inamici" % enemies.size())
+	var boss = enemies[0]
+	check("pornește în faza I", boss.phase == 1)
+
+	var damage_before: float = boss.contact_damage
+	var speed_before: float = boss.move_speed
+
+	# Îl coborâm exact sub pragul lui, nu mai jos - altfel ar muri.
+	var threshold: float = boss.max_health * boss.type.phase_two_at
+	boss.take_damage(boss.health - threshold + 1.0)
+	await process_frame
+
+	check("trece în faza a II-a sub prag", boss.phase == 2,
+		"viață %d din %d" % [boss.health, boss.max_health])
+	check("lovește mai tare", boss.contact_damage > damage_before,
+		"%.0f -> %.0f" % [damage_before, boss.contact_damage])
+	check("se mișcă mai repede", boss.move_speed > speed_before,
+		"%.0f -> %.0f" % [speed_before, boss.move_speed])
+
+	# Ajutoarele intră deferat, deci le așteptăm un cadru.
+	await process_frame
+	await process_frame
+	var after := get_nodes_in_group(&"enemy").size()
+	check("cheamă ajutoare", after > 1, "%d inamici în cameră" % after)
+	check("camera nu se încheie cât mai mișcă ceva", not run.is_over)
+
+	# Cifrele de daună apar la lovitură, nu la ardere.
+	var world: Node = run.get_node("World")
+	check("lovitura scoate o cifră de daună", _count_by_script(world, "damage_number") > 0,
+		"%d cifre" % _count_by_script(world, "damage_number"))
+
+	run.free()
+
+
+func _test_game_modes(state: Node) -> void:
+	print("\n[10] REGIMURILE DE JOC")
+
+	# Boss Rush: prima cameră e deja a unui șef.
+	state.select_mode(state.Mode.BOSS_RUSH)
+	check("regimul se salvează", state.selected_mode == state.Mode.BOSS_RUSH)
+	var rush := await _open_run()
+	await process_frame
+	var first := get_nodes_in_group(&"enemy")
+	check("Boss Rush: camera 1 e a unui șef", first.size() == 1 and first[0].type.is_boss,
+		first[0].type.display_name if first.size() == 1 else "%d inamici" % first.size())
+	rush.free()
+
+	# Campanie: după ultima locație vine victoria, nu încă o cameră.
+	state.select_mode(state.Mode.CAMPAIGN)
+	var run := await _open_run()
+	var victory := run.get_node("HUD/GameOver")
+	var last: int = state.locations.size() - 1
+	run._enter_location(last)
+	run.room = run.location.rooms
+	run.rooms_cleared = 30
+	run.build_room()
+	await process_frame
+
+	check("suntem în ultima locație", run._is_last_location(), run.location.display_name)
+	check("ecranul de final e încă ascuns", not victory.visible)
+
+	for enemy in get_nodes_in_group(&"enemy"):
+		enemy.take_damage(999999.0)
+	# Camera se încheie după răgazul dintre camere.
+	await create_timer(run.breather + 0.6).timeout
+
+	check("campania se câștigă", run.is_over)
+	check("ecranul de victorie apare", victory.visible)
+	check("scrie VICTORIE, nu AI CĂZUT", victory._title.text == "VICTORIE", victory._title.text)
+
+	paused = false
+	run.free()
+
+	# Supraviețuire nu se termină: ultima locație se reia.
+	state.select_mode(state.Mode.SURVIVAL)
+	var endless := await _open_run()
+	endless._enter_location(last)
+	endless.room = endless.location.rooms
+	endless._go_to_next_room()
+	await process_frame
+	check("Supraviețuire continuă după ultima locație", not endless.is_over)
+	endless.free()
+	state.select_mode(state.Mode.CAMPAIGN)

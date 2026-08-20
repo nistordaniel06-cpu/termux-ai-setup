@@ -29,6 +29,7 @@ var _coins: int = 0
 var _room: int = 1
 var _location: String = ""
 var _abilities: Array[Ability] = []
+var _boss: Enemy = null
 
 var _toast: String = ""
 var _toast_left: float = 0.0
@@ -51,6 +52,7 @@ func _ready() -> void:
 	if arena != null:
 		arena.room_started.connect(_on_room_started)
 		arena.location_entered.connect(_on_location_entered)
+		arena.boss_spawned.connect(_on_boss_spawned)
 
 	_hero = get_node_or_null(hero_path) as Hero
 	if _hero != null:
@@ -120,6 +122,14 @@ func _on_abilities_fused(_a: Ability, _b: Ability, result: Ability) -> void:
 	show_toast("EVOLUȚIE: %s" % result.display_name)
 
 
+func _on_boss_spawned(enemy: Enemy) -> void:
+	_boss = enemy
+	# Viata sefului nu vine prin semnal, deci bara se reciteste in fiecare cadru
+	# cat timp el traieste. E o citire de doua numere - nu merita plumbarie.
+	set_process(true)
+	queue_redraw()
+
+
 func show_toast(text: String) -> void:
 	_toast = text
 	_toast_left = TOAST_TIME
@@ -128,9 +138,13 @@ func show_toast(text: String) -> void:
 
 
 func _process(delta: float) -> void:
-	_toast_left -= delta
+	if _toast_left > 0.0:
+		_toast_left -= delta
+	if _boss != null and not is_instance_valid(_boss):
+		_boss = null
+
 	queue_redraw()
-	if _toast_left <= 0.0:
+	if _toast_left <= 0.0 and _boss == null:
 		set_process(false)
 
 
@@ -145,6 +159,7 @@ func _draw() -> void:
 	_draw_coins(font, width)
 	_draw_place(font, width)
 	_draw_abilities(font)
+	_draw_boss(font, width)
 	if _toast_left > 0.0:
 		_draw_toast(font, width)
 
@@ -189,10 +204,34 @@ func _draw_coins(font: Font, width: float) -> void:
 
 func _draw_place(font: Font, width: float) -> void:
 	var top := MARGIN + HEALTH_HEIGHT + XP_HEIGHT + 68.0
-	var text := _location if _location.is_empty() == false else "Heroium"
+	var place := _location if not _location.is_empty() else "Heroium"
+	var mode := GameState.mode_name(GameState.selected_mode)
 	draw_string(
-		font, Vector2(MARGIN, top), "%s · camera %d" % [text, _room],
+		font, Vector2(MARGIN, top), "%s · %s · camera %d" % [mode, place, _room],
 		HORIZONTAL_ALIGNMENT_RIGHT, width, 14, UiKit.MUTED
+	)
+
+
+## Bara sefului. Sta lata, sus, si isi spune numele - o lupta care schimba regulile
+## la jumatate merita sa arate altfel decat un schelet oarecare.
+func _draw_boss(font: Font, width: float) -> void:
+	if _boss == null or not is_instance_valid(_boss) or _boss.type == null:
+		return
+
+	var top := MARGIN + HEALTH_HEIGHT + XP_HEIGHT + 96.0
+	var bar := Rect2(MARGIN, top, width, 18.0)
+	var fraction := clampf(_boss.health / maxf(1.0, _boss.max_health), 0.0, 1.0)
+
+	draw_rect(bar, Color(0.0, 0.0, 0.0, 0.6))
+	draw_rect(Rect2(bar.position, Vector2(bar.size.x * fraction, bar.size.y)), _boss.type.color)
+	draw_rect(bar, UiKit.GOLD_DIM, false, 2.0)
+
+	var label := _boss.type.display_name
+	if _boss.phase > 1:
+		label += "  ·  FAZA A II-A"
+	draw_string(
+		font, Vector2(MARGIN, top - 5.0), label,
+		HORIZONTAL_ALIGNMENT_CENTER, width, 15, UiKit.GOLD
 	)
 
 

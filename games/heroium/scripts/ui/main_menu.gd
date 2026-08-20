@@ -10,12 +10,13 @@ extends Control
 
 const GAME_SCENE := "res://scenes/main.tscn"
 
-enum Page { HEROES, CAMP }
+enum Page { HEROES, MODES, CAMP }
 
 var _page: Page = Page.HEROES
 var _content: VBoxContainer = null
 var _coins_label: Label = null
 var _heroes_tab: Button = null
+var _modes_tab: Button = null
 var _camp_tab: Button = null
 
 
@@ -59,6 +60,11 @@ func _build() -> void:
 	_heroes_tab.pressed.connect(_show_page.bind(Page.HEROES))
 	tabs.add_child(_heroes_tab)
 
+	_modes_tab = UiKit.button("REGIM", false, 48)
+	_modes_tab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_modes_tab.pressed.connect(_show_page.bind(Page.MODES))
+	tabs.add_child(_modes_tab)
+
 	_camp_tab = UiKit.button("TABĂRA", false, 48)
 	_camp_tab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_camp_tab.pressed.connect(_show_page.bind(Page.CAMP))
@@ -89,15 +95,19 @@ func _show_page(page: Page) -> void:
 func _refresh() -> void:
 	_coins_label.text = "◆ %d monede" % GameState.coins
 	_heroes_tab.disabled = _page == Page.HEROES
+	_modes_tab.disabled = _page == Page.MODES
 	_camp_tab.disabled = _page == Page.CAMP
 
 	for child in _content.get_children():
 		child.queue_free()
 
-	if _page == Page.HEROES:
-		_build_heroes()
-	else:
-		_build_camp()
+	match _page:
+		Page.HEROES:
+			_build_heroes()
+		Page.MODES:
+			_build_modes()
+		_:
+			_build_camp()
 
 
 # ====================== EROI ======================
@@ -163,6 +173,56 @@ func _on_hero_pressed(hero: HeroClass) -> void:
 		# Deblocat chiar acum? Atunci e si ales - altfel ar trebui apasat de doua ori.
 		if GameState.is_hero_unlocked(hero.id):
 			GameState.select_hero(hero.id)
+	_refresh()
+
+
+# ====================== REGIMURI ======================
+
+func _build_modes() -> void:
+	_content.add_child(UiKit.body(
+		"Aceleași tărâmuri, alt fel de a le parcurge.", 13))
+
+	for mode: int in GameState.MODES:
+		_content.add_child(_mode_row(mode))
+
+
+func _mode_row(mode: int) -> Control:
+	var data: Dictionary = GameState.MODES[mode]
+	var chosen := GameState.selected_mode == mode
+	var border := UiKit.GOLD if chosen else UiKit.GOLD_DIM
+
+	var row := Button.new()
+	row.custom_minimum_size.y = 92.0
+	row.focus_mode = Control.FOCUS_NONE
+	row.add_theme_stylebox_override("normal", UiKit.outlined(UiKit.PANEL, border))
+	row.add_theme_stylebox_override("hover", UiKit.outlined(UiKit.PANEL_SOFT, border, 14.0, 3))
+	row.add_theme_stylebox_override("pressed", UiKit.outlined(UiKit.INK, border, 14.0, 3))
+	row.pressed.connect(_on_mode_pressed.bind(mode))
+
+	var margin := MarginContainer.new()
+	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
+	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	margin.add_theme_constant_override("margin_left", 16)
+	margin.add_theme_constant_override("margin_right", 16)
+	margin.add_theme_constant_override("margin_top", 12)
+	margin.add_theme_constant_override("margin_bottom", 12)
+	row.add_child(margin)
+
+	var rows := VBoxContainer.new()
+	rows.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	rows.add_theme_constant_override("separation", 4)
+	margin.add_child(rows)
+
+	var heading: String = data["name"]
+	if chosen:
+		heading += "   ✓ ales"
+	rows.add_child(_line(heading, 20, UiKit.GOLD if chosen else UiKit.TEXT))
+	rows.add_child(_line(data["about"], 13, UiKit.MUTED, true))
+	return row
+
+
+func _on_mode_pressed(mode: int) -> void:
+	GameState.select_mode(mode)
 	_refresh()
 
 

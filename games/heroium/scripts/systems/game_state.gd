@@ -12,6 +12,30 @@ signal hero_unlocked(hero_id: StringName)
 
 const SAVE_PATH := "user://heroium_save.cfg"
 
+## Regimurile din concept. Toate folosesc aceleasi locatii si aceiasi inamici -
+## ce difera e cum sunt insirate camerele, si de aceea sunt aici si nu in cod
+## imprastiat prin arena.
+enum Mode {
+	CAMPAIGN,    ## locatiile la rand, seful fiecareia la capat, apoi victorie
+	SURVIVAL,    ## fara sfarsit; ultima locatie se reia, treapta creste mai departe
+	BOSS_RUSH,   ## numai sefi, unul dupa altul
+}
+
+const MODES := {
+	Mode.CAMPAIGN: {
+		"name": "Campanie",
+		"about": "Patru tărâmuri, fiecare cu șeful lui. La capăt te așteaptă victoria.",
+	},
+	Mode.SURVIVAL: {
+		"name": "Supraviețuire",
+		"about": "Fără sfârșit. Vezi cât reziști - dificultatea nu se oprește din urcat.",
+	},
+	Mode.BOSS_RUSH: {
+		"name": "Boss Rush",
+		"about": "Numai șefi, unul după altul. Fără camere de încălzire.",
+	},
+}
+
 ## Locatiile campaniei, in ordinea in care se parcurg. Lista e explicita, nu
 ## citita din folder: intr-un build exportat listarea unui director nu e de
 ## incredere, si ordinea aici chiar conteaza.
@@ -50,6 +74,7 @@ var locations: Array[Location] = []
 var abilities: Array[Ability] = []
 var heroes: Array[HeroClass] = []
 var selected_hero: StringName = &"ranger"
+var selected_mode: Mode = Mode.CAMPAIGN
 
 ## Calea Legendară din poza: doua ramuri care pornesc din Putere Atac.
 const TALENTS := {
@@ -190,6 +215,15 @@ func selected_hero_class() -> HeroClass:
 	return hero_class_by_id(&"ranger")
 
 
+func select_mode(mode: Mode) -> void:
+	selected_mode = mode
+	save_game()
+
+
+func mode_name(mode: Mode) -> String:
+	return MODES[mode]["name"]
+
+
 func select_hero(id: StringName) -> void:
 	if not is_hero_unlocked(id):
 		return
@@ -220,6 +254,7 @@ func save_game() -> void:
 	config.set_value("progress", "unlocked_heroes", unlocked_heroes)
 	config.set_value("progress", "best_run_rooms", best_run_rooms)
 	config.set_value("progress", "selected_hero", String(selected_hero))
+	config.set_value("progress", "selected_mode", int(selected_mode))
 	config.save(SAVE_PATH)
 
 
@@ -233,6 +268,7 @@ func load_game() -> void:
 	talents = config.get_value("progress", "talents", {})
 	best_run_rooms = config.get_value("progress", "best_run_rooms", 0)
 	selected_hero = StringName(config.get_value("progress", "selected_hero", "ranger"))
+	selected_mode = int(config.get_value("progress", "selected_mode", Mode.CAMPAIGN)) as Mode
 	var saved_heroes: Array = config.get_value("progress", "unlocked_heroes", [&"ranger"])
 	unlocked_heroes.assign(saved_heroes)
 
@@ -245,6 +281,7 @@ func wipe() -> void:
 	best_run_rooms = 0
 	talents.clear()
 	selected_hero = &"ranger"
+	selected_mode = Mode.CAMPAIGN
 	unlocked_heroes = [&"ranger"]
 	save_game()
 	coins_changed.emit(coins)

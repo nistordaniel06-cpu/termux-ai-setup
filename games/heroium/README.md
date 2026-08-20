@@ -24,8 +24,30 @@ daună, stins că te miști și nu faci. Regula trăiește într-un singur loc �
 5. Când cazi, rularea se pierde — dar monedele nu. Le cheltui în Tabără, pe
    talente permanente, și pornești din nou puțin mai tare.
 
-Campania nu se termină după a patra locație: se reia ultima, dar treapta de
-dificultate crește mai departe.
+## Regimuri
+
+| | |
+|---|---|
+| **Campanie** | Cele patru tărâmuri la rând, fiecare cu șeful lui. La capăt, victorie — singurul final pe care îl poți câștiga. |
+| **Supraviețuire** | Fără sfârșit. Ultima locație se reia, dar treapta de dificultate urcă mai departe. |
+| **Boss Rush** | Numai șefi, unul după altul, prin toate tărâmurile. |
+
+Toate trei folosesc aceleași locații și aceiași inamici. Ce diferă e doar cum
+sunt înșirate camerele, și de aceea regimul stă în `GameState`, nu împrăștiat
+prin arenă.
+
+## Șefii au două faze
+
+Sub un prag scris în `.tres` (jumătate de viață la Bătrânul Rege Căzut, 45% la
+Colosul de Os), șeful se înfurie: lovește mai tare, se mișcă mai repede, își
+schimbă culoarea și **cheamă ajutoare**.
+
+Un șef care doar are multă viață e o corvoadă; unul care se schimbă la jumătate
+e o luptă. Pragul, procentele și cine e chemat sunt date — nu cod.
+
+Ajutoarele le aduce arena, nu șeful: el n-are de unde ști unde e loc liber, iar
+numărătoarea de inamici trebuie să-i includă, altfel camera s-ar încheia cât ei
+încă mișcă.
 
 ## Fuziunea abilităților
 
@@ -37,6 +59,10 @@ nu se atinge nicio linie de GDScript.
 Când o carte oferită fuzionează cu ceva ce ai deja, cartea o **spune**. Altfel
 evoluția ar fi un accident fericit pe care jucătorul nu l-ar putea urmări.
 Evoluțiile nu se oferă niciodată direct — rostul lor e să fie descoperite.
+
+Fiecare lovitură scoate o cifră, iar criticele arată altfel. Fără ele, o luptă e
+un schimb de licăriri: vezi că ai lovit, dar nu cât — și diferența dintre o
+abilitate bună și una slabă s-ar vedea abia după trei rulări.
 
 ## Cine te atacă și cum
 
@@ -76,7 +102,7 @@ games/heroium/
 │   ├── abilities/             pachetul de cărți + evoluția
 │   ├── enemies/               felurile de inamic și cei doi șefi
 │   └── locations/             cele patru locații
-└── tests/run_tests.gd         45 de verificări, rulate fără interfață
+└── tests/run_tests.gd         61 de verificări, rulate fără interfață
 ```
 
 ## Cum sunt împărțite statisticile
@@ -122,12 +148,15 @@ adevărată, `Blob` se înlocuiește cu un `Sprite2D` și restul rămâne cum e.
 godot --headless --path games/heroium --script res://tests/run_tests.gd
 ```
 
-Iese cu cod 1 dacă ceva a picat, și rulează în CI **înaintea** exportului — un
-export reușit nu înseamnă un joc care merge, iar asta s-a văzut deja o dată.
+Cele **61 de verificări** ies cu cod 1 dacă vreuna pică, și rulează în CI
+**înaintea** exportului — un export reușit nu înseamnă un joc care merge, iar
+asta s-a văzut deja o dată.
 
 Testele nu verifică cum arată jocul, ci lucrurile care se pot strica în tăcere:
 că inamicii chiar apar, că eroul chiar trage și ucide, că fuziunea chiar are loc,
-că un talent cumpărat chiar se simte în rulare.
+că un talent cumpărat chiar se simte în rulare, că șeful chiar trece în faza a
+doua și își cheamă ajutoarele, și că fiecare regim se poartă cum trebuie —
+inclusiv că o campanie dusă la capăt scrie VICTORIE, nu AI CĂZUT.
 
 > Șterg progresul salvat (`user://heroium_save.cfg`) la început și la sfârșit, ca
 > rezultatele să nu depindă de cât a jucat cineva înainte.

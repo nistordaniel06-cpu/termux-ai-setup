@@ -37,6 +37,16 @@ enum Behavior {
 @export_group("Sef")
 ## Sefii au bara proprie, nu se sperie de nimic si incheie o locatie.
 @export var is_boss: bool = false
+## Sub ce fractiune de viata se infurie. 0 inseamna fara faza a doua.
+##
+## Un sef care doar are multa viata e o corvoada; unul care se schimba la
+## jumatate e o lupta. De aceea pragul si ce aduce el sunt date, nu cod.
+@export_range(0.0, 1.0) var phase_two_at: float = 0.0
+@export var phase_two_damage_multiplier: float = 1.35
+@export var phase_two_speed_multiplier: float = 1.25
+## Pe cine cheama cand intra in faza a doua, si cati.
+@export var summons: EnemyType
+@export var summon_count: int = 0
 
 
 func health_at(tier: int) -> float:

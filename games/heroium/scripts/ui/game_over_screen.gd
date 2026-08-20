@@ -10,6 +10,7 @@ const MENU_SCENE := "res://scenes/ui/main_menu.tscn"
 
 @export var arena_path: NodePath
 
+var _title: Label = null
 var _summary: Label = null
 var _record: Label = null
 
@@ -25,6 +26,7 @@ func _ready() -> void:
 	var arena := get_node_or_null(arena_path) as Arena
 	if arena != null:
 		arena.run_ended.connect(_on_run_ended)
+		arena.run_won.connect(_on_run_won)
 
 
 func _build() -> void:
@@ -41,7 +43,8 @@ func _build() -> void:
 	column.add_theme_constant_override("separation", 16)
 	margin.add_child(column)
 
-	column.add_child(UiKit.title("AI CĂZUT", 38, UiKit.DANGER))
+	_title = UiKit.title("AI CĂZUT", 38, UiKit.DANGER)
+	column.add_child(_title)
 
 	_summary = UiKit.body("", 18, UiKit.TEXT)
 	column.add_child(_summary)
@@ -63,7 +66,8 @@ func _build() -> void:
 
 
 func _on_run_ended(rooms_cleared: int, coins_earned: int) -> void:
-	_summary.text = "%d camere curățate\n%d monede strânse" % [rooms_cleared, coins_earned]
+	_title.text = "AI CĂZUT"
+	_title.add_theme_color_override("font_color", UiKit.DANGER)
 
 	if rooms_cleared >= GameState.best_run_rooms and rooms_cleared > 0:
 		_record.text = "Cel mai bun rezultat al tău."
@@ -71,6 +75,20 @@ func _on_run_ended(rooms_cleared: int, coins_earned: int) -> void:
 		_record.text = "Recordul tău: %d camere.\nMonedele rămân — cumpără talente în Tabără." \
 			% GameState.best_run_rooms
 
+	_show(rooms_cleared, coins_earned)
+
+
+## Campania dusa pana la capat. Merita alt cuvant si alta culoare decat o cadere -
+## altfel singurul final pe care il poate atinge jucatorul arata a esec.
+func _on_run_won(rooms_cleared: int, coins_earned: int) -> void:
+	_title.text = "VICTORIE"
+	_title.add_theme_color_override("font_color", UiKit.GOLD)
+	_record.text = "Ai trecut toate cele patru tărâmuri.\nÎncearcă Supraviețuire, sau alt erou."
+	_show(rooms_cleared, coins_earned)
+
+
+func _show(rooms_cleared: int, coins_earned: int) -> void:
+	_summary.text = "%d camere curățate\n%d monede strânse" % [rooms_cleared, coins_earned]
 	visible = true
 	mouse_filter = Control.MOUSE_FILTER_STOP
 

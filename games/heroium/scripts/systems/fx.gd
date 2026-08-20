@@ -33,6 +33,24 @@ func burst(at: Vector2, color: Color, count: int, speed: float = 130.0) -> void:
 		_field.emit(at, color, count, speed)
 
 
+## Cifra de dauna deasupra tintei.
+func damage(at: Vector2, amount: float, is_crit: bool = false) -> void:
+	var world := _world()
+	if world == null:
+		return
+	var number := DamageNumber.create(world.to_local(at), amount, is_crit)
+	# Lovitura vine din mijlocul unei interogari de fizica, unde nodurile noi nu
+	# sunt binevenite; cifra intra la capatul cadrului.
+	world.add_child.call_deferred(number)
+
+
+## Nodul in care se deseneaza efectele, sau null daca arena n-a legat inca nimic.
+func _world() -> Node2D:
+	if _field == null or not is_instance_valid(_field):
+		return null
+	return _field.get_parent() as Node2D
+
+
 func shake(magnitude: float, duration: float) -> void:
 	# Doua lovituri odata nu trebuie sa adune un cutremur: ramane cea mai tare.
 	_shake_magnitude = maxf(_shake_magnitude, magnitude)

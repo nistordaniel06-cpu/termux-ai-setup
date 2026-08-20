@@ -13,6 +13,8 @@ extends CharacterBody2D
 ## si tot dupa el numara arena cati au mai ramas.
 
 signal died(enemy: Enemy)
+## Seful a intrat intr-o faza noua. Arena asculta si ii aduce ajutoare.
+signal phase_changed(enemy: Enemy, phase: int)
 
 ## Distanta la care arcasul incearca sa se tina.
 const SHOOTER_RANGE := 250.0
@@ -38,6 +40,8 @@ var defense: float = 0.0
 var xp_reward: int = 2
 var coin_reward: int = 1
 var radius: float = 16.0
+## 1 la inceput; sefii trec la 2 cand scad sub pragul lor de viata.
+var phase: int = 1
 
 var _phase: StringName = &"idle"
 var _phase_time: float = 0.0
@@ -184,7 +188,7 @@ func _act_charger(delta: float, direction: Vector2, distance: float) -> void:
 	# infinit. Exponentul tine franarea aceeasi si daca scade numarul de cadre.
 	_dash_velocity *= pow(0.94, delta * 60.0)
 	if randf() < 0.6:
-		Fx.burst(global_position, type.color, 1, 60.0)
+		Fx.burst(global_position, _tint(), 1, 60.0)
 	if _phase_time <= 0.0:
 		_phase = &"stalk"
 		_phase_time = randf_range(1.2, 2.0)
@@ -196,7 +200,7 @@ func _shoot_at(point: Vector2) -> void:
 	var projectile := projectile_scene.instantiate()
 	_spawn(projectile)
 	projectile.global_position = global_position
-	projectile.launch(global_position.direction_to(point), contact_damage, type.color)
+	projectile.launch(global_position.direction_to(point), contact_damage, _tint())
 
 
 ## Inamicii, semnele si sagetile lor stau langa el, in lume - nu sub el, altfel
@@ -221,15 +225,49 @@ func get_defense() -> float:
 	return defense
 
 
+## O lovitura primita: se vede si se aude. Arsura NU trece pe aici - ar scuipa o
+## cifra pe fiecare cadru; ea merge direct prin `_apply_damage`.
 func take_damage(amount: float, is_crit: bool = false) -> void:
 	if health <= 0.0:
 		return
-	health -= amount
+
+	var tint := Color(1, 1, 1) if is_crit else _tint()
 	_body.flash()
+	Fx.burst(global_position, tint, 3 if is_crit else 2, 90.0)
+	Fx.damage(global_position, amount, is_crit)
+	_apply_damage(amount)
+
+
+func _apply_damage(amount: float) -> void:
+	health -= amount
 	queue_redraw()
-	Fx.burst(global_position, Color(1, 1, 1) if is_crit else type.color, 3 if is_crit else 2, 90.0)
 	if health <= 0.0:
 		_die()
+		return
+	_maybe_enter_phase_two()
+
+
+func _tint() -> Color:
+	return type.color if type != null else Color("d9464f")
+
+
+## Seful nu moare la jumatate - se infurie. Devine mai iute si loveste mai tare,
+## iar arena ii aduce ajutoare. E singurul moment din camera in care lupta se
+## schimba sub tine, si de aceea merita anuntat cu tot ce avem.
+func _maybe_enter_phase_two() -> void:
+	if phase > 1 or type == null or not type.is_boss or type.phase_two_at <= 0.0:
+		return
+	if health > max_health * type.phase_two_at:
+		return
+
+	phase = 2
+	contact_damage *= type.phase_two_damage_multiplier
+	move_speed *= type.phase_two_speed_multiplier
+	_body.fill = _tint().lightened(0.25)
+
+	Fx.shake(7.0, 0.45)
+	Fx.burst(global_position, _tint(), 28, 260.0)
+	phase_changed.emit(self, phase)
 
 
 func apply_burn(dps: float, duration: float) -> void:
@@ -244,14 +282,15 @@ func _tick_burn(delta: float) -> void:
 	_burn_time -= delta
 	if randf() < 0.25:
 		Fx.burst(global_position, Color("ff8c3c"), 1, 40.0)
-	take_damage(_burn_dps * delta)
+	_apply_damage(_burn_dps * delta)
 	if _burn_time <= 0.0:
 		_burn_dps = 0.0
 
 
 func _die() -> void:
-	Fx.burst(global_position, type.color, 14, 190.0)
-	Fx.shake(4.0 if type.is_boss else 2.5, 0.18 if type.is_boss else 0.1)
+	var is_boss: bool = type != null and type.is_boss
+	Fx.burst(global_position, _tint(), 22 if is_boss else 14, 260.0 if is_boss else 190.0)
+	Fx.shake(6.0 if is_boss else 2.5, 0.35 if is_boss else 0.1)
 	died.emit(self)
 	queue_free()
 

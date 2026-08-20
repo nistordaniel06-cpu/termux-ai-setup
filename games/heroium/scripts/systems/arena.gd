@@ -14,6 +14,10 @@ signal room_started(room: int, is_boss: bool)
 signal room_cleared(room: int)
 signal location_entered(location: Location)
 signal run_ended(rooms_cleared: int, coins_earned: int)
+## Campania a fost dusa pana la capat. Doar Campanie se poate castiga.
+signal run_won(rooms_cleared: int, coins_earned: int)
+## Un sef a intrat in camera. HUD-ul ii pune bara mare sus.
+signal boss_spawned(enemy: Enemy)
 
 @export var enemy_scene: PackedScene
 @export var xp_orb_scene: PackedScene
@@ -82,16 +86,25 @@ func build_room() -> void:
 	_clear_leftovers()
 	_alive = 0
 
-	var is_boss := location.is_boss_room(room)
+	var is_boss := _is_boss_room()
 	if is_boss:
 		_spawn_enemy(location.boss)
-		Fx.toast("%s" % location.boss.display_name)
+		Fx.toast(location.boss.display_name)
 		Fx.shake(6.0, 0.4)
 	else:
 		for i in location.enemy_count_for(room):
 			_spawn_enemy(_pick_type())
 
 	room_started.emit(room, is_boss)
+
+
+## In Boss Rush fiecare camera e a unui sef; in rest doar ultima din locatie.
+func _is_boss_room() -> bool:
+	if location == null or location.boss == null:
+		return false
+	if GameState.selected_mode == GameState.Mode.BOSS_RUSH:
+		return true
+	return location.is_boss_room(room)
 
 
 ## Un fel de inamic din cei pe care camera asta ii poate aduce.
@@ -113,6 +126,25 @@ func _spawn_enemy(type: EnemyType) -> void:
 	enemy.global_position = _pick_spawn_point()
 	enemy.died.connect(_on_enemy_died)
 	_alive += 1
+
+	if type.is_boss:
+		enemy.phase_changed.connect(_on_boss_phase)
+		boss_spawned.emit(enemy)
+
+
+## Seful s-a infuriat. Ajutoarele le aduce arena, nu el: el n-are de unde sti
+## unde e loc liber, iar `_alive` trebuie sa le numere ca sa nu se incheie camera
+## cat inca misca ceva.
+func _on_boss_phase(enemy: Enemy, phase: int) -> void:
+	if phase < 2 or enemy.type == null:
+		return
+
+	Fx.toast("FAZA A II-A")
+	var summons := enemy.type.summons
+	if summons == null or enemy.type.summon_count <= 0:
+		return
+	for i in enemy.type.summon_count:
+		_spawn_enemy.call_deferred(summons)
 
 
 ## Punct la distanta de erou, dar tot inauntrul camerei - altfel inamicii ar
@@ -189,14 +221,47 @@ func _advance_room() -> void:
 	# dupa ragaz, nu in clipa ultimei morti, ca sa nu stearga zone din fizica
 	# chiar in mijlocul pasului care le-a omorat.
 	_collect_remaining_orbs()
-
-	room += 1
-	if room > location.rooms:
-		_enter_location(location_index + 1)
-	else:
-		build_room()
-
 	_advancing = false
+	_go_to_next_room()
+
+
+## Unde ajunge jucatorul dupa ce a curatat camera. Singurul loc din arena unde
+## regimul ales chiar schimba ceva.
+func _go_to_next_room() -> void:
+	if GameState.selected_mode == GameState.Mode.BOSS_RUSH:
+		# Fiecare camera e a unui sef, deci trecem prin locatii ca sa nu fie
+		# mereu acelasi; treapta creste oricum cu numarul de camere.
+		_enter_location(location_index + 1)
+		return
+
+	if room < location.rooms:
+		room += 1
+		build_room()
+		return
+
+	# Locatia s-a incheiat. In Campanie, ultima inseamna ca ai terminat jocul;
+	# in Supraviețuire se reia ultima locatie, cu inamici tot mai grei.
+	if GameState.selected_mode == GameState.Mode.CAMPAIGN and _is_last_location():
+		_win_run()
+		return
+
+	_enter_location(location_index + 1)
+
+
+func _is_last_location() -> bool:
+	return location_index >= GameState.locations.size() - 1
+
+
+func _win_run() -> void:
+	if is_over:
+		return
+	is_over = true
+
+	Fx.toast("VICTORIE")
+	Fx.shake(8.0, 0.6)
+	GameState.register_run_result(rooms_cleared)
+	run_won.emit(rooms_cleared, coins_earned)
+	get_tree().paused = true
 
 
 func _collect_remaining_orbs() -> void:
