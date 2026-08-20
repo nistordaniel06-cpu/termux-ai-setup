@@ -41,6 +41,7 @@ func _initialize() -> void:
 	await _test_looks(state)
 	await _test_pooling()
 	await _test_composable_effects(state)
+	await _test_difficulty_scaling()
 
 	state.wipe()
 
@@ -644,3 +645,36 @@ func _test_pooling() -> void:
 	check("double release is safe", idle_after_double_release == start_idle + 1)
 
 	parent.queue_free()
+
+
+## Controlul mai automatizat trebuie sa intareasca inamicii - RoomWave anunta
+## fiecare nastere prin `enemy_spawned`, iar Arena asculta o singura data si
+## aplica multiplicatorul acolo. Verificam legatura capat la capat, nu doar
+## ca HeroControl.difficulty_multiplier() intoarce numere corecte pe hartie.
+func _test_difficulty_scaling() -> void:
+	print("\n[14] SCALAREA DUPĂ CONTROL")
+	var run := await _open_run()
+	var hero := get_first_node_in_group(&"hero")
+
+	hero.set_control_mode(HeroControl.Mode.DUAL_STICK)
+	run._enter_location(0)
+	run.room = 1
+	run.build_room()
+	await process_frame
+
+	var manual_enemies := get_nodes_in_group(&"enemy")
+	check("controlul manual nu întărește inamicii", manual_enemies.size() > 0
+		and manual_enemies[0].max_health == manual_enemies[0].type.health_at(run.rooms_cleared),
+		"%.0f viață" % manual_enemies[0].max_health if manual_enemies.size() > 0 else "-")
+
+	hero.set_control_mode(HeroControl.Mode.AUTO)
+	run.build_room()
+	await process_frame
+
+	var auto_enemies := get_nodes_in_group(&"enemy")
+	var expected := auto_enemies[0].type.health_at(run.rooms_cleared) * 1.45 if auto_enemies.size() > 0 else 0.0
+	check("modul automat întărește inamicii", auto_enemies.size() > 0
+		and absf(auto_enemies[0].max_health - expected) < 0.5,
+		"%.0f viață, așteptam %.0f" % [auto_enemies[0].max_health, expected] if auto_enemies.size() > 0 else "-")
+
+	run.free()
