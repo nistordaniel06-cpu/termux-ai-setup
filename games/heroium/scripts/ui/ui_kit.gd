@@ -23,6 +23,7 @@ const RARITY_COLORS: Array[Color] = [
 	Color("5aa9f0"),  # rara
 	Color("c86bf0"),  # epica
 	Color("f0b45a"),  # legendara
+	Color("e2665a"),  # mythic
 ]
 
 

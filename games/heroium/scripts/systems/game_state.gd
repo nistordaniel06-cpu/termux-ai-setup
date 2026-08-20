@@ -61,6 +61,11 @@ const ABILITY_PATHS := [
 	"res://resources/abilities/vitality.tres",
 	"res://resources/abilities/bandages.tres",
 	"res://resources/abilities/explosive_end.tres",
+	"res://resources/abilities/frost_projectiles.tres",
+	"res://resources/abilities/lightning_chain.tres",
+	"res://resources/abilities/vampirism.tres",
+	"res://resources/abilities/projectile_size.tres",
+	"res://resources/abilities/projectile_speed.tres",
 ]
 
 ## Infatisarile, in ordinea in care apar in meniu.

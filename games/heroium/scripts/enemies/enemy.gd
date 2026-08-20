@@ -49,6 +49,9 @@ var _aim_point: Vector2 = Vector2.ZERO
 var _dash_velocity: Vector2 = Vector2.ZERO
 var _burn_dps: float = 0.0
 var _burn_time: float = 0.0
+var _frost_dps: float = 0.0
+var _frost_time: float = 0.0
+var _frost_slow: float = 0.0
 var _contact_cooldown: float = 0.0
 var _hero: Node2D = null
 
@@ -100,6 +103,7 @@ func _initial_phase() -> StringName:
 
 func _physics_process(delta: float) -> void:
 	_tick_burn(delta)
+	_tick_frost(delta)
 	if health <= 0.0:
 		return
 
@@ -125,7 +129,7 @@ func _physics_process(delta: float) -> void:
 		_:
 			# Urmaritorul vine drept, fara siretlicuri - presiunea lui e ca nu
 			# se opreste niciodata.
-			velocity = direction * move_speed
+			velocity = direction * _current_speed()
 
 	move_and_slide()
 	_try_contact(distance, direction)
@@ -143,7 +147,7 @@ func _act_shooter(delta: float, direction: Vector2, distance: float) -> void:
 		elif distance < SHOOTER_RANGE - 40.0:
 			pull = -1.0
 		var strafe := Vector2(-direction.y, direction.x) * 0.45
-		velocity = (direction * pull + strafe) * move_speed
+		velocity = (direction * pull + strafe) * _current_speed()
 
 		if _phase_time <= 0.0:
 			_phase = &"aim"
@@ -154,7 +158,7 @@ func _act_shooter(delta: float, direction: Vector2, distance: float) -> void:
 		return
 
 	# In timp ce tinteste sta locului, ca semnul sa insemne ceva.
-	velocity = velocity.move_toward(Vector2.ZERO, move_speed * 6.0 * delta)
+	velocity = velocity.move_toward(Vector2.ZERO, _current_speed() * 6.0 * delta)
 	if _phase_time <= 0.0:
 		_shoot_at(_aim_point)
 		_phase = &"reposition"
@@ -166,7 +170,7 @@ func _act_charger(delta: float, direction: Vector2, distance: float) -> void:
 	_phase_time -= delta
 
 	if _phase == &"stalk":
-		velocity = direction * move_speed
+		velocity = direction * _current_speed()
 		if _phase_time <= 0.0 and distance < CHARGE_TRIGGER:
 			_phase = &"wind"
 			_phase_time = WIND_TIME
@@ -175,7 +179,7 @@ func _act_charger(delta: float, direction: Vector2, distance: float) -> void:
 		return
 
 	if _phase == &"wind":
-		velocity = velocity.move_toward(Vector2.ZERO, move_speed * 8.0 * delta)
+		velocity = velocity.move_toward(Vector2.ZERO, _current_speed() * 8.0 * delta)
 		if _phase_time <= 0.0:
 			_dash_velocity = global_position.direction_to(_aim_point) * DASH_SPEED
 			_phase = &"dash"
@@ -218,6 +222,11 @@ func _try_contact(distance: float, direction: Vector2) -> void:
 		_hero.take_damage(contact_damage)
 	# Il impinge putin la o parte, ca sa nu ramana lipit intr-un colt si tocat.
 	_hero.global_position += direction * 14.0
+
+
+## Viteza chiar folosita acum: incetinita cat tine ingheţul.
+func _current_speed() -> float:
+	return move_speed * (1.0 - _frost_slow) if _frost_time > 0.0 else move_speed
 
 
 func get_defense() -> float:
@@ -273,6 +282,25 @@ func apply_burn(dps: float, duration: float) -> void:
 	# Arsura nu se aduna la infinit: ramane cea mai puternica sursa.
 	_burn_dps = maxf(_burn_dps, dps)
 	_burn_time = maxf(_burn_time, duration)
+
+
+## Ingheţul face doua lucruri deodata: arde incet si incetineste. Sunt separate
+## de arsura obisnuita, ca amandoua sa poata fi purtate simultan de tinte diferite.
+func apply_frost(dps: float, slow: float, duration: float) -> void:
+	_frost_dps = maxf(_frost_dps, dps)
+	_frost_slow = maxf(_frost_slow, slow)
+	_frost_time = maxf(_frost_time, duration)
+
+
+func _tick_frost(delta: float) -> void:
+	if _frost_time <= 0.0:
+		return
+	_frost_time -= delta
+	if _frost_dps > 0.0:
+		_apply_damage(_frost_dps * delta)
+	if _frost_time <= 0.0:
+		_frost_dps = 0.0
+		_frost_slow = 0.0
 
 
 func _tick_burn(delta: float) -> void:

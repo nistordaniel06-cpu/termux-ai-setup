@@ -15,7 +15,14 @@ var crit_multiplier: float = 2.0
 var crit_chance: float = 0.05
 var pierce_left: int = 0
 var bounces_left: int = 0
+## burn_dps / explosion_radius - vechile doua efecte, ramase ca dictionar din
+## motive de compatibilitate cu ce era deja testat.
 var effects: Dictionary = {}
+## Frost, Lightning Chain, Vampirism si oricare altul compozabil, adaugate fara
+## sa se atinga linia asta de cod vreodata din nou.
+var on_hit_effects: Array[AbilityEffect] = []
+## Cine a tras - efectele care dau ceva inapoi (vampirism) au nevoie de el.
+var attacker: Node = null
 
 var _direction: Vector2 = Vector2.RIGHT
 var _age: float = 0.0
@@ -36,7 +43,13 @@ func _draw() -> void:
 
 ## Porneste proiectilul. Copiaza din statistici doar ce-i trebuie, ca sa nu
 ## depinda de erou dupa ce a plecat din arc.
-func launch(direction: Vector2, stats: HeroStats, hit_effects: Dictionary = {}) -> void:
+func launch(
+	direction: Vector2,
+	stats: HeroStats,
+	hit_effects: Dictionary = {},
+	shooter: Node = null,
+	compose_effects: Array[AbilityEffect] = []
+) -> void:
 	_direction = direction.normalized()
 	rotation = _direction.angle()
 
@@ -46,6 +59,17 @@ func launch(direction: Vector2, stats: HeroStats, hit_effects: Dictionary = {}) 
 	pierce_left = stats.pierce
 	bounces_left = stats.bounces
 	effects = hit_effects
+	attacker = shooter
+	on_hit_effects = compose_effects
+
+	speed *= stats.projectile_speed_mult
+	if not is_equal_approx(stats.projectile_scale, 1.0):
+		scale *= stats.projectile_scale
+		var collider := get_node_or_null("CollisionShape2D") as CollisionShape2D
+		if collider != null and collider.shape is CircleShape2D:
+			# Coliziunea creste odata cu desenul - altfel o sageata mare ar
+			# arata puternica si ar lovi ca una obisnuita.
+			(collider.shape as CircleShape2D).radius *= stats.projectile_scale
 
 
 func _physics_process(delta: float) -> void:
@@ -90,6 +114,19 @@ func _resolve_hit(node: Node) -> void:
 	var radius: float = effects.get("explosion_radius", 0.0)
 	if radius > 0.0:
 		_explode(radius, final_damage * 0.6)
+
+	if not on_hit_effects.is_empty():
+		var info := HitInfo.create(node, final_damage, is_crit)
+		info.attacker = attacker
+		info.world = get_parent()
+		for effect in on_hit_effects:
+			if effect != null:
+				effect.on_hit(info)
+		# Efectele compozabile nu deseneaza nimic ele insele (un Resource care
+		# ar referi Fx la nivel de script risca sa nu compileze daca e incarcat
+		# inainte ca autoloadurile sa fie gata - o cursa reala, vazuta in acest
+		# proiect). Scanteia confirma vizual ca "s-a intamplat ceva in plus".
+		Fx.burst(global_position, Color("9ad9ff"), 4, 130.0)
 
 	if pierce_left > 0:
 		pierce_left -= 1

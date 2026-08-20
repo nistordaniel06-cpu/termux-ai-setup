@@ -64,6 +64,25 @@ Fiecare lovitură scoate o cifră, iar criticele arată altfel. Fără ele, o lu
 un schimb de licăriri: vezi că ai lovit, dar nu cât — și diferența dintre o
 abilitate bună și una slabă s-ar vedea abia după trei rulări.
 
+## Efecte compozabile
+
+O abilitate nu mai e doar un pumn de câmpuri (`bonus_pierce`, `burn_dps`...) —
+poartă un vector de `AbilityEffect`, fiecare cu logica lui. Două abilități luate
+împreună își adună efectele automat, fără ca nimeni să fi scris vreodată cazul
+acelei perechi anume.
+
+Cinci efecte concrete: **Frost** (arde încet și încetinește), **Lightning
+Chain** (sare la vecini, o singură dată — nu recursiv, ca să nu cureți o cameră
+dintr-o săgeată), **Vampirism** (recuperezi din daună ca viață), și mărimea /
+viteza proiectilului. Toate patru erau imposibil de exprimat în modelul vechi.
+
+Un efect care are treabă cu clipa impactului primește un `HitInfo` — cine a
+lovit, cine a încasat, unde, cât. Niciun efect nu desenează nimic direct: un
+`Resource` care ar referi un autoload la nivel de script riscă să nu compileze
+dacă e încărcat înainte ca autoloadurile să fie gata, o cursă reală, văzută în
+acest proiect. Efectele descriu ce se schimbă; scânteia de impact e treaba
+proiectilului, care e deja pe scenă.
+
 ## Cine te atacă și cum
 
 | Fel | Poartă |
@@ -102,7 +121,7 @@ games/heroium/
 │   ├── abilities/             pachetul de cărți + evoluția
 │   ├── enemies/               felurile de inamic și cei doi șefi
 │   └── locations/             cele patru locații
-└── tests/run_tests.gd         73 de verificări, rulate fără interfață
+└── tests/run_tests.gd         93 de verificări, rulate fără interfață
 ```
 
 ## Cum sunt împărțite statisticile
@@ -166,7 +185,7 @@ obligat să porți. Există un test care păzește exact asta.
 godot --headless --path games/heroium --script res://tests/run_tests.gd
 ```
 
-Cele **73 de verificări** ies cu cod 1 dacă vreuna pică, și rulează în CI
+Cele **93 de verificări** ies cu cod 1 dacă vreuna pică, și rulează în CI
 **înaintea** exportului — un export reușit nu înseamnă un joc care merge, iar
 asta s-a văzut deja o dată.
 

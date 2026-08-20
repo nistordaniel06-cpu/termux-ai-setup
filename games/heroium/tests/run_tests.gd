@@ -39,6 +39,7 @@ func _initialize() -> void:
 	await _test_game_modes(state)
 	await _test_touch_reaches_buttons()
 	await _test_looks(state)
+	await _test_composable_effects(state)
 
 	state.wipe()
 
@@ -521,3 +522,86 @@ func _test_skins(state: Node) -> void:
 
 	run.free()
 	state.wipe()
+
+
+func _test_composable_effects(state: Node) -> void:
+	print("\n[13] EFECTE COMPOZABILE")
+
+	# Cele cinci care nu se puteau exprima in modelul vechi de Ability.
+	for id in ["frost_projectiles", "lightning_chain", "vampirism",
+			"projectile_size", "projectile_speed"]:
+		var ability: Ability = load("res://resources/abilities/%s.tres" % id)
+		check("%s se încarcă cu efectul lui" % ability.display_name,
+			ability.effects.size() == 1, "%d efecte" % ability.effects.size())
+
+	# Doua abilitati luate impreuna isi aduna efectele fara cod scris pentru
+	# perechea aceea anume - exact ce trebuia sa rezolve sistemul.
+	var run := await _open_run()
+	var hero := get_first_node_in_group(&"hero")
+	var frost: Ability = load("res://resources/abilities/frost_projectiles.tres")
+	var vamp: Ability = load("res://resources/abilities/vampirism.tres")
+	hero.grant_ability(frost)
+	hero.grant_ability(vamp)
+
+	var combat: HeroCombat = hero.get_node("Combat")
+	var collected := combat._collect_on_hit_effects()
+	check("ambele efecte ajung la proiectil", collected.size() == 2, "%d efecte" % collected.size())
+
+	# Frost incetineste si arde - se vede pe un inamic real, nu doar pe hartie.
+	var enemy: Enemy = load("res://scenes/enemies/enemy.tscn").instantiate()
+	var skeleton: EnemyType = load("res://resources/enemies/skeleton_warrior.tres")
+	enemy.setup(skeleton, 0)
+	run.get_node("World").add_child(enemy)
+	await process_frame
+
+	var before_speed := enemy.move_speed
+	enemy.apply_frost(5.0, 0.4, 1.0)
+	check("îngheț: viteza scade", enemy._current_speed() < before_speed,
+		"%.0f -> %.0f" % [before_speed, enemy._current_speed()])
+	var before_health := enemy.health
+	await create_timer(0.3).timeout
+	check("îngheț: arde în timp", enemy.health < before_health,
+		"%.1f -> %.1f" % [before_health, enemy.health])
+
+	# Vampirism: eroul se vindeca dupa o lovitura, proportional cu dauna.
+	hero.take_damage(hero.get_max_health() * 0.5)
+	var health_before_hit: float = hero.get_health()
+	var vamp_effect: EffectVampirism = vamp.effects[0]
+	var info := HitInfo.create(enemy, 100.0, false)
+	info.attacker = hero
+	vamp_effect.on_hit(info)
+	check("vampirism vindecă eroul", hero.get_health() > health_before_hit,
+		"%.0f -> %.0f (12%% din 100 = 12)" % [health_before_hit, hero.get_health()])
+
+	# Lightning Chain sare la un al doilea inamic din apropiere.
+	var second: Enemy = load("res://scenes/enemies/enemy.tscn").instantiate()
+	second.setup(skeleton, 0)
+	run.get_node("World").add_child(second)
+	second.global_position = enemy.global_position + Vector2(50, 0)
+	await process_frame
+
+	var chain: Ability = load("res://resources/abilities/lightning_chain.tres")
+	var chain_effect: EffectLightningChain = chain.effects[0]
+	var second_health_before := second.health
+	var chain_info := HitInfo.create(enemy, 40.0, false)
+	chain_effect.on_hit(chain_info)
+	check("lanțul electric lovește și vecinul", second.health < second_health_before,
+		"%.1f -> %.1f" % [second_health_before, second.health])
+
+	# Marimea si viteza proiectilului chiar ajung pe proiectilul tras.
+	var proj_size: Ability = load("res://resources/abilities/projectile_size.tres")
+	var proj_speed: Ability = load("res://resources/abilities/projectile_speed.tres")
+	hero.grant_ability(proj_size)
+	hero.grant_ability(proj_speed)
+	check("mărimea intră în statistici", hero.stats.projectile_scale > 1.0,
+		"scală %.2f" % hero.stats.projectile_scale)
+	check("viteza intră în statistici", hero.stats.projectile_speed_mult > 1.0,
+		"multiplicator %.2f" % hero.stats.projectile_speed_mult)
+
+	var projectile: Projectile = load("res://scenes/abilities/projectile.tscn").instantiate()
+	run.get_node("World").add_child(projectile)
+	projectile.launch(Vector2.RIGHT, hero.stats)
+	check("proiectilul chiar e mai mare", projectile.scale.x > 1.0, "scală %.2f" % projectile.scale.x)
+	check("proiectilul chiar e mai rapid", projectile.speed > 900.0, "viteză %.0f" % projectile.speed)
+
+	run.free()

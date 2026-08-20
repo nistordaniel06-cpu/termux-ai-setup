@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="EffectVampirism" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/abilities/effects/effect_vampirism.gd" id="1_vamp"]
+
+[resource]
+script = ExtResource("1_vamp")
+summary = "Recuperezi 12% din daună ca viață."
+heal_fraction = 0.12

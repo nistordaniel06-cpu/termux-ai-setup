@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="Ability" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/abilities/ability.gd" id="1_ability"]
+[ext_resource type="Resource" path="res://resources/abilities/effects/lightning_jump.tres" id="2_effect"]
+
+[resource]
+script = ExtResource("1_ability")
+id = &"lightning_chain"
+display_name = "Lanț Electric"
+description = "Lovitura sare la încă doi inamici din apropiere."
+kind = 1
+rarity = 2
+stars = 4
+effects = Array[Resource]([ExtResource("2_effect")])
+unlock_at_total_rooms = 20
