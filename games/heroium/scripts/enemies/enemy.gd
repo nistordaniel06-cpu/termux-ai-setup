@@ -49,15 +49,27 @@ var _aim_point: Vector2 = Vector2.ZERO
 var _dash_velocity: Vector2 = Vector2.ZERO
 var _burn_dps: float = 0.0
 var _burn_time: float = 0.0
+var _frost_dps: float = 0.0
+var _frost_time: float = 0.0
+var _frost_slow: float = 0.0
 var _contact_cooldown: float = 0.0
 var _hero: Node2D = null
 
-@onready var _body: CharacterArt = $Body
+@onready var _body: CharacterBodyView = $Body
 @onready var _collider: CollisionShape2D = $CollisionShape2D
 
 
-## De chemat inainte de add_child: aseaza doar datele, iar `_ready` le pune in
-## practica. Asa ordinea e mereu aceeasi, indiferent cine creeaza inamicul.
+## Singurul loc care aseaza datele unui inamic nou (sau reincarnarea unuia
+## luat din bazin) - de aceea reseteaza si tot ce ar putea supravietui unei
+## morti anterioare (faza de sef, arsura, inghet), nu doar statisticile de
+## baza. Un inamic refolosit fara reset ar putea porni deja in flacari, sau
+## un sef nou ar putea sari peste faza a doua fiindca predecesorul din bazin
+## a murit deja in ea.
+##
+## Poate fi chemata inainte sau dupa intrarea in arbore, dupa cine creeaza
+## inamicul: RoomWave/Pool intra intai in arbore, testele instantiaza intai
+## si adauga in arbore mai tarziu. `is_inside_tree()` alege ce se poate face
+## acum - restul il termina `_ready()` la vremea lui.
 func setup(enemy_type: EnemyType, tier: int) -> void:
 	type = enemy_type
 	max_health = enemy_type.health_at(tier)
@@ -69,6 +81,30 @@ func setup(enemy_type: EnemyType, tier: int) -> void:
 	coin_reward = enemy_type.coin_reward
 	radius = enemy_type.radius
 
+	phase = 1
+	_phase_time = 0.0
+	_aim_point = Vector2.ZERO
+	_dash_velocity = Vector2.ZERO
+	_contact_cooldown = 0.0
+	_burn_dps = 0.0
+	_burn_time = 0.0
+	_frost_dps = 0.0
+	_frost_time = 0.0
+	_frost_slow = 0.0
+
+	if is_inside_tree():
+		_apply_visual()
+
+
+func _apply_visual() -> void:
+	_body.apply(type.visual, radius)
+	# Forma vine din scena, deci e aceeasi pentru toate instantele: fara
+	# copie, un sef mare ar umfla si scheletele.
+	var shape: CircleShape2D = _collider.shape.duplicate()
+	shape.radius = radius
+	_collider.shape = shape
+	_phase = _initial_phase()
+
 
 func _ready() -> void:
 	add_to_group(&"enemy")
@@ -77,15 +113,7 @@ func _ready() -> void:
 	if type == null:
 		push_warning("Enemy fara EnemyType - ramane pe valorile implicite.")
 	else:
-		_body.radius = radius
-		_body.fill = type.color
-		_body.silhouette = type.silhouette
-		# Forma vine din scena, deci e aceeasi pentru toate instantele: fara
-		# copie, un sef mare ar umfla si scheletele.
-		var shape: CircleShape2D = _collider.shape.duplicate()
-		shape.radius = radius
-		_collider.shape = shape
-		_phase = _initial_phase()
+		_apply_visual()
 
 	health = max_health
 
@@ -100,8 +128,46 @@ func _initial_phase() -> StringName:
 			return &"chase"
 
 
+
+## Chemat de Pool cand inamicul lasat deoparte e dat din nou.
+func pool_activate() -> void:
+	# _ready() l-a pus in grup o singura data, la nastere - dar pool_deactivate()
+	# il scoate de fiecare data cand e pus deoparte, deci reintrarea trebuie
+	# repetata aici, nu presupusa mostenita din prima intrare.
+	add_to_group(&"enemy")
+	_collider.disabled = false
+	process_mode = Node.PROCESS_MODE_INHERIT
+	visible = true
+
+
+## Chemat de Pool cand inamicul e lasat deoparte, in loc sa fie sters.
+##
+## Enemy e CharacterBody2D, nu Area2D - nu are monitoring/monitorable. Fara
+## coliziunea oprita explicit, un inamic "ascuns" tot ar putea fi lovit de
+## proiectile (forma lui de coliziune ramane activa la nivel de fizica,
+## indiferent de vizibilitate sau de process_mode).
+func pool_deactivate() -> void:
+	# Un inamic pus deoparte ramane, de acum, in viata (reparentat sub Pool,
+	# nu mai moare cu rularea) - dar tot in grupul "enemy" ar insemna ca
+	# tintirea automata a eroului (find_nearest_enemy, "get_nodes_in_group")
+	# il poate alege drept cea mai apropiata tinta, desi e invizibil, oprit,
+	# si posibil parcat departe de orice camera activa.
+	remove_from_group(&"enemy")
+	_collider.disabled = true
+	process_mode = Node.PROCESS_MODE_DISABLED
+	visible = false
+	# RoomWave.spawn() se conecteaza la `died` de fiecare data cand un inamic
+	# intra intr-o camera - inclusiv unul refolosit din bazin. Fara sa taiem
+	# aici legaturile vechi, un inamic pus deoparte de doua ori tot in mana
+	# aceleiasi camere ar pica la a doua conectare ("already connected"), iar
+	# unul refolosit de o camera NOUA ar ramane conectat si la cea veche -
+	# doua semnale la o singura moarte, unul catre o camera care nu mai exista.
+	for connection in died.get_connections():
+		died.disconnect(connection["callable"])
+
 func _physics_process(delta: float) -> void:
 	_tick_burn(delta)
+	_tick_frost(delta)
 	if health <= 0.0:
 		return
 
@@ -127,7 +193,7 @@ func _physics_process(delta: float) -> void:
 		_:
 			# Urmaritorul vine drept, fara siretlicuri - presiunea lui e ca nu
 			# se opreste niciodata.
-			velocity = direction * move_speed
+			velocity = direction * _current_speed()
 
 	move_and_slide()
 	_try_contact(distance, direction)
@@ -145,7 +211,7 @@ func _act_shooter(delta: float, direction: Vector2, distance: float) -> void:
 		elif distance < SHOOTER_RANGE - 40.0:
 			pull = -1.0
 		var strafe := Vector2(-direction.y, direction.x) * 0.45
-		velocity = (direction * pull + strafe) * move_speed
+		velocity = (direction * pull + strafe) * _current_speed()
 
 		if _phase_time <= 0.0:
 			_phase = &"aim"
@@ -156,7 +222,7 @@ func _act_shooter(delta: float, direction: Vector2, distance: float) -> void:
 		return
 
 	# In timp ce tinteste sta locului, ca semnul sa insemne ceva.
-	velocity = velocity.move_toward(Vector2.ZERO, move_speed * 6.0 * delta)
+	velocity = velocity.move_toward(Vector2.ZERO, _current_speed() * 6.0 * delta)
 	if _phase_time <= 0.0:
 		_shoot_at(_aim_point)
 		_phase = &"reposition"
@@ -168,7 +234,7 @@ func _act_charger(delta: float, direction: Vector2, distance: float) -> void:
 	_phase_time -= delta
 
 	if _phase == &"stalk":
-		velocity = direction * move_speed
+		velocity = direction * _current_speed()
 		if _phase_time <= 0.0 and distance < CHARGE_TRIGGER:
 			_phase = &"wind"
 			_phase_time = WIND_TIME
@@ -177,7 +243,7 @@ func _act_charger(delta: float, direction: Vector2, distance: float) -> void:
 		return
 
 	if _phase == &"wind":
-		velocity = velocity.move_toward(Vector2.ZERO, move_speed * 8.0 * delta)
+		velocity = velocity.move_toward(Vector2.ZERO, _current_speed() * 8.0 * delta)
 		if _phase_time <= 0.0:
 			_dash_velocity = global_position.direction_to(_aim_point) * DASH_SPEED
 			_phase = &"dash"
@@ -196,10 +262,10 @@ func _act_charger(delta: float, direction: Vector2, distance: float) -> void:
 
 
 func _shoot_at(point: Vector2) -> void:
-	if projectile_scene == null:
+	var world := get_parent()
+	if projectile_scene == null or world == null:
 		return
-	var projectile := projectile_scene.instantiate()
-	_spawn(projectile)
+	var projectile := Pool.acquire(projectile_scene, world) as EnemyProjectile
 	projectile.global_position = global_position
 	projectile.launch(global_position.direction_to(point), contact_damage, _tint())
 
@@ -220,6 +286,11 @@ func _try_contact(distance: float, direction: Vector2) -> void:
 		_hero.take_damage(contact_damage)
 	# Il impinge putin la o parte, ca sa nu ramana lipit intr-un colt si tocat.
 	_hero.global_position += direction * 14.0
+
+
+## Viteza chiar folosita acum: incetinita cat tine ingheţul.
+func _current_speed() -> float:
+	return move_speed * (1.0 - _frost_slow) if _frost_time > 0.0 else move_speed
 
 
 func get_defense() -> float:
@@ -249,7 +320,7 @@ func _apply_damage(amount: float) -> void:
 
 
 func _tint() -> Color:
-	return type.color if type != null else Color("d9464f")
+	return type.tint() if type != null else Color("d9464f")
 
 
 ## Seful nu moare la jumatate - se infurie. Devine mai iute si loveste mai tare,
@@ -264,7 +335,7 @@ func _maybe_enter_phase_two() -> void:
 	phase = 2
 	contact_damage *= type.phase_two_damage_multiplier
 	move_speed *= type.phase_two_speed_multiplier
-	_body.fill = _tint().lightened(0.25)
+	_body.set_tint(_tint().lightened(0.25))
 
 	Fx.shake(7.0, 0.45)
 	Fx.burst(global_position, _tint(), 28, 260.0)
@@ -275,6 +346,25 @@ func apply_burn(dps: float, duration: float) -> void:
 	# Arsura nu se aduna la infinit: ramane cea mai puternica sursa.
 	_burn_dps = maxf(_burn_dps, dps)
 	_burn_time = maxf(_burn_time, duration)
+
+
+## Ingheţul face doua lucruri deodata: arde incet si incetineste. Sunt separate
+## de arsura obisnuita, ca amandoua sa poata fi purtate simultan de tinte diferite.
+func apply_frost(dps: float, slow: float, duration: float) -> void:
+	_frost_dps = maxf(_frost_dps, dps)
+	_frost_slow = maxf(_frost_slow, slow)
+	_frost_time = maxf(_frost_time, duration)
+
+
+func _tick_frost(delta: float) -> void:
+	if _frost_time <= 0.0:
+		return
+	_frost_time -= delta
+	if _frost_dps > 0.0:
+		_apply_damage(_frost_dps * delta)
+	if _frost_time <= 0.0:
+		_frost_dps = 0.0
+		_frost_slow = 0.0
 
 
 func _tick_burn(delta: float) -> void:
@@ -293,7 +383,7 @@ func _die() -> void:
 	Fx.burst(global_position, _tint(), 22 if is_boss else 14, 260.0 if is_boss else 190.0)
 	Fx.shake(6.0 if is_boss else 2.5, 0.35 if is_boss else 0.1)
 	died.emit(self)
-	queue_free()
+	Pool.release(self)
 
 
 ## Bara de viata. La inamicii obisnuiti apare abia dupa prima lovitura, ca o

@@ -19,7 +19,8 @@ enum Archetype {
 
 @export_group("Vizual")
 @export var portrait: Texture2D
-@export var sprite: Texture2D
+## Cum arata eroul. Arta finala se pune aici, in .tres - codul nu se atinge.
+@export var visual: CharacterVisual
 ## Culoarea proiectilelor si a aurei, ca fiecare erou sa se citeasca dintr-o privire.
 @export var accent_color: Color = Color("f0b45a")
 

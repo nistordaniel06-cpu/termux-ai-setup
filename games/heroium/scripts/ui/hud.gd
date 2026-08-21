@@ -223,7 +223,7 @@ func _draw_boss(font: Font, width: float) -> void:
 	var fraction := clampf(_boss.health / maxf(1.0, _boss.max_health), 0.0, 1.0)
 
 	draw_rect(bar, Color(0.0, 0.0, 0.0, 0.6))
-	draw_rect(Rect2(bar.position, Vector2(bar.size.x * fraction, bar.size.y)), _boss.type.color)
+	draw_rect(Rect2(bar.position, Vector2(bar.size.x * fraction, bar.size.y)), _boss.type.tint())
 	draw_rect(bar, UiKit.GOLD_DIM, false, 2.0)
 
 	var label := _boss.type.display_name

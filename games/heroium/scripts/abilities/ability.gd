@@ -15,7 +15,7 @@ enum Kind {
 	PASSIVE,      ## doar statistici
 }
 
-enum Rarity { COMMON, RARE, EPIC, LEGENDARY }
+enum Rarity { COMMON, RARE, EPIC, LEGENDARY, MYTHIC }
 
 @export var id: StringName = &""
 @export var display_name: String = ""
@@ -43,6 +43,12 @@ enum Rarity { COMMON, RARE, EPIC, LEGENDARY }
 @export var bonus_max_health: float = 0.0
 ## Vindecare pe loc, ca fractiune din viata maxima (0.5 = jumatate).
 @export_range(0.0, 1.0) var heal_fraction: float = 0.0
+
+@export_group("Efecte compozabile")
+## Ce nu incape intr-un camp simplu: Frost, Lightning Chain, Vampirism, marimea
+## si viteza proiectilului. Doua abilitati luate impreuna isi aduna toate
+## efectele - fara sa fi fost scris vreodata cazul acelei perechi anume.
+@export var effects: Array[AbilityEffect] = []
 
 @export_group("Fuziune")
 ## Abilitatea cu care se combina. Gol = nu fuzioneaza.
@@ -83,4 +89,14 @@ func apply_to(stats: HeroStats) -> void:
 		stats.mult_attack_speed *= attack_speed_multiplier
 	if not is_equal_approx(move_speed_multiplier, 1.0):
 		stats.mult_move_speed *= move_speed_multiplier
+	for effect in effects:
+		if effect != null:
+			effect.apply_to_stats(stats)
 	stats.recalculate()
+
+
+## Efectele care se declanseaza la impact - Frost, Lightning Chain, Vampirism -
+## din toate cele purtate de abilitatea asta. EffectStatMod n-are on_hit, deci
+## filtrarea nu e nevoie: metoda lui goala pur si simplu nu face nimic.
+func on_hit_effects() -> Array[AbilityEffect]:
+	return effects

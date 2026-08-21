@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="EffectFrost" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/abilities/effects/effect_frost.gd" id="1_frost"]
+
+[resource]
+script = ExtResource("1_frost")
+summary = "Îngheață ținta: 4 daună/s, -35% viteză, 2s."
+dps = 4.0
+slow = 0.35
+duration = 2.0

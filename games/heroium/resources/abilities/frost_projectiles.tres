@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="Ability" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/abilities/ability.gd" id="1_ability"]
+[ext_resource type="Resource" path="res://resources/abilities/effects/frost_bite.tres" id="2_effect"]
+
+[resource]
+script = ExtResource("1_ability")
+id = &"frost_projectiles"
+display_name = "Săgeți Înghețate"
+description = "Fiecare lovitură îngheață ținta: ardere lentă și încetinire."
+kind = 1
+rarity = 1
+stars = 3
+effects = Array[Resource]([ExtResource("2_effect")])
+unlock_at_total_rooms = 10

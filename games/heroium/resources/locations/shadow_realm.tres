@@ -1,10 +1,11 @@
-[gd_resource type="Resource" script_class="Location" load_steps=6 format=3]
+[gd_resource type="Resource" script_class="Location" load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://scripts/systems/location.gd" id="1_location"]
-[ext_resource type="Resource" path="res://resources/enemies/cultist.tres" id="2_cultist"]
-[ext_resource type="Resource" path="res://resources/enemies/demon.tres" id="3_demon"]
-[ext_resource type="Resource" path="res://resources/enemies/dread_knight.tres" id="4_knight"]
-[ext_resource type="Resource" path="res://resources/enemies/fallen_king.tres" id="5_king"]
+[ext_resource type="Resource" path="res://resources/enemies/fallen_king.tres" id="2_boss"]
+[ext_resource type="Resource" path="res://resources/enemies/dark_priest.tres" id="3_e"]
+[ext_resource type="Resource" path="res://resources/enemies/skeleton_mage.tres" id="4_e"]
+[ext_resource type="Resource" path="res://resources/enemies/demon.tres" id="5_e"]
+[ext_resource type="Resource" path="res://resources/enemies/undead_knight.tres" id="6_e"]
 
 [resource]
 script = ExtResource("1_location")
@@ -15,8 +16,8 @@ rooms = 14
 floor_color = Color(0.13, 0.08, 0.19, 1)
 grid_color = Color(0.21, 0.13, 0.3, 1)
 border_color = Color(0.73, 0.42, 0.98, 1)
-enemy_types = Array[Resource]([ExtResource("2_cultist"), ExtResource("3_demon"), ExtResource("4_knight")])
-boss = ExtResource("5_king")
-base_enemy_count = 6
-enemies_per_room = 1.2
-max_enemy_count = 13
+enemy_types = Array[Resource]([ ExtResource("3_e"), ExtResource("4_e"), ExtResource("5_e"), ExtResource("6_e"), ])
+boss = ExtResource("2_boss")
+base_enemy_count = 4
+enemies_per_room = 1.1
+max_enemy_count = 12

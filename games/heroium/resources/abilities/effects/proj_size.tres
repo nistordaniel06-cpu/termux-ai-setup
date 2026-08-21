@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="EffectStatMod" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/abilities/effects/effect_stat_mod.gd" id="1_mod"]
+
+[resource]
+script = ExtResource("1_mod")
+summary = "+30% mărimea săgeților."
+stat = 4
+amount = 1.3

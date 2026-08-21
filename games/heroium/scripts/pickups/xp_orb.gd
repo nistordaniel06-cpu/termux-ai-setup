@@ -25,10 +25,26 @@ func _ready() -> void:
 	_hero = get_tree().get_first_node_in_group(&"hero")
 
 
+
+## Chemat de Pool cand ciobul lasat deoparte e dat din nou.
+func pool_activate() -> void:
+	monitoring = true
+	monitorable = true
+	visible = true
+	_age = 0.0
+	_collected = false
+
+
+## Chemat de Pool cand ciobul e lasat deoparte, in loc sa fie sters.
+func pool_deactivate() -> void:
+	monitoring = false
+	monitorable = false
+	visible = false
+
 func _physics_process(delta: float) -> void:
 	_age += delta
 	if _age >= LIFETIME:
-		queue_free()
+		Pool.release(self)
 		return
 
 	if _hero == null or not is_instance_valid(_hero):
@@ -52,7 +68,7 @@ func _on_body_entered(body: Node) -> void:
 	if body.has_method(&"gain_xp"):
 		body.gain_xp(xp)
 	Fx.burst(global_position, Color("5ef0b6"), 5, 90.0)
-	queue_free()
+	Pool.release(self)
 
 
 func _draw() -> void:

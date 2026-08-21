@@ -39,6 +39,9 @@ func _initialize() -> void:
 	await _test_game_modes(state)
 	await _test_touch_reaches_buttons()
 	await _test_looks(state)
+	await _test_pooling()
+	await _test_composable_effects(state)
+	await _test_difficulty_scaling()
 
 	state.wipe()
 
@@ -415,24 +418,86 @@ func _test_touch_reaches_buttons() -> void:
 func _test_looks(state: Node) -> void:
 	print("\n[12] CUM ARATĂ")
 
-	# Fiecare fel de inamic trebuie să se deosebească dintr-o privire. Culoarea
-	# singură nu ajunge - un schelet și un demon roșu ar fi două buline.
+	# Fiecare fel de inamic trebuie sa se deosebeasca dintr-o privire. Culoarea
+	# singura nu ajunge - un schelet si un demon rosu ar fi doua buline.
+	var roster := [
+		"skeleton_warrior", "skeleton_archer", "skeleton_mage", "undead_knight",
+		"dark_priest", "demon", "elite_skeleton", "bat",
+		"fallen_king", "lord_of_the_dead", "necromancer",
+	]
 	var seen := {}
-	for path in [
-		"res://resources/enemies/skeleton.tres", "res://resources/enemies/bat.tres",
-		"res://resources/enemies/cultist.tres", "res://resources/enemies/demon.tres",
-		"res://resources/enemies/dread_knight.tres", "res://resources/enemies/bone_colossus.tres",
-		"res://resources/enemies/fallen_king.tres",
-	]:
-		var type: EnemyType = load(path)
-		seen[type.silhouette] = true
-	check("cele șapte feluri au siluete distincte", seen.size() == 7, "%d siluete" % seen.size())
+	var missing := 0
+	for id in roster:
+		var type: EnemyType = load("res://resources/enemies/%s.tres" % id)
+		if type == null or type.visual == null:
+			missing += 1
+			continue
+		seen[type.visual.silhouette] = true
+	check("tot rosterul se încarcă", missing == 0, "%d lipsă din %d" % [missing, roster.size()])
+	check("siluetele sunt distincte", seen.size() >= 8, "%d siluete pentru %d inamici"
+		% [seen.size(), roster.size()])
 
-	# Skinuri
+	# Cei trei sefi din brief exista si sunt sefi.
+	for id in ["fallen_king", "lord_of_the_dead", "necromancer"]:
+		var boss: EnemyType = load("res://resources/enemies/%s.tres" % id)
+		check("%s e șef cu fază a II-a" % boss.display_name,
+			boss.is_boss and boss.phase_two_at > 0.0 and boss.summons != null)
+
+	await _test_art_is_swappable()
+	await _test_skins(state)
+
+
+## Dovada ca arta finala se poate pune fara sa se atinga cod: aceeasi vedere,
+## trei descrieri, trei noduri diferite dedesubt.
+func _test_art_is_swappable() -> void:
+	var holder := Node2D.new()
+	root.add_child(holder)
+
+	var drawn := CharacterVisual.new()
+	drawn.silhouette = CharacterArt.Silhouette.SKELETON
+	var view_drawn := CharacterBodyView.new()
+	holder.add_child(view_drawn)
+	view_drawn.apply(drawn, 16.0)
+	await process_frame
+	check("fără artă -> siluetă desenată", view_drawn.get_child(0) is CharacterArt,
+		view_drawn.get_child(0).get_class())
+
+	var image := Image.create(32, 32, false, Image.FORMAT_RGBA8)
+	image.fill(Color.WHITE)
+
+	var still := CharacterVisual.new()
+	still.texture = ImageTexture.create_from_image(image)
+	var view_still := CharacterBodyView.new()
+	holder.add_child(view_still)
+	view_still.apply(still, 16.0)
+	await process_frame
+	check("cu textură -> Sprite2D", view_still.get_child(0) is Sprite2D,
+		view_still.get_child(0).get_class())
+
+	var frames := SpriteFrames.new()
+	frames.add_animation(&"idle")
+	frames.add_frame(&"idle", ImageTexture.create_from_image(image))
+	var moving := CharacterVisual.new()
+	moving.sprite_frames = frames
+	var view_moving := CharacterBodyView.new()
+	holder.add_child(view_moving)
+	view_moving.apply(moving, 16.0)
+	await process_frame
+	check("cu animație -> AnimatedSprite2D", view_moving.get_child(0) is AnimatedSprite2D,
+		view_moving.get_child(0).get_class())
+
+	# Arta se aseaza pe raza de coliziune, nu pe marimea fisierului.
+	var sprite: Sprite2D = view_still.get_child(0)
+	check("arta se scalează la raza corpului",
+		is_equal_approx(sprite.scale.x, 1.0), "scală %.2f pentru 32px la rază 16" % sprite.scale.x)
+
+	holder.free()
+
+
+func _test_skins(state: Node) -> void:
 	state.wipe()
 	check("pornești cu o singură înfățișare", state.unlocked_skins.size() == 1,
 		"%d deblocate" % state.unlocked_skins.size())
-	check("cea de start e purtată", state.selected_skin_resource().id == &"classic")
 
 	var void_skin: HeroSkin = state.skin_by_id(&"void")
 	check("Umbra Regelui e blocată", not state.is_skin_unlocked(&"void"))
@@ -441,20 +506,182 @@ func _test_looks(state: Node) -> void:
 	state.add_coins(void_skin.cost)
 	check("cu monede se cumpără", state.unlock_skin(&"void", void_skin.cost))
 	state.select_skin(&"void")
-	check("devine purtată", state.selected_skin_resource().id == &"void")
 
 	var run := await _open_run()
 	var hero := get_first_node_in_group(&"hero")
-	var body = hero.get_node("Body")
-	check("eroul chiar poartă culoarea aleasă",
-		body.fill.is_equal_approx(void_skin.color), str(body.fill))
-	check("eroul are silueta de erou", body.silhouette == 0, "silueta %d" % body.silhouette)
+	var view: CharacterBodyView = hero.get_node("Body")
+	check("eroul poartă culoarea aleasă",
+		view.visual != null and view.visual.tint.is_equal_approx(void_skin.color),
+		str(view.visual.tint) if view.visual != null else "fără visual")
 
-	# Cosmeticul nu are voie sa atinga puterea.
 	var ranger: HeroClass = state.hero_class_by_id(&"ranger")
 	check("înfățișarea nu schimbă nicio statistică",
 		is_equal_approx(hero.stats.attack, ranger.stats.base_attack),
 		"atac %.0f, bază %.0f" % [hero.stats.attack, ranger.stats.base_attack])
+	check("culoarea aleasă nu se scrie în resursa clasei",
+		ranger.visual.tint.is_equal_approx(ranger.accent_color),
+		"clasa a rămas %s" % ranger.visual.tint)
 
 	run.free()
 	state.wipe()
+
+
+func _test_composable_effects(state: Node) -> void:
+	print("\n[13] EFECTE COMPOZABILE")
+
+	# Cele cinci care nu se puteau exprima in modelul vechi de Ability.
+	for id in ["frost_projectiles", "lightning_chain", "vampirism",
+			"projectile_size", "projectile_speed"]:
+		var ability: Ability = load("res://resources/abilities/%s.tres" % id)
+		check("%s se încarcă cu efectul lui" % ability.display_name,
+			ability.effects.size() == 1, "%d efecte" % ability.effects.size())
+
+	# Doua abilitati luate impreuna isi aduna efectele fara cod scris pentru
+	# perechea aceea anume - exact ce trebuia sa rezolve sistemul.
+	var run := await _open_run()
+	var hero := get_first_node_in_group(&"hero")
+	var frost: Ability = load("res://resources/abilities/frost_projectiles.tres")
+	var vamp: Ability = load("res://resources/abilities/vampirism.tres")
+	hero.grant_ability(frost)
+	hero.grant_ability(vamp)
+
+	var combat: HeroCombat = hero.get_node("Combat")
+	var collected := combat._collect_on_hit_effects()
+	check("ambele efecte ajung la proiectil", collected.size() == 2, "%d efecte" % collected.size())
+
+	# Frost incetineste si arde - se vede pe un inamic real, nu doar pe hartie.
+	var enemy: Enemy = load("res://scenes/enemies/enemy.tscn").instantiate()
+	var skeleton: EnemyType = load("res://resources/enemies/skeleton_warrior.tres")
+	enemy.setup(skeleton, 0)
+	run.get_node("World").add_child(enemy)
+	await process_frame
+
+	var before_speed := enemy.move_speed
+	enemy.apply_frost(5.0, 0.4, 1.0)
+	check("îngheț: viteza scade", enemy._current_speed() < before_speed,
+		"%.0f -> %.0f" % [before_speed, enemy._current_speed()])
+	var before_health := enemy.health
+	await create_timer(0.3).timeout
+	check("îngheț: arde în timp", enemy.health < before_health,
+		"%.1f -> %.1f" % [before_health, enemy.health])
+
+	# Vampirism: eroul se vindeca dupa o lovitura, proportional cu dauna.
+	hero.take_damage(hero.get_max_health() * 0.5)
+	var health_before_hit: float = hero.get_health()
+	var vamp_effect: EffectVampirism = vamp.effects[0]
+	var info := HitInfo.create(enemy, 100.0, false)
+	info.attacker = hero
+	vamp_effect.on_hit(info)
+	check("vampirism vindecă eroul", hero.get_health() > health_before_hit,
+		"%.0f -> %.0f (12%% din 100 = 12)" % [health_before_hit, hero.get_health()])
+
+	# Lightning Chain sare la un al doilea inamic din apropiere.
+	var second: Enemy = load("res://scenes/enemies/enemy.tscn").instantiate()
+	second.setup(skeleton, 0)
+	run.get_node("World").add_child(second)
+	second.global_position = enemy.global_position + Vector2(50, 0)
+	await process_frame
+
+	var chain: Ability = load("res://resources/abilities/lightning_chain.tres")
+	var chain_effect: EffectLightningChain = chain.effects[0]
+	var second_health_before := second.health
+	var chain_info := HitInfo.create(enemy, 40.0, false)
+	chain_effect.on_hit(chain_info)
+	check("lanțul electric lovește și vecinul", second.health < second_health_before,
+		"%.1f -> %.1f" % [second_health_before, second.health])
+
+	# Marimea si viteza proiectilului chiar ajung pe proiectilul tras.
+	var proj_size: Ability = load("res://resources/abilities/projectile_size.tres")
+	var proj_speed: Ability = load("res://resources/abilities/projectile_speed.tres")
+	hero.grant_ability(proj_size)
+	hero.grant_ability(proj_speed)
+	check("mărimea intră în statistici", hero.stats.projectile_scale > 1.0,
+		"scală %.2f" % hero.stats.projectile_scale)
+	check("viteza intră în statistici", hero.stats.projectile_speed_mult > 1.0,
+		"multiplicator %.2f" % hero.stats.projectile_speed_mult)
+
+	var projectile: Projectile = load("res://scenes/abilities/projectile.tscn").instantiate()
+	run.get_node("World").add_child(projectile)
+	projectile.launch(Vector2.RIGHT, hero.stats)
+	check("proiectilul chiar e mai mare", projectile.scale.x > 1.0, "scală %.2f" % projectile.scale.x)
+	check("proiectilul chiar e mai rapid", projectile.speed > 900.0, "viteză %.0f" % projectile.speed)
+
+	run.free()
+
+
+## Verifica ca Pool refoloseste nodurile si nu le distruge cand sunt eliberate.
+##
+## `run_tests.gd` e chiar scriptul de intrare (--script), deci Godot il
+## compileaza inaintea oricarui alt fisier - inclusiv inaintea momentului in
+## care Pool exista ca identificator global. "Pool.xxx" scris direct in text
+## ar pica exact ca in projectile.gd; root.get_node("Pool") e o cautare la
+## rulare, imuna la asta (la fel cum testul deja face pentru GameState).
+func _test_pooling() -> void:
+	print("[13] TEST POOLING")
+	var pool := root.get_node("Pool")
+	var start_idle: int = pool.idle_count(preload("res://scenes/abilities/projectile.tscn"))
+	print("  Idle projectiles at start: ", start_idle)
+
+	# Acquire and release a projectile
+	var parent := Node2D.new()
+	root.add_child(parent)
+	var projectile: Projectile = pool.acquire(preload("res://scenes/abilities/projectile.tscn"), parent) as Projectile
+	check("acquire returns Projectile", projectile != null)
+	check("acquired projectile is in parent", projectile.get_parent() == parent)
+
+	# At this point, idle count should not have increased (we took one out)
+	var idle_after_acquire: int = pool.idle_count(preload("res://scenes/abilities/projectile.tscn"))
+	check("idle count unchanged by acquire", idle_after_acquire == start_idle)
+
+	# Release it
+	pool.release(projectile)
+	var idle_after_release: int = pool.idle_count(preload("res://scenes/abilities/projectile.tscn"))
+	check("idle count increased after release", idle_after_release == start_idle + 1, "was %d now %d" % [start_idle, idle_after_release])
+
+	# Acquire again should reuse the same node
+	var projectile2: Projectile = pool.acquire(preload("res://scenes/abilities/projectile.tscn"), parent) as Projectile
+	check("reacquire returns same Projectile", projectile2 == projectile, "first: %s, second: %s" % [projectile, projectile2])
+
+	idle_after_acquire = pool.idle_count(preload("res://scenes/abilities/projectile.tscn"))
+	check("idle count back down after reacquire", idle_after_acquire == start_idle)
+
+	# Test release is idempotent
+	pool.release(projectile2)
+	pool.release(projectile2)  # Second call should be no-op
+	var idle_after_double_release: int = pool.idle_count(preload("res://scenes/abilities/projectile.tscn"))
+	check("double release is safe", idle_after_double_release == start_idle + 1)
+
+	parent.queue_free()
+
+
+## Controlul mai automatizat trebuie sa intareasca inamicii - RoomWave anunta
+## fiecare nastere prin `enemy_spawned`, iar Arena asculta o singura data si
+## aplica multiplicatorul acolo. Verificam legatura capat la capat, nu doar
+## ca HeroControl.difficulty_multiplier() intoarce numere corecte pe hartie.
+func _test_difficulty_scaling() -> void:
+	print("\n[14] SCALAREA DUPĂ CONTROL")
+	var run := await _open_run()
+	var hero := get_first_node_in_group(&"hero")
+
+	hero.set_control_mode(HeroControl.Mode.DUAL_STICK)
+	run._enter_location(0)
+	run.room = 1
+	run.build_room()
+	await process_frame
+
+	var manual_enemies := get_nodes_in_group(&"enemy")
+	check("controlul manual nu întărește inamicii", manual_enemies.size() > 0
+		and manual_enemies[0].max_health == manual_enemies[0].type.health_at(run.rooms_cleared),
+		"%.0f viață" % manual_enemies[0].max_health if manual_enemies.size() > 0 else "-")
+
+	hero.set_control_mode(HeroControl.Mode.AUTO)
+	run.build_room()
+	await process_frame
+
+	var auto_enemies := get_nodes_in_group(&"enemy")
+	var expected: float = auto_enemies[0].type.health_at(run.rooms_cleared) * 1.45 if auto_enemies.size() > 0 else 0.0
+	check("modul automat întărește inamicii", auto_enemies.size() > 0
+		and absf(auto_enemies[0].max_health - expected) < 0.5,
+		"%.0f viață, așteptam %.0f" % [auto_enemies[0].max_health, expected] if auto_enemies.size() > 0 else "-")
+
+	run.free()

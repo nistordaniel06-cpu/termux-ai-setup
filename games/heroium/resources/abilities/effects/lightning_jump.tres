@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="EffectLightningChain" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/abilities/effects/effect_lightning_chain.gd" id="1_chain"]
+
+[resource]
+script = ExtResource("1_chain")
+summary = "Sare la încă 2 inamici din apropiere, la 60% daună."
+jumps = 2
+damage_fraction = 0.6
+radius = 170.0

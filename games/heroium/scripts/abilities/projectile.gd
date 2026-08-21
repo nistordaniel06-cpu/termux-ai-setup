@@ -15,16 +15,64 @@ var crit_multiplier: float = 2.0
 var crit_chance: float = 0.05
 var pierce_left: int = 0
 var bounces_left: int = 0
+## burn_dps / explosion_radius - vechile doua efecte, ramase ca dictionar din
+## motive de compatibilitate cu ce era deja testat.
 var effects: Dictionary = {}
+## Frost, Lightning Chain, Vampirism si oricare altul compozabil, adaugate fara
+## sa se atinga linia asta de cod vreodata din nou.
+var on_hit_effects: Array[AbilityEffect] = []
+## Cine a tras - efectele care dau ceva inapoi (vampirism) au nevoie de el.
+var attacker: Node = null
 
 var _direction: Vector2 = Vector2.RIGHT
 var _age: float = 0.0
 var _already_hit: Array[Node] = []
 
+## Prin nod, nu prin identificatorul global "Pool"/"Fx": scriptul asta are
+## class_name, deci Godot il compileaza devreme, cand construieste lista de
+## clase globale a proiectului - posibil inainte ca autoload-urile sa fi fost
+## inregistrate ca identificatori globali. Un "Pool.xxx" scris direct in text
+## a picat exact din acest motiv (compilare esuata o singura data, cache-uita
+## stricata tot procesul). get_node() e o cautare la rulare, nu la compilare,
+## deci nu are cum sa pice indiferent cine se compileaza primul.
+@onready var _pool: Node = get_node("/root/Pool")
+@onready var _fx: Node = get_node("/root/Fx")
+
+## Viteza si raza dinaintea oricarui bonus de marime/viteza. Un proiectil
+## refolosit din bazin trebuie sa porneasca mereu de aici, nu de la ce a
+## ramas dupa ultima rulare - altfel bonusurile s-ar aduna intre folosiri
+## in loc sa se aplice mereu peste aceleasi valori de baza.
+var _base_speed: float = 0.0
+var _base_radius: float = 0.0
+
 
 func _ready() -> void:
 	body_entered.connect(_on_body_entered)
 	area_entered.connect(_on_area_entered)
+
+	_base_speed = speed
+	var collider := get_node_or_null("CollisionShape2D") as CollisionShape2D
+	if collider != null and collider.shape is CircleShape2D:
+		# Forma vine din scena, deci e aceeasi resursa pentru toate proiectilele -
+		# fara copie, marimea data de o abilitate a unui erou ar redimensiona
+		# coliziunea tuturor sagetilor din joc, chiar si ale celor fara ea.
+		var shape: CircleShape2D = (collider.shape as CircleShape2D).duplicate()
+		collider.shape = shape
+		_base_radius = shape.radius
+
+
+## Chemat de Pool cand un proiectil lasat deoparte e dat din nou - inainte ca
+## `launch()` sa-i stabileasca directia si dauna. Coliziunea sta oprita pana
+## atunci, ca un proiectil "mort" sa nu mai poata lovi nimic din pauza lui.
+func pool_activate() -> void:
+	monitoring = true
+	monitorable = true
+
+
+## Chemat de Pool cand proiectilul e lasat deoparte, in loc sa fie sters.
+func pool_deactivate() -> void:
+	monitoring = false
+	monitorable = false
 
 
 ## Nodul e deja rotit pe directia de zbor, deci desenul e mereu orientat pe +X.
@@ -36,9 +84,30 @@ func _draw() -> void:
 
 ## Porneste proiectilul. Copiaza din statistici doar ce-i trebuie, ca sa nu
 ## depinda de erou dupa ce a plecat din arc.
-func launch(direction: Vector2, stats: HeroStats, hit_effects: Dictionary = {}) -> void:
+func launch(
+	direction: Vector2,
+	stats: HeroStats,
+	hit_effects: Dictionary = {},
+	shooter: Node = null,
+	compose_effects: Array[AbilityEffect] = []
+) -> void:
 	_direction = direction.normalized()
 	rotation = _direction.angle()
+
+	# Un proiectil refolosit din bazin poarta insemnele rularii lui de dinainte
+	# - varsta si ce a lovit deja. Fara resetul asta, unul reintors din pauza
+	# ar putea muri instant (varsta veche > lifetime) sau ar refuza sa loveasca
+	# ceva ce a mai lovit cu vieti in urma.
+	_age = 0.0
+	_already_hit.clear()
+
+	speed = _base_speed * stats.projectile_speed_mult
+	scale = Vector2.ONE * stats.projectile_scale
+	var collider := get_node_or_null("CollisionShape2D") as CollisionShape2D
+	if collider != null and collider.shape is CircleShape2D:
+		# Coliziunea creste odata cu desenul - altfel o sageata mare ar
+		# arata puternica si ar lovi ca una obisnuita.
+		(collider.shape as CircleShape2D).radius = _base_radius * stats.projectile_scale
 
 	damage = stats.attack
 	crit_chance = stats.crit_chance
@@ -46,6 +115,8 @@ func launch(direction: Vector2, stats: HeroStats, hit_effects: Dictionary = {}) 
 	pierce_left = stats.pierce
 	bounces_left = stats.bounces
 	effects = hit_effects
+	attacker = shooter
+	on_hit_effects = compose_effects
 
 
 func _physics_process(delta: float) -> void:
@@ -53,7 +124,7 @@ func _physics_process(delta: float) -> void:
 
 	_age += delta
 	if _age >= lifetime:
-		queue_free()
+		_pool.release(self)
 
 
 func _on_body_entered(body: Node) -> void:
@@ -91,10 +162,22 @@ func _resolve_hit(node: Node) -> void:
 	if radius > 0.0:
 		_explode(radius, final_damage * 0.6)
 
+	if not on_hit_effects.is_empty():
+		var info := HitInfo.create(node, final_damage, is_crit)
+		info.attacker = attacker
+		info.world = get_parent()
+		for effect in on_hit_effects:
+			if effect != null:
+				effect.on_hit(info)
+		# Efectele compozabile nu deseneaza nimic ele insele (aceeasi cursa de
+		# compilare de mai sus - vezi comentariul de la _pool). Scanteia
+		# confirma vizual ca "s-a intamplat ceva in plus".
+		_fx.burst(global_position, Color("9ad9ff"), 4, 130.0)
+
 	if pierce_left > 0:
 		pierce_left -= 1
 	else:
-		queue_free()
+		_pool.release(self)
 
 
 func _explode(radius: float, splash: float) -> void:

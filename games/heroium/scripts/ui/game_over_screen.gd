@@ -43,7 +43,7 @@ func _build() -> void:
 	column.add_theme_constant_override("separation", 16)
 	margin.add_child(column)
 
-	_title = UiKit.title("AI CĂZUT", 38, UiKit.DANGER)
+	_title = UiKit.title(Loc.t("game_over"), 38, UiKit.DANGER)
 	column.add_child(_title)
 
 	_summary = UiKit.body("", 18, UiKit.TEXT)
@@ -56,17 +56,17 @@ func _build() -> void:
 	spacer.custom_minimum_size.y = 12
 	column.add_child(spacer)
 
-	var again := UiKit.button("ÎNCEARCĂ DIN NOU", true)
+	var again := UiKit.button(Loc.t("btn_retry"), true)
 	again.pressed.connect(_on_retry)
 	column.add_child(again)
 
-	var camp := UiKit.button("TABĂRA")
+	var camp := UiKit.button(Loc.t("tab_camp"))
 	camp.pressed.connect(_on_menu)
 	column.add_child(camp)
 
 
 func _on_run_ended(rooms_cleared: int, coins_earned: int) -> void:
-	_title.text = "AI CĂZUT"
+	_title.text = Loc.t("game_over")
 	_title.add_theme_color_override("font_color", UiKit.DANGER)
 
 	if rooms_cleared >= GameState.best_run_rooms and rooms_cleared > 0:
@@ -81,7 +81,7 @@ func _on_run_ended(rooms_cleared: int, coins_earned: int) -> void:
 ## Campania dusa pana la capat. Merita alt cuvant si alta culoare decat o cadere -
 ## altfel singurul final pe care il poate atinge jucatorul arata a esec.
 func _on_run_won(rooms_cleared: int, coins_earned: int) -> void:
-	_title.text = "VICTORIE"
+	_title.text = Loc.t("victory")
 	_title.add_theme_color_override("font_color", UiKit.GOLD)
 	_record.text = "Ai trecut toate cele patru tărâmuri.\nÎncearcă Supraviețuire, sau alt erou."
 	_show(rooms_cleared, coins_earned)

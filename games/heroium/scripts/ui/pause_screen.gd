@@ -46,16 +46,16 @@ func _build() -> void:
 	column.add_theme_constant_override("separation", 16)
 	margin.add_child(column)
 
-	column.add_child(UiKit.title("PAUZĂ"))
+	column.add_child(UiKit.title(Loc.t("paused")))
 
 	_stats = UiKit.body("", 16, UiKit.TEXT)
 	column.add_child(_stats)
 
-	var resume := UiKit.button("CONTINUĂ", true)
+	var resume := UiKit.button(Loc.t("btn_resume"), true)
 	resume.pressed.connect(close)
 	column.add_child(resume)
 
-	var quit := UiKit.button("RENUNȚĂ LA RULARE")
+	var quit := UiKit.button(Loc.t("btn_quit"))
 	quit.pressed.connect(_on_quit)
 	column.add_child(quit)
 

@@ -61,6 +61,12 @@ var projectile_count: int = 1
 var pierce: int = 0
 ## De cate ori ricoseaza din pereti.
 var bounces: int = 0
+## Multiplicatori direcți, fără strat de bază - mărimea și viteza proiectilului
+## n-au un "0" natural de la care să pornească aditiv. Efectele precum Frost,
+## Lightning Chain sau Vampirism nu au nevoie de un strat aici - fiecare își
+## poartă propriile numere pe resursa lui și acționează direct la impact.
+var projectile_scale: float = 1.0
+var projectile_speed_mult: float = 1.0
 
 
 func _init() -> void:

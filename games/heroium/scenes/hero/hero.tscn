@@ -5,7 +5,7 @@
 [ext_resource type="Script" path="res://scripts/hero/hero_health.gd" id="3_health"]
 [ext_resource type="PackedScene" path="res://scenes/abilities/projectile.tscn" id="4_projectile"]
 [ext_resource type="Resource" path="res://resources/heroes/ranger.tres" id="5_ranger"]
-[ext_resource type="Script" path="res://scripts/visual/character_art.gd" id="6_blob"]
+[ext_resource type="Script" path="res://scripts/visual/character_body_view.gd" id="6_view"]
 [ext_resource type="Script" path="res://scripts/hero/hero_xp.gd" id="7_xp"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_body"]
@@ -20,9 +20,7 @@ script = ExtResource("1_hero")
 hero_class = ExtResource("5_ranger")
 
 [node name="Body" type="Node2D" parent="."]
-script = ExtResource("6_blob")
-silhouette = 0
-radius = 18.0
+script = ExtResource("6_view")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 shape = SubResource("CircleShape2D_body")

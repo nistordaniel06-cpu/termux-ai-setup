@@ -97,10 +97,11 @@ func _spawn_projectiles(direction: Vector2, target: Node2D = null) -> void:
 
 	for i in count:
 		var offset := 0.0 if count == 1 else (float(i) - (count - 1) * 0.5) * spread
-		var projectile := projectile_scene.instantiate()
-		container.add_child(projectile)
+		var projectile := Pool.acquire(projectile_scene, container) as Projectile
 		projectile.global_position = global_position
-		projectile.launch(Vector2.RIGHT.rotated(base_angle + offset), _stats, _collect_hit_effects())
+		projectile.launch(
+			Vector2.RIGHT.rotated(base_angle + offset), _stats,
+			_collect_hit_effects(), _hero, _collect_on_hit_effects())
 
 	fired.emit(target)
 
@@ -116,6 +117,18 @@ func _collect_hit_effects() -> Dictionary:
 		effects["explosion_radius"] = maxf(effects["explosion_radius"], ability.explosion_radius)
 	return effects
 
+## Efectele compozabile (Frost, Lightning Chain, Vampirism...) purtate de toate
+## abilitatile luate, intr-un singur vector. Dauna se aplica inainte in
+## Projectile, deci vampirismul vede dauna finala, dupa aparare si critice.
+func _collect_on_hit_effects() -> Array[AbilityEffect]:
+	var list: Array[AbilityEffect] = []
+	for ability in abilities:
+		list.append_array(ability.on_hit_effects())
+	return list
+
+
+## Adauga o abilitate. Daca formeaza o pereche cu una deja detinuta, cele doua
+## se transforma in evolutia lor (Perforantă + Meteor = Săgeată Explozivă).
 func add_ability(ability: Ability) -> void:
 	if ability == null:
 		return

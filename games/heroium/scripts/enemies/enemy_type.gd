@@ -18,11 +18,16 @@ enum Behavior {
 @export var behavior: Behavior = Behavior.CHASER
 
 @export_group("Vizual")
-## Cum arata: schelet, liliac, cultist... Culoarea singura nu deosebeste un
-## schelet de un demon; silueta o face.
-@export var silhouette: CharacterArt.Silhouette = CharacterArt.Silhouette.SKELETON
-@export var color: Color = Color("d9464f")
+## Cum arata - arta, siluetă de rezervă si culoare, toate intr-un loc. Cand vine
+## arta finala se completeaza campurile din CharacterVisual si nimic din cod nu
+## se schimba.
+@export var visual: CharacterVisual
 @export var radius: float = 16.0
+
+
+## Culoarea lui, folosita si de scanteile si sagetile care pleaca de la el.
+func tint() -> Color:
+	return visual.tint if visual != null else Color("d9464f")
 
 @export_group("Statistici")
 @export var base_health: float = 26.0

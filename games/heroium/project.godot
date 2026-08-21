@@ -13,8 +13,17 @@ config/icon="res://icon.svg"
 
 [autoload]
 
-GameState="*res://scripts/systems/game_state.gd"
+; Ordinea conteaza: autoloadurile se initializeaza in ordinea de aici, iar
+; GameState incarca la randul lui toate resursele de abilitati in _ready(). Un
+; efect ca EffectLightningChain foloseste Fx.burst() chiar in corpul scriptului,
+; deci daca Fx n-a fost inca inregistrat ca identificator global, compilarea lui
+; pica o singura data - si, fiindca resursa incarcata de GameState ramane in
+; cache, scriptul stricat ramane stricat tot procesul, nu doar acel cadru. Fx
+; trebuie sa fie inaintea lui GameState.
+Loc="*res://scripts/systems/loc.gd"
 Fx="*res://scripts/systems/fx.gd"
+Pool="*res://scripts/systems/pool.gd"
+GameState="*res://scripts/systems/game_state.gd"
 
 [display]
 
