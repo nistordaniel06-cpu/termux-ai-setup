@@ -3,6 +3,8 @@ import { asyncHandler } from "../../middleware/errorHandler";
 import { requireAuth } from "../../middleware/auth";
 import { createBusinessSchema, updateBusinessSchema, addProfessionalSchema, addServiceSchema } from "./business.schema";
 import * as businessService from "./business.service";
+import * as reviewService from "../review/review.service";
+import * as favoriteService from "../favorite/favorite.service";
 
 export const businessRouter = Router();
 
@@ -76,5 +78,31 @@ businessRouter.get(
   asyncHandler(async (req, res) => {
     const services = await businessService.listServices(req.params.id);
     res.json(services);
+  })
+);
+
+businessRouter.get(
+  "/:id/reviews",
+  asyncHandler(async (req, res) => {
+    const result = await reviewService.listForBusiness(req.params.id);
+    res.json(result);
+  })
+);
+
+businessRouter.post(
+  "/:id/favorite",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const favorite = await favoriteService.addFavorite(req.auth!.userId, req.params.id);
+    res.status(201).json(favorite);
+  })
+);
+
+businessRouter.delete(
+  "/:id/favorite",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    await favoriteService.removeFavorite(req.auth!.userId, req.params.id);
+    res.status(204).send();
   })
 );

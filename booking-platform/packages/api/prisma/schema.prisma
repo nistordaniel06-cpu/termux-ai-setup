@@ -44,6 +44,7 @@ model User {
   bookings       Booking[]      @relation("CustomerBookings")
   customerLinks  Customer[]
   reviews        Review[]
+  favorites      Favorite[]
   referralsFrom  Referral[]     @relation("ReferralFrom")
   referralsTo    Referral[]     @relation("ReferralTo")
   rewards        Reward[]
@@ -69,6 +70,7 @@ model Business {
   offers          Offer[]
   analyticsEvents AnalyticsEvent[]
   bookings        Booking[]
+  favoritedBy     Favorite[]
 }
 
 model Professional {
@@ -168,7 +170,7 @@ model Customer {
   @@unique([userId, businessId])
 }
 
-// Phase 2+
+// Phase 2
 model Review {
   id        String   @id @default(uuid())
   bookingId String   @unique
@@ -178,6 +180,18 @@ model Review {
   rating    Int
   comment   String?
   createdAt DateTime @default(now())
+}
+
+// Phase 2
+model Favorite {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id])
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, businessId])
 }
 
 // Phase 3

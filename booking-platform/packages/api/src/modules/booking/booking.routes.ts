@@ -3,6 +3,8 @@ import { asyncHandler } from "../../middleware/errorHandler";
 import { requireAuth } from "../../middleware/auth";
 import { createBookingSchema, rescheduleBookingSchema } from "./booking.schema";
 import * as bookingService from "./booking.service";
+import { createReviewSchema } from "../review/review.schema";
+import * as reviewService from "../review/review.service";
 
 export const bookingRouter = Router();
 
@@ -50,5 +52,15 @@ bookingRouter.patch(
     const { startTime } = rescheduleBookingSchema.parse(req.body);
     const booking = await bookingService.rescheduleBooking(req.params.id, req.auth!.userId, startTime);
     res.json(booking);
+  })
+);
+
+bookingRouter.post(
+  "/:id/review",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const input = createReviewSchema.parse(req.body);
+    const review = await reviewService.createReview(req.params.id, req.auth!.userId, input);
+    res.status(201).json(review);
   })
 );

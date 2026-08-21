@@ -6,6 +6,8 @@ import { professionalRouter } from "./modules/professional/professional.routes";
 import { serviceRouter } from "./modules/service/service.routes";
 import { bookingRouter } from "./modules/booking/booking.routes";
 import { dashboardRouter } from "./modules/analytics/dashboard.routes";
+import { favoriteRouter } from "./modules/favorite/favorite.routes";
+import { marketplaceRouter } from "./modules/marketplace/marketplace.routes";
 import { errorHandler } from "./middleware/errorHandler";
 
 export function createApp() {
@@ -22,6 +24,8 @@ export function createApp() {
   api.use("/services", serviceRouter);
   api.use("/bookings", bookingRouter);
   api.use("/dashboard", dashboardRouter);
+  api.use("/favorites", favoriteRouter);
+  api.use("/marketplace", marketplaceRouter);
   app.use("/api/v1", api);
 
   app.use(errorHandler);
