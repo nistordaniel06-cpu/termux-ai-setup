@@ -15,6 +15,7 @@ export default function HomePage() {
 
       {!ready ? null : !auth ? (
         <div className="space-y-3">
+          <LinkButton href="/discover">Descoperă saloane</LinkButton>
           <LinkButton href="/login">Autentificare</LinkButton>
           <LinkButton href="/register">Creează cont</LinkButton>
         </div>
@@ -27,7 +28,10 @@ export default function HomePage() {
           </Card>
 
           {auth.user.role === "CLIENT" ? (
-            <LinkButton href="/my-bookings">Programările mele</LinkButton>
+            <>
+              <LinkButton href="/discover">Descoperă saloane</LinkButton>
+              <LinkButton href="/my-bookings">Programările mele</LinkButton>
+            </>
           ) : (
             <>
               <LinkButton href="/business/setup">Business-ul meu</LinkButton>

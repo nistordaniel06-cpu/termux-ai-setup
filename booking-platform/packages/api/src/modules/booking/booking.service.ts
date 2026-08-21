@@ -142,7 +142,7 @@ export async function rescheduleBooking(bookingId: string, userId: string, newSt
 export async function listMyBookings(customerId: string) {
   return prisma.booking.findMany({
     where: { customerId },
-    include: { service: true, professional: true, business: true },
+    include: { service: true, professional: true, business: true, review: true },
     orderBy: { startTime: "desc" },
   });
 }

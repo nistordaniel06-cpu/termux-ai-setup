@@ -4,12 +4,13 @@
 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the full product framing,
 tech stack rationale, DB schema, API surface, and phased implementation plan.
 
-**Status:** Phase 1 (Core) is implemented and tested end-to-end: auth,
-business/professional/service/schedule setup, real availability, booking
-with no double-booking, cancel/reschedule, and a minimal dashboard — plus a
-mobile-first Next.js client covering all of it. Marketplace discovery
-(Phase 2), growth features (Phase 3), and the business OS (Phase 4) are
-designed for in the schema but not yet built.
+**Status:** Phase 1 (Core) and Phase 2 (Discovery) are implemented and
+tested end-to-end. Phase 1: auth, business/professional/service/schedule
+setup, real availability, booking with no double-booking, cancel/reschedule,
+and a minimal dashboard. Phase 2: marketplace search (`/discover`) ranked by
+a modular Discovery Score, reviews, and favorites. All of it has a
+mobile-first Next.js client. Growth features (Phase 3) and the business OS
+(Phase 4) are designed for in the schema but not yet built.
 
 ## Requirements
 
@@ -63,10 +64,13 @@ booking-platform/
   packages/web/          # Next.js mobile-first client
 ```
 
-## Known Phase 1 simplifications
+## Known simplifications
 
 - Times are treated as UTC wall-clock; no per-business timezone handling yet.
-- No marketplace search/discovery, reviews, offers, referrals, loyalty, or
-  notifications yet — those are Phase 2/3 (see the architecture doc).
+- No offers, referrals, loyalty, rebooking, or notifications yet — those are
+  Phase 3 (see the architecture doc).
 - Adding a professional to a salon currently requires that professional's
   raw user id (there's no email-based lookup UI yet).
+- "Available today" in marketplace search checks for any open window at all,
+  not availability for a specific service's duration (that's checked exactly
+  once you open the business page and pick a service).

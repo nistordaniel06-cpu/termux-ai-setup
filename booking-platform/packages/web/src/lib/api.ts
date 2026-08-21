@@ -53,6 +53,7 @@ export type Booking = {
   service?: Service;
   professional?: Professional;
   business?: Business;
+  review?: { id: string; rating: number; comment: string | null } | null;
 };
 
 export type Dashboard = {
@@ -60,6 +61,30 @@ export type Dashboard = {
   emptySlotsToday: number;
   upcomingBookings: Booking[];
 };
+
+export type MarketplaceResult = {
+  id: string;
+  name: string;
+  slug: string;
+  city: string | null;
+  address: string | null;
+  distanceKm: number | null;
+  avgRating: number | null;
+  reviewCount: number;
+  hasAvailabilityToday: boolean | null;
+  fromPriceCents: number | null;
+  discoveryScore: number;
+};
+
+export type Review = {
+  id: string;
+  rating: number;
+  comment: string | null;
+  createdAt: string;
+  user: { name: string };
+};
+
+export type Favorite = { id: string; businessId: string; business: Business };
 
 const AUTH_KEY = "bp_auth";
 
@@ -146,4 +171,33 @@ export const api = {
     request<Booking>(`/bookings/${id}/reschedule`, { method: "PATCH", body: JSON.stringify({ startTime }) }),
 
   getDashboard: (businessId: string) => request<Dashboard>(`/dashboard/${businessId}`),
+
+  searchMarketplace: (params: {
+    q?: string;
+    city?: string;
+    lat?: number;
+    lng?: number;
+    maxPriceCents?: number;
+    date?: string;
+  }) => {
+    const qs = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+      if (value !== undefined && value !== "") qs.set(key, String(value));
+    }
+    return request<{ results: MarketplaceResult[] }>(`/marketplace/businesses?${qs.toString()}`);
+  },
+
+  getReviews: (businessId: string) =>
+    request<{ reviews: Review[]; avgRating: number | null; reviewCount: number }>(
+      `/businesses/${businessId}/reviews`
+    ),
+
+  createReview: (bookingId: string, body: { rating: number; comment?: string }) =>
+    request(`/bookings/${bookingId}/review`, { method: "POST", body: JSON.stringify(body) }),
+
+  addFavorite: (businessId: string) => request<Favorite>(`/businesses/${businessId}/favorite`, { method: "POST" }),
+
+  removeFavorite: (businessId: string) => request(`/businesses/${businessId}/favorite`, { method: "DELETE" }),
+
+  myFavorites: () => request<Favorite[]>("/favorites/me"),
 };

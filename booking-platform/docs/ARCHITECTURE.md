@@ -1,18 +1,19 @@
 # Booking & Growth Platform — Architecture
 
-Status: Phase 1 (Core) in progress. This document is the proposal called for in
-the product brief, section 17 and 20, written before implementation and kept
-up to date as phases land.
+Status: Phase 1 (Core) and Phase 2 (Discovery) are implemented. This document
+is the proposal called for in the product brief, section 17 and 20, written
+before implementation and kept up to date as phases land.
 
 ## 1. Product framing
 
-`Booking App + Local Marketplace + Growth Engine`. Phase 1 (this repo, right
-now) builds only the **Core**: auth, business/professional/service/schedule
-management, real availability, booking with no double-booking, cancel /
-reschedule, and a minimal dashboard. Marketplace discovery, growth (empty-slot
-discounts, referrals, loyalty, rebooking), and the business-OS features
-(CRM, analytics, kiosk mode, subscriptions) are designed for in the schema
-and module boundaries below, but their logic is deliberately **not**
+`Booking App + Local Marketplace + Growth Engine`. Phase 1 built the **Core**:
+auth, business/professional/service/schedule management, real availability,
+booking with no double-booking, cancel/reschedule, and a minimal dashboard.
+Phase 2 built **Discovery**: marketplace search with a modular Discovery
+Score, reviews, and favorites (see section 8). Growth (empty-slot discounts,
+referrals, loyalty, rebooking) and the business-OS features (CRM, analytics,
+kiosk mode, subscriptions) are designed for in the schema and module
+boundaries below, but their logic is deliberately **not**
 implemented yet — no mocked UI for features that don't work end-to-end.
 
 ## 2. Tech stack
@@ -133,7 +134,7 @@ violation (or serialization failure) that the API turns into a `409
 Conflict`. Covered by an integration test that fires concurrent booking
 requests at the same slot.
 
-## 5. API surface (Phase 1)
+## 5. API surface (Phase 1 + Phase 2)
 
 All routes under `/api/v1`. Auth via `Authorization: Bearer <accessToken>`.
 
@@ -168,13 +169,23 @@ PATCH  /bookings/:id/cancel
 PATCH  /bookings/:id/reschedule     { startTime }
 
 GET    /dashboard/:businessId       today's occupancy %, empty slots, upcoming bookings
+
+POST   /bookings/:id/review         { rating, comment? } -> only past, non-cancelled, once
+GET    /businesses/:id/reviews      list + avgRating + reviewCount
+
+POST   /businesses/:id/favorite     idempotent add
+DELETE /businesses/:id/favorite     idempotent remove
+GET    /favorites/me                current user's favorited businesses
+
+GET    /marketplace/businesses      ?q=&city=&lat=&lng=&maxPriceCents=&date= -> ranked results
 ```
 
-Marketplace/growth/notifications/analytics-reporting routes are added as
-stubs returning `501 Not Implemented` so the API surface documented in
-section 17 exists, without a fake response pretending the feature works.
+Growth/notifications/analytics-reporting routes (offers, referrals, rewards,
+kiosk mode, subscriptions) are Phase 3/4 — not yet implemented, and
+deliberately not stubbed with a fake response that would pretend the
+feature works.
 
-## 6. Core user flows (Phase 1)
+## 6. Core user flows (Phase 1 + Phase 2)
 
 **Professional/salon owner onboarding**
 1. Register (`role: PROFESSIONAL` or `SALON_OWNER`).
@@ -192,14 +203,27 @@ section 17 exists, without a fake response pretending the feature works.
 **Business dashboard**
 1. Owner opens dashboard -> today's occupancy %, empty slots, upcoming list.
 
+**Discovery (Phase 2)**
+1. Client opens `/discover`, optionally filters by service text, city, max
+   price, date, and "near me" (browser geolocation).
+2. `GET /marketplace/businesses` ranks matches by Discovery Score (section 8)
+   and returns them; price and text/city filters are hard query filters, not
+   just scoring nudges.
+3. Client opens a result's public page (`/b/[slug]`), can favorite it, reads
+   reviews and the average rating, then books as in the Phase 1 flow.
+4. After a booking's start time has passed, the client can leave one review
+   (`POST /bookings/:id/review`) from `/my-bookings`.
+
 ## 7. Implementation plan
 
-- **Phase 1 — Core** (this iteration): auth, business/professional/service/schedule
+- **Phase 1 — Core** (done): auth, business/professional/service/schedule
   CRUD, availability computation, booking with no double-booking, cancel/reschedule,
   minimal dashboard, Next.js client covering the flows above, integration tests
   for all of it including a concurrency test for booking.
-- **Phase 2 — Discovery**: marketplace homepage, search/filters, public SEO
-  pages, reviews, favorites, Discovery Score (modular weights).
+- **Phase 2 — Discovery** (done): marketplace search (`/discover` +
+  `GET /marketplace/businesses`) with a modular Discovery Score, reviews
+  (one per past, non-cancelled booking), favorites, and SEO metadata on the
+  public business page.
 - **Phase 3 — Growth**: empty-slot detection + bounded discounts, offers surfaced
   in marketplace, referral system, loyalty, rebooking prompts, notifications
   (with opt-out).
@@ -210,3 +234,24 @@ section 17 exists, without a fake response pretending the feature works.
 Each phase lands as its own set of commits with tests passing before merge,
 per the brief's "MVP mic care funcționează end-to-end" priority over a large
 app full of non-functional mocks.
+
+## 8. Discovery Score (Phase 2)
+
+Per the brief's section 5: ranking isn't "whoever pays more." Each business
+returned by `GET /marketplace/businesses` gets a score from six factors,
+each normalized to `[0, 1]` independently in
+`packages/api/src/modules/marketplace/discoveryScore.ts` so the weights can
+be retuned later without touching the factor logic:
+
+```
+availability: 20   — has an open slot on the requested date (or 0.5 if not evaluated)
+distance:     20   — 1 / (1 + km / 5); 0.5 if either side lacks geo data
+rating:       20   — avgRating / 5; 0.5 if no reviews yet (doesn't bury new businesses)
+priceMatch:   15   — 1 if a service fits maxPriceCents; 1 (neutral) if no price filter
+reliability:  15   — 1 - cancellationRate over all bookings; 1 if no bookings yet
+popularity:   10   — min(1, totalBookings / 20)
+```
+
+`score = round(100 * Σ(weight × factor) / Σ(weight))`. Text/city/price
+filters are hard query filters (a business missing them is excluded, not
+just ranked lower); the score only orders what's left.

@@ -90,6 +90,11 @@ export function formatSlotTime(iso: string) {
   return new Date(iso).toLocaleTimeString("ro-RO", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
 }
 
+export function formatRating(avgRating: number | null, reviewCount: number) {
+  if (avgRating === null || reviewCount === 0) return "Fără recenzii încă";
+  return `★ ${avgRating.toFixed(1)} (${reviewCount})`;
+}
+
 export function formatSlotDateTime(iso: string) {
   return new Date(iso).toLocaleString("ro-RO", {
     weekday: "short",

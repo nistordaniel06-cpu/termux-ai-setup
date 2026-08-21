@@ -13,6 +13,9 @@ export default function MyBookingsPage() {
   const [error, setError] = useState("");
   const [reschedulingId, setReschedulingId] = useState<string | null>(null);
   const [newTime, setNewTime] = useState("");
+  const [reviewingId, setReviewingId] = useState<string | null>(null);
+  const [rating, setRating] = useState(5);
+  const [comment, setComment] = useState("");
 
   useEffect(() => {
     if (!ready) return;
@@ -40,6 +43,20 @@ export default function MyBookingsPage() {
       setBookings((prev) => prev?.map((b) => (b.id === id ? updated : b)) ?? null);
       setReschedulingId(null);
       setNewTime("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "A apărut o eroare");
+    }
+  }
+
+  async function onSubmitReview(id: string) {
+    try {
+      await api.createReview(id, { rating, comment: comment || undefined });
+      setBookings(
+        (prev) => prev?.map((b) => (b.id === id ? { ...b, review: { id: "local", rating, comment } } : b)) ?? null
+      );
+      setReviewingId(null);
+      setComment("");
+      setRating(5);
     } catch (err) {
       setError(err instanceof Error ? err.message : "A apărut o eroare");
     }
@@ -73,7 +90,7 @@ export default function MyBookingsPage() {
               </div>
             </div>
 
-            {b.status === "CONFIRMED" && (
+            {b.status === "CONFIRMED" && new Date(b.startTime).getTime() > Date.now() && (
               <div className="mt-3 space-y-2">
                 {reschedulingId === b.id ? (
                   <div className="flex items-center gap-2">
@@ -96,6 +113,39 @@ export default function MyBookingsPage() {
                       Anulează
                     </Button>
                   </div>
+                )}
+              </div>
+            )}
+
+            {b.status === "CONFIRMED" && new Date(b.startTime).getTime() <= Date.now() && (
+              <div className="mt-3">
+                {b.review ? (
+                  <p className="text-xs text-gray-500">Recenzia ta: {"★".repeat(b.review.rating)}</p>
+                ) : reviewingId === b.id ? (
+                  <div className="space-y-2">
+                    <div className="flex gap-1">
+                      {[1, 2, 3, 4, 5].map((n) => (
+                        <button
+                          key={n}
+                          onClick={() => setRating(n)}
+                          className={`text-lg ${n <= rating ? "text-yellow-500" : "text-gray-300"}`}
+                        >
+                          ★
+                        </button>
+                      ))}
+                    </div>
+                    <input
+                      value={comment}
+                      onChange={(e) => setComment(e.target.value)}
+                      placeholder="Un comentariu (opțional)"
+                      className="w-full rounded-xl border border-gray-300 px-3 py-2 text-xs"
+                    />
+                    <Button onClick={() => onSubmitReview(b.id)}>Trimite recenzia</Button>
+                  </div>
+                ) : (
+                  <Button variant="secondary" onClick={() => setReviewingId(b.id)}>
+                    Lasă o recenzie
+                  </Button>
                 )}
               </div>
             )}
