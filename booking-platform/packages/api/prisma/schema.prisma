@@ -37,6 +37,7 @@ model User {
   referredById  String?
   referredBy    User?    @relation("Referrals", fields: [referredById], references: [id])
   referredUsers User[]   @relation("Referrals")
+  notificationsEnabled Boolean @default(true)
   createdAt     DateTime @default(now())
 
   businesses     Business[]     @relation("BusinessOwner")
@@ -64,6 +65,13 @@ model Business {
   longitude   Float?
   createdAt   DateTime @default(now())
 
+  // Growth engine (Phase 3): the business opts in and bounds its own
+  // empty-slot discounts — never applied without both limits configured.
+  minDiscountPercent Int?
+  maxDiscountPercent Int?
+  // Loyalty (Phase 3): every N visits earns a reward. Null = feature off.
+  loyaltyVisitsRequired Int?
+
   professionals   Professional[]
   services        Service[]
   customers       Customer[]
@@ -71,6 +79,7 @@ model Business {
   analyticsEvents AnalyticsEvent[]
   bookings        Booking[]
   favoritedBy     Favorite[]
+  rewards         Reward[]
 }
 
 model Professional {
@@ -203,6 +212,8 @@ model Offer {
   startsAt        DateTime
   endsAt          DateTime
   createdAt       DateTime @default(now())
+
+  @@index([businessId, endsAt])
 }
 
 // Phase 3
@@ -224,6 +235,9 @@ model Reward {
   id         String    @id @default(uuid())
   userId     String
   user       User      @relation(fields: [userId], references: [id])
+  // Set for business-scoped rewards (loyalty); null for platform-wide ones (referral).
+  businessId String?
+  business   Business? @relation(fields: [businessId], references: [id])
   type       String
   amount     Int
   redeemedAt DateTime?

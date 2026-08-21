@@ -5,6 +5,10 @@ import { createBusinessSchema, updateBusinessSchema, addProfessionalSchema, addS
 import * as businessService from "./business.service";
 import * as reviewService from "../review/review.service";
 import * as favoriteService from "../favorite/favorite.service";
+import * as growthService from "../growth/growth.service";
+import * as loyaltyService from "../loyalty/loyalty.service";
+import { setDiscountLimitsSchema, createOfferSchema } from "../growth/growth.schema";
+import { setLoyaltyConfigSchema } from "../loyalty/loyalty.schema";
 
 export const businessRouter = Router();
 
@@ -104,5 +108,52 @@ businessRouter.delete(
   asyncHandler(async (req, res) => {
     await favoriteService.removeFavorite(req.auth!.userId, req.params.id);
     res.status(204).send();
+  })
+);
+
+businessRouter.patch(
+  "/:id/discount-limits",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const input = setDiscountLimitsSchema.parse(req.body);
+    const business = await growthService.setDiscountLimits(req.params.id, req.auth!.userId, input);
+    res.json(business);
+  })
+);
+
+businessRouter.post(
+  "/:id/offers",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const input = createOfferSchema.parse(req.body);
+    const offer = await growthService.createOffer(req.params.id, req.auth!.userId, input);
+    res.status(201).json(offer);
+  })
+);
+
+businessRouter.get(
+  "/:id/offers",
+  asyncHandler(async (req, res) => {
+    const offers = await growthService.listOffers(req.params.id);
+    res.json(offers);
+  })
+);
+
+businessRouter.patch(
+  "/:id/loyalty-config",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const input = setLoyaltyConfigSchema.parse(req.body);
+    const business = await loyaltyService.setLoyaltyConfig(req.params.id, req.auth!.userId, input);
+    res.json(business);
+  })
+);
+
+businessRouter.get(
+  "/:id/loyalty-status",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const status = await loyaltyService.getLoyaltyStatus(req.params.id, req.auth!.userId);
+    res.json(status);
   })
 );

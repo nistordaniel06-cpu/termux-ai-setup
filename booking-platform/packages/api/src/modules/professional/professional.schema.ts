@@ -25,3 +25,9 @@ export const getOpenSlotsQuerySchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Expected YYYY-MM-DD"),
   serviceId: z.string().uuid(),
 });
+
+export const getNextAvailabilityQuerySchema = z.object({
+  serviceId: z.string().uuid(),
+  afterDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Expected YYYY-MM-DD"),
+  withinDays: z.coerce.number().int().min(1).max(90).default(30),
+});

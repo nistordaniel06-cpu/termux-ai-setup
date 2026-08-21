@@ -55,6 +55,15 @@ export async function register(input: z.infer<typeof registerSchema>) {
     },
   });
 
+  // Tracked separately from User.referredById so reward status (PENDING ->
+  // REWARDED once a real booking happens) doesn't get conflated with the
+  // one-time signup link.
+  if (referredById) {
+    await prisma.referral.create({
+      data: { referrerUserId: referredById, referredUserId: user.id },
+    });
+  }
+
   return { user, ...tokensFor(user) };
 }
 

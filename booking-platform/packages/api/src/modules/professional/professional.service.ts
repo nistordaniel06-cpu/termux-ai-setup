@@ -131,3 +131,30 @@ export async function computeOpenSlots(professionalId: string, dateStr: string, 
 
   return slots.map((s) => s.toISOString());
 }
+
+function toDateString(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+/**
+ * Rebooking (brief section 9): "one click" to find the same professional's
+ * next open slots on or after a given date, so the client doesn't have to
+ * page through the calendar day by day themselves.
+ */
+export async function findNextAvailability(
+  professionalId: string,
+  serviceId: string,
+  afterDateStr: string,
+  withinDays = 30
+) {
+  const start = new Date(`${afterDateStr}T00:00:00.000Z`);
+
+  for (let i = 0; i < withinDays; i++) {
+    const date = new Date(start.getTime() + i * 24 * 60 * 60 * 1000);
+    const dateStr = toDateString(date);
+    const slots = await computeOpenSlots(professionalId, dateStr, serviceId);
+    if (slots.length > 0) return { date: dateStr, slots };
+  }
+
+  return { date: null, slots: [] as string[] };
+}

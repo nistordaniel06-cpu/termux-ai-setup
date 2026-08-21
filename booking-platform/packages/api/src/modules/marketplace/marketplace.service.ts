@@ -3,6 +3,7 @@ import { prisma } from "../../lib/prisma";
 import { getAvailableWindows } from "../professional/professional.service";
 import { subtractIntervals } from "../professional/availability.util";
 import { computeDiscoveryScore, haversineKm } from "./discoveryScore";
+import { getActiveOffer } from "../growth/growth.service";
 import { searchQuerySchema } from "./marketplace.schema";
 
 function todayDateString(): string {
@@ -63,7 +64,7 @@ export async function search(rawQuery: Record<string, unknown>) {
     businesses.map(async (business) => {
       const professionalIds = business.professionals.map((p) => p.id);
 
-      const [reviewAgg, totalBookings, cancelledBookings, hasAvailability] = await Promise.all([
+      const [reviewAgg, totalBookings, cancelledBookings, hasAvailability, activeOffer] = await Promise.all([
         prisma.review.aggregate({
           where: { booking: { businessId: business.id } },
           _avg: { rating: true },
@@ -72,6 +73,7 @@ export async function search(rawQuery: Record<string, unknown>) {
         prisma.booking.count({ where: { businessId: business.id } }),
         prisma.booking.count({ where: { businessId: business.id, status: "CANCELLED" } }),
         professionalIds.length > 0 ? hasAvailabilityOnDate(professionalIds, dateObj) : false,
+        getActiveOffer(business.id),
       ]);
 
       const distanceKm =
@@ -96,6 +98,7 @@ export async function search(rawQuery: Record<string, unknown>) {
         priceMatches,
         reliability,
         totalBookings,
+        hasActiveOffer: activeOffer !== null,
       });
 
       const cheapestService = business.services.reduce<(typeof business.services)[number] | null>(
@@ -114,6 +117,7 @@ export async function search(rawQuery: Record<string, unknown>) {
         reviewCount: reviewAgg._count,
         hasAvailabilityToday: hasAvailability,
         fromPriceCents: cheapestService?.priceCents ?? null,
+        activeOfferPercent: activeOffer?.discountPercent ?? null,
         discoveryScore,
       };
     })

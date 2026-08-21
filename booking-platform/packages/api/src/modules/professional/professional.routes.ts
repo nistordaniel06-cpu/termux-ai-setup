@@ -6,6 +6,7 @@ import {
   setScheduleSchema,
   addAvailabilityOverrideSchema,
   getOpenSlotsQuerySchema,
+  getNextAvailabilityQuerySchema,
 } from "./professional.schema";
 import * as professionalService from "./professional.service";
 
@@ -55,5 +56,14 @@ professionalRouter.get(
     const { date, serviceId } = getOpenSlotsQuerySchema.parse(req.query);
     const slots = await professionalService.computeOpenSlots(req.params.id, date, serviceId);
     res.json({ slots });
+  })
+);
+
+professionalRouter.get(
+  "/:id/next-availability",
+  asyncHandler(async (req, res) => {
+    const { serviceId, afterDate, withinDays } = getNextAvailabilityQuerySchema.parse(req.query);
+    const result = await professionalService.findNextAvailability(req.params.id, serviceId, afterDate, withinDays);
+    res.json(result);
   })
 );
