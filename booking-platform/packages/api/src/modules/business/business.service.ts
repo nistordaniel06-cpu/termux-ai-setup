@@ -53,8 +53,13 @@ export async function createBusiness(
   });
 }
 
-export async function getBusinessById(id: string) {
-  const business = await prisma.business.findUnique({ where: { id } });
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Looks up a business by id, or by its public slug if idOrSlug isn't a UUID. */
+export async function getBusinessById(idOrSlug: string) {
+  const business = UUID_RE.test(idOrSlug)
+    ? await prisma.business.findUnique({ where: { id: idOrSlug } })
+    : await prisma.business.findUnique({ where: { slug: idOrSlug } });
   if (!business) throw notFound("Business not found");
   return business;
 }
