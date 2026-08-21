@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/useAuth";
-import { api, Business, Professional, Service, Review } from "@/lib/api";
+import { api, Business, Professional, Service, Review, Offer, LoyaltyStatus } from "@/lib/api";
 import {
   Screen,
   Title,
@@ -26,6 +27,7 @@ function tomorrowDateString() {
 
 export default function PublicBusinessClient({ slug }: { slug: string }) {
   const { auth } = useAuth();
+  const searchParams = useSearchParams();
 
   const [business, setBusiness] = useState<Business | null | undefined>(undefined);
   const [services, setServices] = useState<Service[]>([]);
@@ -36,10 +38,12 @@ export default function PublicBusinessClient({ slug }: { slug: string }) {
     reviewCount: 0,
   });
   const [isFavorite, setIsFavorite] = useState(false);
+  const [offers, setOffers] = useState<Offer[]>([]);
+  const [loyalty, setLoyalty] = useState<LoyaltyStatus | null>(null);
 
   const [serviceId, setServiceId] = useState("");
   const [professionalId, setProfessionalId] = useState("");
-  const [date, setDate] = useState(tomorrowDateString());
+  const [date, setDate] = useState(searchParams.get("date") || tomorrowDateString());
 
   const [slots, setSlots] = useState<string[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
@@ -51,25 +55,45 @@ export default function PublicBusinessClient({ slug }: { slug: string }) {
       .getBusiness(slug)
       .then(async (b) => {
         setBusiness(b);
-        const [svc, pros, reviewData] = await Promise.all([
+        const [svc, pros, reviewData, offerList] = await Promise.all([
           api.listServices(b.id),
           api.listProfessionals(b.id),
           api.getReviews(b.id),
+          api.getOffers(b.id),
         ]);
         setServices(svc);
         setProfessionals(pros);
         setReviews(reviewData);
-        if (svc[0]) setServiceId(svc[0].id);
-        if (pros[0]) setProfessionalId(pros[0].id);
+        setOffers(offerList);
 
-        if (auth?.user.role === "CLIENT") {
-          const favorites = await api.myFavorites().catch(() => []);
-          setIsFavorite(favorites.some((f) => f.businessId === b.id));
-        }
+        const serviceFromQuery = searchParams.get("serviceId");
+        const professionalFromQuery = searchParams.get("professionalId");
+        setServiceId(serviceFromQuery && svc.some((s) => s.id === serviceFromQuery) ? serviceFromQuery : svc[0]?.id ?? "");
+        setProfessionalId(
+          professionalFromQuery && pros.some((p) => p.id === professionalFromQuery)
+            ? professionalFromQuery
+            : pros[0]?.id ?? ""
+        );
       })
       .catch(() => setBusiness(null));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug]);
+
+  // Separate from the effect above: `auth` starts out null until useAuth's
+  // own mount effect reads localStorage, so a client-only fetch gated on
+  // `auth` has to depend on `auth` itself (not just run once on mount) or
+  // it silently skips for an already-logged-in visitor on a fresh load.
+  useEffect(() => {
+    if (!business || auth?.user.role !== "CLIENT") return;
+    api
+      .myFavorites()
+      .then((favorites) => setIsFavorite(favorites.some((f) => f.businessId === business.id)))
+      .catch(() => {});
+    api
+      .getLoyaltyStatus(business.id)
+      .then(setLoyalty)
+      .catch(() => {});
+  }, [business, auth]);
 
   useEffect(() => {
     if (!serviceId || !professionalId || !date) return;
@@ -151,7 +175,27 @@ export default function PublicBusinessClient({ slug }: { slug: string }) {
         )}
       </div>
 
-      <p className="mb-4 text-sm text-gray-600">{formatRating(reviews.avgRating, reviews.reviewCount)}</p>
+      <p className="mb-1 text-sm text-gray-600">{formatRating(reviews.avgRating, reviews.reviewCount)}</p>
+
+      {(() => {
+        const activeOffer = offers.find(
+          (o) => new Date(o.startsAt).getTime() <= Date.now() && new Date(o.endsAt).getTime() > Date.now()
+        );
+        return activeOffer ? (
+          <p className="mb-2 inline-block rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+            -{activeOffer.discountPercent}% azi
+          </p>
+        ) : null;
+      })()}
+
+      {loyalty?.enabled && (
+        <Card className="mb-4 bg-amber-50">
+          <p className="text-xs text-amber-800">
+            Mai ai <strong>{loyalty.visitsUntilNextReward}</strong> vizite până la o recompensă ({loyalty.currentVisits}/
+            {loyalty.visitsRequired}).
+          </p>
+        </Card>
+      )}
 
       <ErrorText>{error}</ErrorText>
       {confirmed && <SuccessText>Programare confirmată pentru {formatSlotTime(confirmed)}.</SuccessText>}

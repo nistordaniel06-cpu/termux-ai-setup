@@ -1,8 +1,9 @@
 # Booking & Growth Platform — Architecture
 
-Status: Phase 1 (Core) and Phase 2 (Discovery) are implemented. This document
-is the proposal called for in the product brief, section 17 and 20, written
-before implementation and kept up to date as phases land.
+Status: Phase 1 (Core), Phase 2 (Discovery), and Phase 3 (Growth) are
+implemented. This document is the proposal called for in the product brief,
+section 17 and 20, written before implementation and kept up to date as
+phases land.
 
 ## 1. Product framing
 
@@ -10,11 +11,13 @@ before implementation and kept up to date as phases land.
 auth, business/professional/service/schedule management, real availability,
 booking with no double-booking, cancel/reschedule, and a minimal dashboard.
 Phase 2 built **Discovery**: marketplace search with a modular Discovery
-Score, reviews, and favorites (see section 8). Growth (empty-slot discounts,
-referrals, loyalty, rebooking) and the business-OS features (CRM, analytics,
-kiosk mode, subscriptions) are designed for in the schema and module
-boundaries below, but their logic is deliberately **not**
-implemented yet — no mocked UI for features that don't work end-to-end.
+Score, reviews, and favorites (see section 8). Phase 3 built **Growth**:
+bounded empty-slot discounts, loyalty rewards, referrals, one-click
+rebooking, and in-app notifications that respect opt-out (see section 9).
+The business-OS features (CRM, revenue analytics, kiosk mode, subscriptions)
+are designed for in the schema and module boundaries below, but their logic
+is deliberately **not** implemented yet — no mocked UI for features that
+don't work end-to-end.
 
 ## 2. Tech stack
 
@@ -28,7 +31,7 @@ implemented yet — no mocked UI for features that don't work end-to-end.
 | Testing | Jest + Supertest, against a real Postgres (docker) | Booking correctness (double-booking, race conditions) needs a real DB with real constraints, not a mock. |
 | Web client (Phase 1) | Next.js (App Router) + TypeScript + Tailwind CSS | One codebase for the public web flows (booking must "work from the browser," section 12/13); mobile-first responsive layout gets us most of the UX goal in section 19 without committing to native yet. |
 | Mobile app | Deferred | Native (React Native/Expo) client consumes the same REST API once Phase 2 discovery flows exist; building it now would duplicate Phase 1 UI for no additional coverage. |
-| Push notifications | Deferred (Phase 3) | `NotificationService` interface exists in the schema/module boundary now; provider (FCM/APNs/web push) wired in when Phase 3 notification events are implemented. |
+| Notifications | In-app only (Phase 3) | A `NotificationService` writes real rows for real triggers (booking events, rewards, offers to favoriters) and gates commercial ones on the user's own opt-out. Push/email delivery (FCM/APNs/web push, an email provider) is still deferred — the in-app list is the only surface today. |
 | Maps / geolocation | Deferred (Phase 2) | Businesses store `latitude`/`longitude` from day one; distance search and PostGIS-vs-haversine tradeoff is a Phase 2 decision. |
 | Image storage | Deferred (Phase 2) | `photoUrl` fields exist; object storage (S3-compatible) wiring happens with the portfolio/marketplace UI. |
 | Payments | Deferred (Phase 3/4) | No payment fields required for Phase 1 booking (services store price only, no checkout). |
@@ -134,7 +137,7 @@ violation (or serialization failure) that the API turns into a `409
 Conflict`. Covered by an integration test that fires concurrent booking
 requests at the same slot.
 
-## 5. API surface (Phase 1 + Phase 2)
+## 5. API surface (Phase 1 + Phase 2 + Phase 3)
 
 All routes under `/api/v1`. Auth via `Authorization: Bearer <accessToken>`.
 
@@ -178,14 +181,28 @@ DELETE /businesses/:id/favorite     idempotent remove
 GET    /favorites/me                current user's favorited businesses
 
 GET    /marketplace/businesses      ?q=&city=&lat=&lng=&maxPriceCents=&date= -> ranked results
+
+PATCH  /businesses/:id/discount-limits   { minDiscountPercent, maxDiscountPercent }
+POST   /businesses/:id/offers            { discountPercent, startsAt, endsAt } -> validated against limits
+GET    /businesses/:id/offers            active/upcoming offers (public)
+
+PATCH  /businesses/:id/loyalty-config    { visitsRequired: number | null }
+GET    /businesses/:id/loyalty-status    (client) progress toward the next reward
+
+GET    /rewards/me                       current user's earned rewards (loyalty + referral)
+
+GET    /professionals/:id/next-availability?serviceId=&afterDate=&withinDays=  rebooking, one call
+
+GET    /notifications/me
+PATCH  /notifications/:id/read
+PATCH  /notifications/me/preferences     { notificationsEnabled }
 ```
 
-Growth/notifications/analytics-reporting routes (offers, referrals, rewards,
-kiosk mode, subscriptions) are Phase 3/4 — not yet implemented, and
-deliberately not stubbed with a fake response that would pretend the
-feature works.
+Business-OS routes (CRM, revenue analytics, kiosk mode, subscriptions) are
+Phase 4 — not yet implemented, and deliberately not stubbed with a fake
+response that would pretend the feature works.
 
-## 6. Core user flows (Phase 1 + Phase 2)
+## 6. Core user flows (Phase 1 + Phase 2 + Phase 3)
 
 **Professional/salon owner onboarding**
 1. Register (`role: PROFESSIONAL` or `SALON_OWNER`).
@@ -214,6 +231,28 @@ feature works.
 4. After a booking's start time has passed, the client can leave one review
    (`POST /bookings/:id/review`) from `/my-bookings`.
 
+**Growth (Phase 3)**
+1. Owner sets discount min/max limits, then boosts today's empty slots with
+   a preset (10/20/30%) or custom percent from `/dashboard`; the resulting
+   Offer is validated against those limits and surfaced in marketplace
+   results and on the public business page, and notifies people who already
+   favorited the business (respecting their opt-out).
+2. Owner sets `loyaltyVisitsRequired`; each qualifying booking increments the
+   client's visit count and, on hitting a multiple, grants a Reward
+   automatically — no separate trigger needed since booking creation is
+   already the right moment.
+3. A client who registers with a friend's referral code creates a `PENDING`
+   Referral; once they have an actual past, non-cancelled booking (checked
+   lazily on `GET /bookings/me`, since there's no background worker in this
+   MVP), both sides get a Reward and the referral flips to `REWARDED` —
+   never on signup alone.
+4. From a past booking on `/my-bookings`, "Rezervă din nou" calls
+   `GET /professionals/:id/next-availability` and lands the client back on
+   `/b/[slug]` with the same service/professional preselected.
+5. Booking confirm/cancel/reschedule and reward events write real
+   Notification rows; offer notifications go only to favoriters who haven't
+   opted out (`GET/PATCH /notifications/...`).
+
 ## 7. Implementation plan
 
 - **Phase 1 — Core** (done): auth, business/professional/service/schedule
@@ -224,9 +263,10 @@ feature works.
   `GET /marketplace/businesses`) with a modular Discovery Score, reviews
   (one per past, non-cancelled booking), favorites, and SEO metadata on the
   public business page.
-- **Phase 3 — Growth**: empty-slot detection + bounded discounts, offers surfaced
-  in marketplace, referral system, loyalty, rebooking prompts, notifications
-  (with opt-out).
+- **Phase 3 — Growth** (done): bounded empty-slot discounts (offers), a
+  "boost sloturi libere" dashboard action, loyalty rewards on visit count,
+  referral rewards evaluated lazily against real past bookings, one-click
+  rebooking, and in-app notifications that respect opt-out. See section 9.
 - **Phase 4 — Business OS**: CRM, revenue/acquisition analytics, multi-employee
   dashboards, kiosk/tablet mode, subscription billing, acquisition-channel
   tracking.
@@ -235,23 +275,66 @@ Each phase lands as its own set of commits with tests passing before merge,
 per the brief's "MVP mic care funcționează end-to-end" priority over a large
 app full of non-functional mocks.
 
-## 8. Discovery Score (Phase 2)
+## 8. Discovery Score (Phase 2, extended in Phase 3)
 
 Per the brief's section 5: ranking isn't "whoever pays more." Each business
-returned by `GET /marketplace/businesses` gets a score from six factors,
+returned by `GET /marketplace/businesses` gets a score from seven factors,
 each normalized to `[0, 1]` independently in
 `packages/api/src/modules/marketplace/discoveryScore.ts` so the weights can
 be retuned later without touching the factor logic:
 
 ```
-availability: 20   — has an open slot on the requested date (or 0.5 if not evaluated)
-distance:     20   — 1 / (1 + km / 5); 0.5 if either side lacks geo data
-rating:       20   — avgRating / 5; 0.5 if no reviews yet (doesn't bury new businesses)
-priceMatch:   15   — 1 if a service fits maxPriceCents; 1 (neutral) if no price filter
-reliability:  15   — 1 - cancellationRate over all bookings; 1 if no bookings yet
-popularity:   10   — min(1, totalBookings / 20)
+availability: 18   — has an open slot on the requested date (or 0.5 if not evaluated)
+distance:     18   — 1 / (1 + km / 5); 0.5 if either side lacks geo data
+rating:       18   — avgRating / 5; 0.5 if no reviews yet (doesn't bury new businesses)
+priceMatch:   14   — 1 if a service fits maxPriceCents; 1 (neutral) if no price filter
+reliability:  14   — 1 - cancellationRate over all bookings; 1 if no bookings yet
+popularity:    8   — min(1, totalBookings / 20)
+offer:        10   — 1 if a Phase 3 Offer is active right now, else 0
 ```
 
 `score = round(100 * Σ(weight × factor) / Σ(weight))`. Text/city/price
 filters are hard query filters (a business missing them is excluded, not
 just ranked lower); the score only orders what's left.
+
+## 9. Growth mechanics (Phase 3)
+
+**Empty-slot discounts.** A business must configure `minDiscountPercent` /
+`maxDiscountPercent` before it can create an `Offer` at all — every
+`POST /businesses/:id/offers` call is validated against those limits, so a
+discount is never applied without the business's own explicit
+configuration (brief section 6). Offers are business-wide for a time
+window (not tied to one specific empty slot) — simpler to reason about than
+per-slot pricing, and sufficient for the "boost today's empty hours" use
+case in the dashboard.
+
+**Loyalty.** `Business.loyaltyVisitsRequired` (null = off) is checked
+against the existing per-business `Customer.visitCount` right inside
+`createBooking`'s transaction — booking creation is already the correct
+trigger point, so no separate job is needed. A `Reward` (`type:
+"loyalty_reward"`) is created automatically every Nth visit.
+
+**Referrals.** Registering with a code creates a `PENDING` `Referral`
+(separate from `User.referredById`, which is just the one-time signup
+link). There's no background worker in this MVP, so instead of a cron job
+the reward is evaluated *lazily*: every `GET /bookings/me` call checks for
+a pending referral belonging to that user and, only if they now have an
+actual past, non-cancelled booking, flips it to `REWARDED` and creates a
+`Reward` for both sides. Abuse protection: the status transition is a
+conditional `updateMany` (`WHERE status = 'PENDING'`), so two concurrent
+checks can't double-credit, and the unique `(referrerUserId,
+referredUserId)` constraint caps it at one reward per referred friend ever.
+
+**Rebooking.** `GET /professionals/:id/next-availability` scans forward day
+by day (reusing the same availability logic as normal booking) so "book
+again" from `/my-bookings` is one call instead of the client paging through
+the calendar.
+
+**Notifications.** `NotificationService.createNotification` takes a
+`commercial` flag. Transactional notifications (booking confirmed/
+cancelled/rescheduled, rewards earned) always fire — they're account
+state, not marketing. Commercial ones (currently just `offer_available`)
+are checked against `User.notificationsEnabled` *before* the row is ever
+created, not filtered at delivery time, and are only sent to people who
+already favorited that business — never a blast to everyone (brief section
+10: "nu trimite spam").

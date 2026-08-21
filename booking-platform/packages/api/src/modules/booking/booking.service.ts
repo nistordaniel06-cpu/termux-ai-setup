@@ -3,6 +3,8 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { badRequest, conflict, forbidden, notFound } from "../../lib/errors";
 import { getAvailableWindows } from "../professional/professional.service";
+import { createNotification } from "../notification/notification.service";
+import { evaluateReferralReward } from "../reward/reward.service";
 import { createBookingSchema } from "./booking.schema";
 
 function isRaceConditionError(err: unknown): boolean {
@@ -47,6 +49,8 @@ export async function createBooking(customerId: string, input: z.infer<typeof cr
     throw badRequest("serviceId does not belong to this professional's business");
   }
 
+  const business = await prisma.business.findUniqueOrThrow({ where: { id: professional.businessId } });
+
   const startTime = new Date(input.startTime);
   if (startTime.getTime() <= Date.now()) throw badRequest("startTime must be in the future");
   const endTime = new Date(startTime.getTime() + service.durationMinutes * 60_000);
@@ -68,7 +72,7 @@ export async function createBooking(customerId: string, input: z.infer<typeof cr
           },
         });
 
-        await tx.customer.upsert({
+        const customer = await tx.customer.upsert({
           where: { userId_businessId: { userId: customerId, businessId: professional.businessId } },
           create: {
             userId: customerId,
@@ -87,6 +91,24 @@ export async function createBooking(customerId: string, input: z.infer<typeof cr
             payload: { bookingId: booking.id, professionalId: professional.id, serviceId: service.id },
           },
         });
+
+        await createNotification(tx, customerId, "booking_confirmed", {
+          bookingId: booking.id,
+          startTime: booking.startTime,
+        });
+
+        // Loyalty (Phase 3): every Nth visit earns a reward, if the business
+        // configured one. Never applies when loyaltyVisitsRequired is unset.
+        if (business.loyaltyVisitsRequired && customer.visitCount % business.loyaltyVisitsRequired === 0) {
+          await tx.reward.create({
+            data: { userId: customerId, businessId: business.id, type: "loyalty_reward", amount: 1 },
+          });
+          await createNotification(tx, customerId, "loyalty_reward", {
+            businessId: business.id,
+            businessName: business.name,
+            visitCount: customer.visitCount,
+          });
+        }
 
         return booking;
       },
@@ -113,7 +135,13 @@ async function requireBookingAccess(bookingId: string, userId: string) {
 export async function cancelBooking(bookingId: string, userId: string) {
   const booking = await requireBookingAccess(bookingId, userId);
   if (booking.status === "CANCELLED") return booking;
-  return prisma.booking.update({ where: { id: bookingId }, data: { status: "CANCELLED" } });
+
+  const updated = await prisma.booking.update({ where: { id: bookingId }, data: { status: "CANCELLED" } });
+  await createNotification(prisma, booking.customerId, "booking_cancelled", {
+    bookingId: booking.id,
+    startTime: booking.startTime,
+  });
+  return updated;
 }
 
 export async function rescheduleBooking(bookingId: string, userId: string, newStartTimeIso: string) {
@@ -126,13 +154,19 @@ export async function rescheduleBooking(bookingId: string, userId: string, newSt
   const endTime = new Date(startTime.getTime() + durationMs);
 
   try {
-    return await prisma.$transaction(
+    const updated = await prisma.$transaction(
       async (tx) => {
         await assertSlotIsBookable(tx, booking.professionalId, startTime, endTime, booking.id);
-        return tx.booking.update({ where: { id: booking.id }, data: { startTime, endTime } });
+        const rescheduled = await tx.booking.update({ where: { id: booking.id }, data: { startTime, endTime } });
+        await createNotification(tx, booking.customerId, "booking_rescheduled", {
+          bookingId: booking.id,
+          startTime: rescheduled.startTime,
+        });
+        return rescheduled;
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
     );
+    return updated;
   } catch (err) {
     if (isRaceConditionError(err)) throw conflict("That time slot was just booked");
     throw err;
@@ -140,6 +174,8 @@ export async function rescheduleBooking(bookingId: string, userId: string, newSt
 }
 
 export async function listMyBookings(customerId: string) {
+  await evaluateReferralReward(customerId);
+
   return prisma.booking.findMany({
     where: { customerId },
     include: { service: true, professional: true, business: true, review: true },

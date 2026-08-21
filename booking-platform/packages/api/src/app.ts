@@ -8,6 +8,8 @@ import { bookingRouter } from "./modules/booking/booking.routes";
 import { dashboardRouter } from "./modules/analytics/dashboard.routes";
 import { favoriteRouter } from "./modules/favorite/favorite.routes";
 import { marketplaceRouter } from "./modules/marketplace/marketplace.routes";
+import { notificationRouter } from "./modules/notification/notification.routes";
+import { rewardRouter } from "./modules/reward/reward.routes";
 import { errorHandler } from "./middleware/errorHandler";
 
 export function createApp() {
@@ -26,6 +28,8 @@ export function createApp() {
   api.use("/dashboard", dashboardRouter);
   api.use("/favorites", favoriteRouter);
   api.use("/marketplace", marketplaceRouter);
+  api.use("/notifications", notificationRouter);
+  api.use("/rewards", rewardRouter);
   app.use("/api/v1", api);
 
   app.use(errorHandler);

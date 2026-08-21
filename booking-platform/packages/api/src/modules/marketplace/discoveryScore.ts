@@ -4,12 +4,13 @@
  * be retuned later without touching the factor logic (brief section 5).
  */
 export const DISCOVERY_WEIGHTS = {
-  availability: 20,
-  distance: 20,
-  rating: 20,
-  priceMatch: 15,
-  reliability: 15,
-  popularity: 10,
+  availability: 18,
+  distance: 18,
+  rating: 18,
+  priceMatch: 14,
+  reliability: 14,
+  popularity: 8,
+  offer: 10,
 };
 
 export type DiscoverySignals = {
@@ -19,6 +20,7 @@ export type DiscoverySignals = {
   priceMatches: boolean | null; // null = no price filter requested
   reliability: number; // 1 - cancellationRate, in [0, 1]
   totalBookings: number;
+  hasActiveOffer: boolean; // Phase 3: empty-slot discount currently running
 };
 
 function normalizeDistance(distanceKm: number | null): number {
@@ -43,6 +45,7 @@ export function computeDiscoveryScore(signals: DiscoverySignals): number {
     priceMatch: signals.priceMatches === null ? 1 : signals.priceMatches ? 1 : 0,
     reliability: signals.reliability,
     popularity: normalizePopularity(signals.totalBookings),
+    offer: signals.hasActiveOffer ? 1 : 0,
   };
 
   const totalWeight = Object.values(DISCOVERY_WEIGHTS).reduce((a, b) => a + b, 0);

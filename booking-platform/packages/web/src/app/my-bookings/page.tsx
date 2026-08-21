@@ -48,6 +48,21 @@ export default function MyBookingsPage() {
     }
   }
 
+  async function onRebook(b: Booking) {
+    if (!b.business?.slug) return;
+    setError("");
+    try {
+      const afterDate = new Date();
+      afterDate.setDate(afterDate.getDate() + 21);
+      const afterDateStr = afterDate.toISOString().slice(0, 10);
+      const suggestion = await api.getNextAvailability(b.professionalId, b.serviceId, afterDateStr, 60);
+      const date = suggestion.date ?? afterDateStr;
+      router.push(`/b/${b.business.slug}?serviceId=${b.serviceId}&professionalId=${b.professionalId}&date=${date}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "A apărut o eroare");
+    }
+  }
+
   async function onSubmitReview(id: string) {
     try {
       await api.createReview(id, { rating, comment: comment || undefined });
@@ -118,7 +133,10 @@ export default function MyBookingsPage() {
             )}
 
             {b.status === "CONFIRMED" && new Date(b.startTime).getTime() <= Date.now() && (
-              <div className="mt-3">
+              <div className="mt-3 space-y-2">
+                <Button variant="secondary" onClick={() => onRebook(b)}>
+                  Rezervă din nou
+                </Button>
                 {b.review ? (
                   <p className="text-xs text-gray-500">Recenzia ta: {"★".repeat(b.review.rating)}</p>
                 ) : reviewingId === b.id ? (

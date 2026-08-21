@@ -135,7 +135,56 @@ function BusinessDashboard({
       {professionals.map((pro) => (
         <ScheduleSection key={pro.id} professional={pro} setError={setError} />
       ))}
+
+      <LoyaltySection business={business} setError={setError} />
     </Screen>
+  );
+}
+
+function LoyaltySection({ business, setError }: { business: Business; setError: (v: string) => void }) {
+  const [visitsRequired, setVisitsRequired] = useState(business.loyaltyVisitsRequired ?? 4);
+  const [enabled, setEnabled] = useState(business.loyaltyVisitsRequired !== null);
+  const [loading, setLoading] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  async function onSave() {
+    setLoading(true);
+    setSaved(false);
+    try {
+      await api.setLoyaltyConfig(business.id, { visitsRequired: enabled ? visitsRequired : null });
+      setSaved(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "A apărut o eroare");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="mb-6">
+      <h2 className="mb-2 text-sm font-semibold text-gray-700">Program de fidelitate</h2>
+      <Card>
+        <label className="mb-3 flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
+          Activează recompensa la fiecare N vizite
+        </label>
+        {enabled && (
+          <Field label="Număr de vizite pentru recompensă">
+            <Input
+              type="number"
+              min={2}
+              max={100}
+              value={visitsRequired}
+              onChange={(e) => setVisitsRequired(Number(e.target.value))}
+            />
+          </Field>
+        )}
+        <SuccessText>{saved ? "Program de fidelitate salvat." : ""}</SuccessText>
+        <Button onClick={onSave} disabled={loading}>
+          {loading ? "Se salvează..." : "Salvează"}
+        </Button>
+      </Card>
+    </div>
   );
 }
 
