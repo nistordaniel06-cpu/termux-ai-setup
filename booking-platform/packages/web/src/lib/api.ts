@@ -9,6 +9,7 @@ export type PublicUser = {
   phone: string | null;
   role: Role;
   referralCode: string;
+  notificationsEnabled: boolean;
 };
 
 export type Tokens = { accessToken: string; refreshToken: string };
@@ -22,6 +23,9 @@ export type Business = {
   description: string | null;
   address: string | null;
   city: string | null;
+  minDiscountPercent: number | null;
+  maxDiscountPercent: number | null;
+  loyaltyVisitsRequired: number | null;
   professionals?: Professional[];
 };
 
@@ -73,7 +77,37 @@ export type MarketplaceResult = {
   reviewCount: number;
   hasAvailabilityToday: boolean | null;
   fromPriceCents: number | null;
+  activeOfferPercent: number | null;
   discoveryScore: number;
+};
+
+export type Offer = {
+  id: string;
+  businessId: string;
+  discountPercent: number;
+  startsAt: string;
+  endsAt: string;
+};
+
+export type LoyaltyStatus =
+  | { enabled: false }
+  | { enabled: true; visitsRequired: number; currentVisits: number; visitsUntilNextReward: number };
+
+export type Reward = {
+  id: string;
+  type: string;
+  amount: number;
+  businessId: string | null;
+  redeemedAt: string | null;
+  createdAt: string;
+};
+
+export type AppNotification = {
+  id: string;
+  type: string;
+  payload: Record<string, unknown>;
+  readAt: string | null;
+  createdAt: string;
 };
 
 export type Review = {
@@ -200,4 +234,34 @@ export const api = {
   removeFavorite: (businessId: string) => request(`/businesses/${businessId}/favorite`, { method: "DELETE" }),
 
   myFavorites: () => request<Favorite[]>("/favorites/me"),
+
+  setDiscountLimits: (businessId: string, body: { minDiscountPercent: number; maxDiscountPercent: number }) =>
+    request<Business>(`/businesses/${businessId}/discount-limits`, { method: "PATCH", body: JSON.stringify(body) }),
+
+  createOffer: (businessId: string, body: { discountPercent: number; startsAt: string; endsAt: string }) =>
+    request<Offer>(`/businesses/${businessId}/offers`, { method: "POST", body: JSON.stringify(body) }),
+
+  getOffers: (businessId: string) => request<Offer[]>(`/businesses/${businessId}/offers`),
+
+  setLoyaltyConfig: (businessId: string, body: { visitsRequired: number | null }) =>
+    request<Business>(`/businesses/${businessId}/loyalty-config`, { method: "PATCH", body: JSON.stringify(body) }),
+
+  getLoyaltyStatus: (businessId: string) => request<LoyaltyStatus>(`/businesses/${businessId}/loyalty-status`),
+
+  myRewards: () => request<Reward[]>("/rewards/me"),
+
+  myNotifications: () => request<AppNotification[]>("/notifications/me"),
+
+  markNotificationRead: (id: string) => request<AppNotification>(`/notifications/${id}/read`, { method: "PATCH" }),
+
+  setNotificationPreference: (notificationsEnabled: boolean) =>
+    request<{ notificationsEnabled: boolean }>("/notifications/me/preferences", {
+      method: "PATCH",
+      body: JSON.stringify({ notificationsEnabled }),
+    }),
+
+  getNextAvailability: (professionalId: string, serviceId: string, afterDate: string, withinDays = 30) =>
+    request<{ date: string | null; slots: string[] }>(
+      `/professionals/${professionalId}/next-availability?serviceId=${serviceId}&afterDate=${afterDate}&withinDays=${withinDays}`
+    ),
 };

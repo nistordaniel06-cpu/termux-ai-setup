@@ -4,13 +4,15 @@
 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the full product framing,
 tech stack rationale, DB schema, API surface, and phased implementation plan.
 
-**Status:** Phase 1 (Core) and Phase 2 (Discovery) are implemented and
-tested end-to-end. Phase 1: auth, business/professional/service/schedule
-setup, real availability, booking with no double-booking, cancel/reschedule,
-and a minimal dashboard. Phase 2: marketplace search (`/discover`) ranked by
-a modular Discovery Score, reviews, and favorites. All of it has a
-mobile-first Next.js client. Growth features (Phase 3) and the business OS
-(Phase 4) are designed for in the schema but not yet built.
+**Status:** Phase 1 (Core), Phase 2 (Discovery), and Phase 3 (Growth) are
+implemented and tested end-to-end. Phase 1: auth, business/professional/
+service/schedule setup, real availability, booking with no double-booking,
+cancel/reschedule, and a minimal dashboard. Phase 2: marketplace search
+(`/discover`) ranked by a modular Discovery Score, reviews, and favorites.
+Phase 3: bounded empty-slot discounts ("boost" from the dashboard), loyalty
+rewards, referral rewards, one-click rebooking, and in-app notifications
+with opt-out. All of it has a mobile-first Next.js client. The business OS
+(Phase 4) is designed for in the schema but not yet built.
 
 ## Requirements
 
@@ -67,10 +69,14 @@ booking-platform/
 ## Known simplifications
 
 - Times are treated as UTC wall-clock; no per-business timezone handling yet.
-- No offers, referrals, loyalty, rebooking, or notifications yet — those are
-  Phase 3 (see the architecture doc).
+- No CRM, revenue analytics, kiosk mode, or subscriptions yet — those are
+  Phase 4 (see the architecture doc).
 - Adding a professional to a salon currently requires that professional's
   raw user id (there's no email-based lookup UI yet).
 - "Available today" in marketplace search checks for any open window at all,
   not availability for a specific service's duration (that's checked exactly
   once you open the business page and pick a service).
+- Referral rewards are evaluated lazily (on `GET /bookings/me`), not by a
+  background job — there isn't one in this MVP. See docs/ARCHITECTURE.md
+  section 9.
+- Notifications are in-app only; there's no push/email delivery channel yet.

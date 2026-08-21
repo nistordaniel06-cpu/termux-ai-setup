@@ -54,19 +54,19 @@ export function Field({ label, children }: { label: string; children: ReactNode 
   );
 }
 
-export function Input(props: InputHTMLAttributes<HTMLInputElement>) {
+export function Input({ className = "", ...props }: InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
-      className="w-full rounded-xl border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-gray-900"
+      className={`w-full rounded-xl border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-gray-900 ${className}`}
       {...props}
     />
   );
 }
 
-export function Select(props: SelectHTMLAttributes<HTMLSelectElement>) {
+export function Select({ className = "", ...props }: SelectHTMLAttributes<HTMLSelectElement>) {
   return (
     <select
-      className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-gray-900"
+      className={`w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-gray-900 ${className}`}
       {...props}
     />
   );

@@ -98,6 +98,7 @@ export function toPublicUser(user: {
   phone: string | null;
   role: string;
   referralCode: string;
+  notificationsEnabled: boolean;
 }) {
   return {
     id: user.id,
@@ -106,5 +107,6 @@ export function toPublicUser(user: {
     phone: user.phone,
     role: user.role,
     referralCode: user.referralCode,
+    notificationsEnabled: user.notificationsEnabled,
   };
 }

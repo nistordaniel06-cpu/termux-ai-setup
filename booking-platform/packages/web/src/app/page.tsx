@@ -31,6 +31,7 @@ export default function HomePage() {
             <>
               <LinkButton href="/discover">Descoperă saloane</LinkButton>
               <LinkButton href="/my-bookings">Programările mele</LinkButton>
+              <LinkButton href="/rewards">Recompensele mele</LinkButton>
             </>
           ) : (
             <>
@@ -38,6 +39,8 @@ export default function HomePage() {
               <LinkButton href="/dashboard">Dashboard</LinkButton>
             </>
           )}
+
+          <LinkButton href="/notifications">Notificări</LinkButton>
 
           <Button
             variant="secondary"
