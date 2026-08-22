@@ -44,7 +44,7 @@ export default function BusinessSetupPage() {
   if (!ready || business === undefined) {
     return (
       <Screen>
-        <p className="text-sm text-gray-400">Se încarcă...</p>
+        <p className="text-sm text-zinc-500">Se încarcă...</p>
       </Screen>
     );
   }
@@ -123,7 +123,7 @@ function BusinessDashboard({
       <Title>{business.name}</Title>
       <Subtitle>Link public de programări</Subtitle>
       <Card className="mb-4">
-        <a href={`/b/${business.slug}`} className="break-all text-sm font-medium text-gray-900 underline">
+        <a href={`/b/${business.slug}`} className="break-all text-sm font-medium text-white underline">
           {publicUrl}
         </a>
       </Card>
@@ -162,7 +162,7 @@ function LoyaltySection({ business, setError }: { business: Business; setError: 
 
   return (
     <div className="mb-6">
-      <h2 className="mb-2 text-sm font-semibold text-gray-700">Program de fidelitate</h2>
+      <h2 className="mb-2 text-sm font-semibold text-zinc-200">Program de fidelitate</h2>
       <Card>
         <label className="mb-3 flex items-center gap-2 text-sm">
           <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
@@ -224,19 +224,19 @@ function ServicesSection({
 
   return (
     <div className="mb-6">
-      <h2 className="mb-2 text-sm font-semibold text-gray-700">Servicii</h2>
+      <h2 className="mb-2 text-sm font-semibold text-zinc-200">Servicii</h2>
       <div className="mb-3 space-y-2">
         {services.map((s) => (
           <Card key={s.id}>
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">{s.name}</span>
-              <span className="text-sm text-gray-500">
+              <span className="text-sm text-zinc-400">
                 {s.durationMinutes} min · {formatPrice(s.priceCents)}
               </span>
             </div>
           </Card>
         ))}
-        {services.length === 0 && <p className="text-xs text-gray-400">Niciun serviciu adăugat încă.</p>}
+        {services.length === 0 && <p className="text-xs text-zinc-500">Niciun serviciu adăugat încă.</p>}
       </div>
 
       <Card>
@@ -319,7 +319,7 @@ function ScheduleSection({ professional, setError }: { professional: Professiona
 
   return (
     <div className="mb-6">
-      <h2 className="mb-2 text-sm font-semibold text-gray-700">Program — {professional.displayName}</h2>
+      <h2 className="mb-2 text-sm font-semibold text-zinc-200">Program — {professional.displayName}</h2>
       <Card>
         <div className="space-y-2">
           {WEEKDAYS.map((label, day) => (
@@ -331,21 +331,21 @@ function ScheduleSection({ professional, setError }: { professional: Professiona
                   setHours({ ...hours, [day]: { ...hours[day], enabled: e.target.checked } })
                 }
               />
-              <span className="w-20 text-xs text-gray-600">{label}</span>
+              <span className="w-20 text-xs text-zinc-300">{label}</span>
               <input
                 type="time"
                 disabled={!hours[day].enabled}
                 value={hours[day].startTime}
                 onChange={(e) => setHours({ ...hours, [day]: { ...hours[day], startTime: e.target.value } })}
-                className="rounded-lg border border-gray-300 px-2 py-1 text-xs disabled:opacity-40"
+                className="rounded-lg border border-zinc-700 px-2 py-1 text-xs disabled:opacity-40"
               />
-              <span className="text-xs text-gray-400">-</span>
+              <span className="text-xs text-zinc-500">-</span>
               <input
                 type="time"
                 disabled={!hours[day].enabled}
                 value={hours[day].endTime}
                 onChange={(e) => setHours({ ...hours, [day]: { ...hours[day], endTime: e.target.value } })}
-                className="rounded-lg border border-gray-300 px-2 py-1 text-xs disabled:opacity-40"
+                className="rounded-lg border border-zinc-700 px-2 py-1 text-xs disabled:opacity-40"
               />
             </div>
           ))}

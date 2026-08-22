@@ -1,15 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/useAuth";
 import { api, Business, Professional, Service, Review, Offer, LoyaltyStatus } from "@/lib/api";
 import {
   Screen,
   Title,
-  Subtitle,
   Card,
-  Field,
+  Avatar,
+  Badge,
+  Pill,
   Select,
   Button,
   ErrorText,
@@ -19,10 +21,24 @@ import {
   formatRating,
 } from "@/components/ui";
 
-function tomorrowDateString() {
+function dateString(offsetDays: number) {
   const d = new Date();
-  d.setDate(d.getDate() + 1);
+  d.setDate(d.getDate() + offsetDays);
   return d.toISOString().slice(0, 10);
+}
+
+function dayLabel(offsetDays: number) {
+  if (offsetDays === 0) return "Astăzi";
+  if (offsetDays === 1) return "Mâine";
+  const d = new Date();
+  d.setDate(d.getDate() + offsetDays);
+  return d.toLocaleDateString("ro-RO", { weekday: "short" });
+}
+
+function dayDate(offsetDays: number) {
+  const d = new Date();
+  d.setDate(d.getDate() + offsetDays);
+  return d.toLocaleDateString("ro-RO", { day: "2-digit", month: "2-digit" });
 }
 
 export default function PublicBusinessClient({ slug }: { slug: string }) {
@@ -43,12 +59,17 @@ export default function PublicBusinessClient({ slug }: { slug: string }) {
 
   const [serviceId, setServiceId] = useState("");
   const [professionalId, setProfessionalId] = useState("");
-  const [date, setDate] = useState(searchParams.get("date") || tomorrowDateString());
+  const [date, setDate] = useState(searchParams.get("date") || dateString(0));
+  const [customDate, setCustomDate] = useState(false);
 
   const [slots, setSlots] = useState<string[]>([]);
+  const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [error, setError] = useState("");
   const [confirmed, setConfirmed] = useState<string | null>(null);
+
+  const quickDays = useMemo(() => [0, 1, 2, 3], []);
+  const selectedService = services.find((s) => s.id === serviceId);
 
   useEffect(() => {
     api
@@ -98,6 +119,7 @@ export default function PublicBusinessClient({ slug }: { slug: string }) {
   useEffect(() => {
     if (!serviceId || !professionalId || !date) return;
     setLoadingSlots(true);
+    setSelectedSlot(null);
     setError("");
     api
       .getAvailability(professionalId, date, serviceId)
@@ -106,16 +128,18 @@ export default function PublicBusinessClient({ slug }: { slug: string }) {
       .finally(() => setLoadingSlots(false));
   }, [serviceId, professionalId, date]);
 
-  async function bookSlot(slot: string) {
+  async function confirmBooking() {
+    if (!selectedSlot) return;
     if (!auth) {
       setError("Trebuie să te autentifici pentru a confirma programarea.");
       return;
     }
     setError("");
     try {
-      await api.createBooking({ professionalId, serviceId, startTime: slot });
-      setConfirmed(slot);
-      setSlots(slots.filter((s) => s !== slot));
+      await api.createBooking({ professionalId, serviceId, startTime: selectedSlot });
+      setConfirmed(selectedSlot);
+      setSlots(slots.filter((s) => s !== selectedSlot));
+      setSelectedSlot(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "A apărut o eroare");
     }
@@ -138,7 +162,7 @@ export default function PublicBusinessClient({ slug }: { slug: string }) {
   if (business === undefined) {
     return (
       <Screen>
-        <p className="text-sm text-gray-400">Se încarcă...</p>
+        <p className="text-sm text-zinc-500">Se încarcă...</p>
       </Screen>
     );
   }
@@ -147,72 +171,90 @@ export default function PublicBusinessClient({ slug }: { slug: string }) {
     return (
       <Screen>
         <Title>Nu am găsit acest salon</Title>
-        <Subtitle>Verifică link-ul și încearcă din nou.</Subtitle>
+        <p className="text-sm text-zinc-400">Verifică link-ul și încearcă din nou.</p>
       </Screen>
     );
   }
 
+  const activeOffer = offers.find(
+    (o) => new Date(o.startsAt).getTime() <= Date.now() && new Date(o.endsAt).getTime() > Date.now()
+  );
+  const mapsHref = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+    [business.address, business.city].filter(Boolean).join(", ") || business.name
+  )}`;
+
   return (
-    <Screen>
-      <div className="flex items-start justify-between">
-        <div>
-          <Title>{business.name}</Title>
-          <Subtitle>
-            {business.city}
-            {business.address ? ` · ${business.address}` : ""}
-          </Subtitle>
-        </div>
+    <div className="flex flex-1 flex-col pb-28">
+      <div className="relative flex h-40 items-end justify-between bg-gradient-to-br from-zinc-800 to-zinc-950 px-4 py-3">
+        <Link href="/" className="rounded-full bg-zinc-950/60 px-3 py-2 text-white" aria-label="Înapoi">
+          ←
+        </Link>
         {auth?.user.role === "CLIENT" && (
           <button
             onClick={toggleFavorite}
             aria-label="Salvează la favorite"
-            className={`rounded-full border px-3 py-2 text-sm ${
-              isFavorite ? "border-red-300 bg-red-50 text-red-600" : "border-gray-300 text-gray-400"
-            }`}
+            className={`rounded-full px-3 py-2 text-lg ${isFavorite ? "bg-red-500/20 text-red-400" : "bg-zinc-950/60 text-white"}`}
           >
             {isFavorite ? "♥" : "♡"}
           </button>
         )}
       </div>
 
-      <p className="mb-1 text-sm text-gray-600">{formatRating(reviews.avgRating, reviews.reviewCount)}</p>
+      <div className="-mt-8 px-5">
+        <Avatar name={business.name} size={64} />
+      </div>
 
-      {(() => {
-        const activeOffer = offers.find(
-          (o) => new Date(o.startsAt).getTime() <= Date.now() && new Date(o.endsAt).getTime() > Date.now()
-        );
-        return activeOffer ? (
-          <p className="mb-2 inline-block rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
-            -{activeOffer.discountPercent}% azi
-          </p>
-        ) : null;
-      })()}
+      <Screen className="pt-3">
+        <div className="mb-1 flex items-center gap-2">
+          <h1 className="text-xl font-semibold text-white">{business.name}</h1>
+          {activeOffer && <Badge tone="green">-{activeOffer.discountPercent}%</Badge>}
+        </div>
+        <p className="mb-1 text-sm text-zinc-400">{formatRating(reviews.avgRating, reviews.reviewCount)}</p>
+        {services.length > 0 && (
+          <p className="mb-2 text-xs text-zinc-500">{Array.from(new Set(services.map((s) => s.name))).slice(0, 3).join(" · ")}</p>
+        )}
+        {(business.address || business.city) && (
+          <a href={mapsHref} target="_blank" rel="noreferrer" className="mb-4 inline-block text-xs font-medium text-amber-400">
+            📍 Vezi adresa pe hartă
+          </a>
+        )}
 
-      {loyalty?.enabled && (
-        <Card className="mb-4 bg-amber-50">
-          <p className="text-xs text-amber-800">
-            Mai ai <strong>{loyalty.visitsUntilNextReward}</strong> vizite până la o recompensă ({loyalty.currentVisits}/
-            {loyalty.visitsRequired}).
-          </p>
-        </Card>
-      )}
+        {loyalty?.enabled && (
+          <Card className="mb-4 border-amber-400/30">
+            <p className="text-xs text-amber-300">
+              Mai ai <strong>{loyalty.visitsUntilNextReward}</strong> vizite până la o recompensă ({loyalty.currentVisits}/
+              {loyalty.visitsRequired}).
+            </p>
+          </Card>
+        )}
 
-      <ErrorText>{error}</ErrorText>
-      {confirmed && <SuccessText>Programare confirmată pentru {formatSlotTime(confirmed)}.</SuccessText>}
+        <ErrorText>{error}</ErrorText>
+        {confirmed && <SuccessText>Programare confirmată pentru {formatSlotTime(confirmed)}.</SuccessText>}
 
-      <Card className="mb-4 space-y-3">
-        <Field label="Serviciu">
-          <Select value={serviceId} onChange={(e) => setServiceId(e.target.value)}>
-            {services.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name} — {s.durationMinutes} min, {formatPrice(s.priceCents)}
-              </option>
-            ))}
-          </Select>
-        </Field>
+        <div className="mb-4 flex items-center gap-2 overflow-x-auto pb-1">
+          {quickDays.map((offset) => (
+            <Pill key={offset} active={!customDate && date === dateString(offset)} onClick={() => { setCustomDate(false); setDate(dateString(offset)); }}>
+              <span className="block leading-tight">{dayLabel(offset)}</span>
+              <span className="block text-[10px] font-normal opacity-80">{dayDate(offset)}</span>
+            </Pill>
+          ))}
+          <label className="relative shrink-0 rounded-full bg-zinc-800 p-2.5 text-zinc-300">
+            📅
+            <input
+              type="date"
+              min={dateString(0)}
+              value={customDate ? date : ""}
+              onChange={(e) => {
+                setCustomDate(true);
+                setDate(e.target.value);
+              }}
+              className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+            />
+          </label>
+        </div>
 
         {professionals.length > 1 && (
-          <Field label="Profesionist">
+          <div className="mb-4">
             <Select value={professionalId} onChange={(e) => setProfessionalId(e.target.value)}>
               {professionals.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -220,58 +262,77 @@ export default function PublicBusinessClient({ slug }: { slug: string }) {
                 </option>
               ))}
             </Select>
-          </Field>
+          </div>
         )}
 
-        <Field label="Dată">
-          <input
-            type="date"
-            min={tomorrowDateString()}
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="w-full rounded-xl border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-gray-900"
-          />
-        </Field>
-      </Card>
-
-      <h2 className="mb-2 text-sm font-semibold text-gray-700">Ore disponibile</h2>
-      {loadingSlots ? (
-        <p className="text-xs text-gray-400">Se caută ore libere...</p>
-      ) : slots.length === 0 ? (
-        <p className="text-xs text-gray-400">Nicio oră liberă în această zi.</p>
-      ) : (
-        <div className="grid grid-cols-3 gap-2">
-          {slots.map((slot) => (
-            <Button key={slot} variant="secondary" onClick={() => bookSlot(slot)}>
-              {formatSlotTime(slot)}
-            </Button>
-          ))}
-        </div>
-      )}
-
-      {!auth && (
-        <p className="mt-4 text-center text-xs text-gray-400">
-          <a href="/login" className="underline">
-            Autentifică-te
-          </a>{" "}
-          pentru a confirma o programare.
-        </p>
-      )}
-
-      {reviews.reviews.length > 0 && (
-        <div className="mt-8">
-          <h2 className="mb-2 text-sm font-semibold text-gray-700">Recenzii</h2>
-          <div className="space-y-2">
-            {reviews.reviews.map((r) => (
-              <Card key={r.id}>
-                <p className="text-sm font-medium">{"★".repeat(r.rating)}</p>
-                {r.comment && <p className="mt-1 text-sm text-gray-600">{r.comment}</p>}
-                <p className="mt-1 text-xs text-gray-400">{r.user.name}</p>
-              </Card>
+        <h2 className="mb-2 text-sm font-semibold text-zinc-200">Alege ora</h2>
+        {loadingSlots ? (
+          <p className="mb-4 text-xs text-zinc-500">Se caută ore libere...</p>
+        ) : slots.length === 0 ? (
+          <p className="mb-4 text-xs text-zinc-500">Nicio oră liberă în această zi.</p>
+        ) : (
+          <div className="mb-4 grid grid-cols-4 gap-2">
+            {slots.map((slot) => (
+              <button
+                key={slot}
+                onClick={() => setSelectedSlot(slot)}
+                className={`rounded-xl px-2 py-2.5 text-sm font-medium transition ${
+                  selectedSlot === slot ? "bg-amber-400 text-zinc-950" : "bg-zinc-800 text-white"
+                }`}
+              >
+                {formatSlotTime(slot)}
+              </button>
             ))}
           </div>
+        )}
+
+        <h2 className="mb-2 text-sm font-semibold text-zinc-200">Serviciu</h2>
+        <div className="mb-6 space-y-2">
+          {services.map((s) => (
+            <button key={s.id} onClick={() => setServiceId(s.id)} className="block w-full text-left">
+              <Card className={`flex items-center justify-between ${serviceId === s.id ? "border-amber-400" : ""}`}>
+                <div>
+                  <p className="text-sm font-medium text-white">{s.name}</p>
+                  <p className="text-xs text-zinc-500">{s.durationMinutes} min</p>
+                </div>
+                <p className="text-sm font-semibold text-white">{formatPrice(s.priceCents)}</p>
+              </Card>
+            </button>
+          ))}
+        </div>
+
+        {!auth && (
+          <p className="mb-4 text-center text-xs text-zinc-500">
+            <Link href="/login" className="underline">
+              Autentifică-te
+            </Link>{" "}
+            pentru a confirma o programare.
+          </p>
+        )}
+
+        {reviews.reviews.length > 0 && (
+          <div>
+            <h2 className="mb-2 text-sm font-semibold text-zinc-200">Recenzii</h2>
+            <div className="space-y-2">
+              {reviews.reviews.map((r) => (
+                <Card key={r.id}>
+                  <p className="text-sm font-medium text-amber-400">{"★".repeat(r.rating)}</p>
+                  {r.comment && <p className="mt-1 text-sm text-zinc-300">{r.comment}</p>}
+                  <p className="mt-1 text-xs text-zinc-500">{r.user.name}</p>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+      </Screen>
+
+      {selectedSlot && (
+        <div className="fixed bottom-16 left-1/2 z-30 w-full max-w-md -translate-x-1/2 px-5 md:max-w-2xl">
+          <Button onClick={confirmBooking} className="shadow-lg shadow-black/40">
+            Continuă ({formatSlotTime(selectedSlot)}) — {selectedService ? formatPrice(selectedService.priceCents) : ""}
+          </Button>
         </div>
       )}
-    </Screen>
+    </div>
   );
 }

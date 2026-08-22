@@ -77,9 +77,9 @@ export default function RegisterPage() {
         </Button>
       </form>
 
-      <p className="mt-4 text-center text-sm text-gray-500">
+      <p className="mt-4 text-center text-sm text-zinc-400">
         Ai deja cont?{" "}
-        <a href="/login" className="font-medium text-gray-900 underline">
+        <a href="/login" className="font-medium text-white underline">
           Autentifică-te
         </a>
       </p>

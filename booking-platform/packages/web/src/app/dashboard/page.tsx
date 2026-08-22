@@ -35,7 +35,7 @@ export default function DashboardPage() {
   if (!ready || (!dashboard && !error)) {
     return (
       <Screen>
-        <p className="text-sm text-gray-400">Se încarcă...</p>
+        <p className="text-sm text-zinc-500">Se încarcă...</p>
       </Screen>
     );
   }
@@ -50,26 +50,26 @@ export default function DashboardPage() {
         <>
           <div className="mb-6 grid grid-cols-2 gap-3">
             <Card>
-              <p className="text-xs text-gray-500">Grad de ocupare azi</p>
+              <p className="text-xs text-zinc-400">Grad de ocupare azi</p>
               <p className="mt-1 text-2xl font-semibold">{dashboard.occupancyPercent}%</p>
             </Card>
             <Card>
-              <p className="text-xs text-gray-500">Ore libere azi</p>
+              <p className="text-xs text-zinc-400">Ore libere azi</p>
               <p className="mt-1 text-2xl font-semibold">{dashboard.emptySlotsToday}</p>
             </Card>
           </div>
 
           <GrowthSection business={business} emptySlotsToday={dashboard.emptySlotsToday} />
 
-          <h2 className="mb-2 mt-6 text-sm font-semibold text-gray-700">Programări următoare</h2>
+          <h2 className="mb-2 mt-6 text-sm font-semibold text-zinc-200">Programări următoare</h2>
           <div className="space-y-2">
             {dashboard.upcomingBookings.length === 0 && (
-              <p className="text-xs text-gray-400">Nicio programare viitoare.</p>
+              <p className="text-xs text-zinc-500">Nicio programare viitoare.</p>
             )}
             {dashboard.upcomingBookings.map((b) => (
               <Card key={b.id}>
                 <p className="text-sm font-medium">{b.service?.name}</p>
-                <p className="text-xs text-gray-500">{b.professional?.displayName}</p>
+                <p className="text-xs text-zinc-400">{b.professional?.displayName}</p>
                 <p className="mt-1 text-sm">{formatSlotDateTime(b.startTime)}</p>
               </Card>
             ))}
@@ -136,13 +136,13 @@ function GrowthSection({ business, emptySlotsToday }: { business: Business; empt
 
   return (
     <Card className="space-y-3">
-      <h2 className="text-sm font-semibold text-gray-700">Boost sloturi libere</h2>
+      <h2 className="text-sm font-semibold text-zinc-200">Boost sloturi libere</h2>
       <ErrorText>{error}</ErrorText>
       <SuccessText>{success}</SuccessText>
 
       {!limitsConfigured ? (
         <form onSubmit={saveLimits} className="space-y-2">
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-zinc-400">
             Setează limitele de discount înainte de a putea lansa oferte pentru orele libere.
           </p>
           <div className="grid grid-cols-2 gap-2">
@@ -156,12 +156,12 @@ function GrowthSection({ business, emptySlotsToday }: { business: Business; empt
           <Button type="submit">Salvează limitele</Button>
         </form>
       ) : activeOffer ? (
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-zinc-300">
           Ofertă activă: <strong>-{activeOffer.discountPercent}%</strong> până la {new Date(activeOffer.endsAt).toLocaleTimeString("ro-RO", { hour: "2-digit", minute: "2-digit" })}.
         </p>
       ) : (
         <>
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-zinc-400">
             {emptySlotsToday} ore libere azi. Propune un discount ca să le umpli.
           </p>
           <div className="grid grid-cols-4 gap-2">

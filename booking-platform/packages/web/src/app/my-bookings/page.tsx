@@ -80,7 +80,7 @@ export default function MyBookingsPage() {
   if (!ready || bookings === null) {
     return (
       <Screen>
-        <p className="text-sm text-gray-400">Se încarcă...</p>
+        <p className="text-sm text-zinc-500">Se încarcă...</p>
       </Screen>
     );
   }
@@ -91,7 +91,7 @@ export default function MyBookingsPage() {
       <Subtitle>Anulează sau reprogramează direct de aici.</Subtitle>
       <ErrorText>{error}</ErrorText>
 
-      {bookings.length === 0 && <p className="text-sm text-gray-400">Nu ai nicio programare încă.</p>}
+      {bookings.length === 0 && <p className="text-sm text-zinc-500">Nu ai nicio programare încă.</p>}
 
       <div className="space-y-3">
         {bookings.map((b) => (
@@ -99,9 +99,9 @@ export default function MyBookingsPage() {
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm font-medium">{b.service?.name}</p>
-                <p className="text-xs text-gray-500">{b.professional?.displayName}</p>
+                <p className="text-xs text-zinc-400">{b.professional?.displayName}</p>
                 <p className="mt-1 text-sm">{formatSlotDateTime(b.startTime)}</p>
-                <p className="mt-1 text-xs uppercase tracking-wide text-gray-400">{b.status}</p>
+                <p className="mt-1 text-xs uppercase tracking-wide text-zinc-500">{b.status}</p>
               </div>
             </div>
 
@@ -113,7 +113,7 @@ export default function MyBookingsPage() {
                       type="datetime-local"
                       value={newTime}
                       onChange={(e) => setNewTime(e.target.value)}
-                      className="flex-1 rounded-xl border border-gray-300 px-2 py-2 text-xs"
+                      className="flex-1 rounded-xl border border-zinc-700 px-2 py-2 text-xs"
                     />
                     <Button className="w-auto" onClick={() => onConfirmReschedule(b.id)}>
                       OK
@@ -138,7 +138,7 @@ export default function MyBookingsPage() {
                   Rezervă din nou
                 </Button>
                 {b.review ? (
-                  <p className="text-xs text-gray-500">Recenzia ta: {"★".repeat(b.review.rating)}</p>
+                  <p className="text-xs text-zinc-400">Recenzia ta: {"★".repeat(b.review.rating)}</p>
                 ) : reviewingId === b.id ? (
                   <div className="space-y-2">
                     <div className="flex gap-1">
@@ -146,7 +146,7 @@ export default function MyBookingsPage() {
                         <button
                           key={n}
                           onClick={() => setRating(n)}
-                          className={`text-lg ${n <= rating ? "text-yellow-500" : "text-gray-300"}`}
+                          className={`text-lg ${n <= rating ? "text-amber-400" : "text-zinc-700"}`}
                         >
                           ★
                         </button>
@@ -156,7 +156,7 @@ export default function MyBookingsPage() {
                       value={comment}
                       onChange={(e) => setComment(e.target.value)}
                       placeholder="Un comentariu (opțional)"
-                      className="w-full rounded-xl border border-gray-300 px-3 py-2 text-xs"
+                      className="w-full rounded-xl border border-zinc-700 px-3 py-2 text-xs"
                     />
                     <Button onClick={() => onSubmitReview(b.id)}>Trimite recenzia</Button>
                   </div>
