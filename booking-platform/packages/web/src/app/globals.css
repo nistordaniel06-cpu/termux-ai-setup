@@ -4,11 +4,19 @@
 
 html,
 body {
-  background-color: #fafafa;
-  color: #111827;
+  background-color: #0b0b0d;
+  color: #fafafa;
 }
 
 input,
 select {
   font-size: 16px; /* prevents iOS auto-zoom on focus */
+}
+
+input[type="date"] {
+  color-scheme: dark;
+}
+
+::-webkit-scrollbar {
+  display: none;
 }

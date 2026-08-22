@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { api, MarketplaceResult } from "@/lib/api";
-import { Screen, Title, Subtitle, Card, Field, Input, Button, ErrorText, formatPrice, formatRating } from "@/components/ui";
+import { Screen, Title, Subtitle, Card, Avatar, Badge, Field, Input, Button, ErrorText, formatPrice, formatRating } from "@/components/ui";
 
 function todayDateString() {
   return new Date().toISOString().slice(0, 10);
@@ -59,8 +60,8 @@ export default function DiscoverPage() {
 
   return (
     <Screen>
-      <Title>Descoperă saloane</Title>
-      <Subtitle>Găsește un frizer bun lângă tine, disponibil azi.</Subtitle>
+      <Title>Căutare avansată</Title>
+      <Subtitle>Filtrează după preț, oraș și dată pentru a găsi exact ce cauți.</Subtitle>
 
       <Card className="mb-4 space-y-3">
         <Field label="Serviciu sau salon">
@@ -75,12 +76,7 @@ export default function DiscoverPage() {
           </Field>
         </div>
         <Field label="Dată">
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="w-full rounded-xl border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-gray-900"
-          />
+          <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         </Field>
         <div className="flex gap-2">
           <Button variant="secondary" onClick={useMyLocation} className="flex-1">
@@ -90,41 +86,36 @@ export default function DiscoverPage() {
             {loading ? "Caut..." : "Caută"}
           </Button>
         </div>
-        {geoError && <p className="text-xs text-red-600">{geoError}</p>}
+        {geoError && <p className="text-xs text-red-400">{geoError}</p>}
       </Card>
 
       <ErrorText>{error}</ErrorText>
 
       {results && results.length === 0 && (
-        <p className="text-sm text-gray-400">Niciun salon nu se potrivește. Încearcă alte filtre.</p>
+        <p className="text-sm text-zinc-500">Niciun salon nu se potrivește. Încearcă alte filtre.</p>
       )}
 
       <div className="space-y-3">
         {results?.map((r) => (
-          <a key={r.id} href={`/b/${r.slug}`}>
-            <Card>
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-sm font-semibold">{r.name}</p>
-                  <p className="text-xs text-gray-500">
-                    {r.city}
-                    {r.distanceKm !== null ? ` · ${r.distanceKm.toFixed(1)} km` : ""}
-                  </p>
-                  <p className="mt-1 text-xs text-gray-500">{formatRating(r.avgRating, r.reviewCount)}</p>
-                </div>
-                <div className="text-right">
-                  {r.hasAvailabilityToday && (
-                    <span className="mb-1 inline-block rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-medium text-green-700">
-                      Disponibil azi
-                    </span>
-                  )}
-                  {r.fromPriceCents !== null && (
-                    <p className="text-xs text-gray-500">de la {formatPrice(r.fromPriceCents)}</p>
-                  )}
-                </div>
+          <Link key={r.id} href={`/b/${r.slug}`}>
+            <Card className="flex items-center gap-3">
+              <Avatar name={r.name} size={48} />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-white">{r.name}</p>
+                <p className="text-xs text-zinc-400">
+                  {r.city}
+                  {r.distanceKm !== null ? ` · ${r.distanceKm.toFixed(1)} km` : ""}
+                </p>
+                <p className="mt-1 text-xs text-zinc-400">{formatRating(r.avgRating, r.reviewCount)}</p>
+              </div>
+              <div className="flex shrink-0 flex-col items-end gap-1">
+                {r.hasAvailabilityToday && <Badge tone="gold">Disponibil azi</Badge>}
+                {r.fromPriceCents !== null && (
+                  <p className="text-xs text-zinc-400">de la {formatPrice(r.fromPriceCents)}</p>
+                )}
               </div>
             </Card>
-          </a>
+          </Link>
         ))}
       </div>
     </Screen>

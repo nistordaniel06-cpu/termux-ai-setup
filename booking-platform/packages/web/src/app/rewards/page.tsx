@@ -30,7 +30,7 @@ export default function RewardsPage() {
   if (!ready || rewards === null) {
     return (
       <Screen>
-        <p className="text-sm text-gray-400">Se încarcă...</p>
+        <p className="text-sm text-zinc-500">Se încarcă...</p>
       </Screen>
     );
   }
@@ -46,25 +46,25 @@ export default function RewardsPage() {
 
       <div className="mb-4 grid grid-cols-2 gap-3">
         <Card>
-          <p className="text-xs text-gray-500">Puncte recomandare</p>
+          <p className="text-xs text-zinc-400">Puncte recomandare</p>
           <p className="mt-1 text-2xl font-semibold">{totalPoints}</p>
         </Card>
         <Card>
-          <p className="text-xs text-gray-500">Recompense fidelitate</p>
+          <p className="text-xs text-zinc-400">Recompense fidelitate</p>
           <p className="mt-1 text-2xl font-semibold">{loyaltyCount}</p>
         </Card>
       </div>
 
-      {rewards.length === 0 && <p className="text-sm text-gray-400">Nicio recompensă încă.</p>}
+      {rewards.length === 0 && <p className="text-sm text-zinc-500">Nicio recompensă încă.</p>}
 
       <div className="space-y-2">
         {rewards.map((r) => (
           <Card key={r.id}>
             <p className="text-sm font-medium">{LABELS[r.type] ?? r.type}</p>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-zinc-400">
               {r.amount} {r.type.startsWith("referral") ? "puncte" : ""}
             </p>
-            <p className="mt-1 text-xs text-gray-400">{new Date(r.createdAt).toLocaleDateString("ro-RO")}</p>
+            <p className="mt-1 text-xs text-zinc-500">{new Date(r.createdAt).toLocaleDateString("ro-RO")}</p>
           </Card>
         ))}
       </div>

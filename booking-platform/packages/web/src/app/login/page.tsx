@@ -46,9 +46,9 @@ export default function LoginPage() {
         </Button>
       </form>
 
-      <p className="mt-4 text-center text-sm text-gray-500">
+      <p className="mt-4 text-center text-sm text-zinc-400">
         Nu ai cont?{" "}
-        <a href="/register" className="font-medium text-gray-900 underline">
+        <a href="/register" className="font-medium text-white underline">
           Creează unul
         </a>
       </p>

@@ -62,7 +62,7 @@ export default function NotificationsPage() {
   if (!ready || notifications === null) {
     return (
       <Screen>
-        <p className="text-sm text-gray-400">Se încarcă...</p>
+        <p className="text-sm text-zinc-500">Se încarcă...</p>
       </Screen>
     );
   }
@@ -84,7 +84,7 @@ export default function NotificationsPage() {
         </label>
       </Card>
 
-      {notifications.length === 0 && <p className="text-sm text-gray-400">Nicio notificare încă.</p>}
+      {notifications.length === 0 && <p className="text-sm text-zinc-500">Nicio notificare încă.</p>}
 
       <div className="space-y-2">
         {notifications.map((n) => (
@@ -92,12 +92,12 @@ export default function NotificationsPage() {
             <div className="flex items-start justify-between gap-2">
               <p className="text-sm">{describe(n)}</p>
               {!n.readAt && (
-                <button onClick={() => onMarkRead(n.id)} className="shrink-0 text-xs text-gray-400 underline">
+                <button onClick={() => onMarkRead(n.id)} className="shrink-0 text-xs text-zinc-500 underline">
                   marchează citit
                 </button>
               )}
             </div>
-            <p className="mt-1 text-xs text-gray-400">{new Date(n.createdAt).toLocaleString("ro-RO")}</p>
+            <p className="mt-1 text-xs text-zinc-500">{new Date(n.createdAt).toLocaleString("ro-RO")}</p>
           </Card>
         ))}
       </div>
