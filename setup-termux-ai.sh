@@ -4,6 +4,7 @@
 set -euo pipefail
 
 TMP_ROOT="${TMPDIR:-$PREFIX/tmp}"
+CLAUDE_VERSION="2.1.241"
 LAUNCHER="$PREFIX/bin/termux-ai"
 
 mkdir -p "$TMP_ROOT"
@@ -16,7 +17,7 @@ pkg install nodejs-lts proot -y
 
 echo "==> Installing Claude Code..."
 # Pin the version so reruns stay reproducible until the launcher is updated intentionally.
-npm install -g @anthropic-ai/claude-code@2.1.241
+npm install -g "@anthropic-ai/claude-code@$CLAUDE_VERSION"
 
 if ! command -v claude >/dev/null 2>&1; then
   echo "Claude Code was not added to PATH after installation." >&2
