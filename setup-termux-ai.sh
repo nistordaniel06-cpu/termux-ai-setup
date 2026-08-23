@@ -3,6 +3,11 @@
 
 set -euo pipefail
 
+if [ -z "${PREFIX:-}" ] || [ ! -d "${PREFIX:-}" ]; then
+  echo "Error: This script must be run inside Termux (PREFIX is not set or does not exist)." >&2
+  exit 1
+fi
+
 TMP_ROOT="${TMPDIR:-$PREFIX/tmp}"
 CLAUDE_VERSION="2.1.241" # Update from https://www.npmjs.com/package/@anthropic-ai/claude-code
 LAUNCHER="$PREFIX/bin/termux-ai"
