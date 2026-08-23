@@ -4,7 +4,7 @@
 set -euo pipefail
 
 TMP_ROOT="${TMPDIR:-$PREFIX/tmp}"
-CLAUDE_VERSION="2.1.241"
+CLAUDE_VERSION="2.1.241" # Update from https://www.npmjs.com/package/@anthropic-ai/claude-code
 LAUNCHER="$PREFIX/bin/termux-ai"
 
 mkdir -p "$TMP_ROOT"
