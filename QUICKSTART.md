@@ -83,14 +83,17 @@ Follow the prompts to authenticate in your browser. To switch accounts later, ty
 
 ## Step 3: Start a session in this repo
 
+**macOS, Linux, WSL, Windows:**
+
 ```bash
 cd /path/to/termux-ai-setup
 claude
 ```
 
-On Termux, after changing into your repo, use the direct launcher instead:
+**Android / Termux:**
 
 ```bash
+cd /path/to/termux-ai-setup
 termux-ai
 ```
 
