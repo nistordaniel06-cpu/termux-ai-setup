@@ -70,7 +70,7 @@ Follow the prompts to authenticate in your browser. To switch accounts later, ty
 ## Step 3: Start a session in this repo
 
 ```bash
-cd termux-ai-setup
+cd /path/to/your/repo
 claude
 ```
 
