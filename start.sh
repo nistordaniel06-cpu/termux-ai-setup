@@ -8,11 +8,15 @@ set -euo pipefail
 
 YELLOW="\033[33m"
 GREEN="\033[32m"
-RED="\033[31m"
 RESET="\033[0m"
 BOLD="\033[1m"
 
 echo -e "${BOLD}==> Termux Copilot Chat — setup & launch${RESET}"
+
+if ! command -v pkg &>/dev/null; then
+    echo "This script must be run inside Termux (missing 'pkg' command)."
+    exit 1
+fi
 
 # 1. Update packages (non-fatal if offline)
 echo -e "${YELLOW}[1/4] Updating Termux packages…${RESET}"
@@ -59,9 +63,11 @@ CHAT_SCRIPT="$(cd "$(dirname "$0")" && pwd)/termux-chat.sh"
 BASHRC="$HOME/.bashrc"
 
 if ! grep -qF "$MARKER" "$BASHRC" 2>/dev/null; then
-    echo "" >> "$BASHRC"
-    echo "$MARKER" >> "$BASHRC"
-    echo "bash \"$CHAT_SCRIPT\"" >> "$BASHRC"
+    {
+        echo ""
+        echo "$MARKER"
+        echo "bash \"$CHAT_SCRIPT\""
+    } >> "$BASHRC"
     echo -e "${GREEN}  Auto-start added to ~/.bashrc${RESET}"
     echo "  To remove it later, delete the marker line and the bash line that follows it in ~/.bashrc"
 else

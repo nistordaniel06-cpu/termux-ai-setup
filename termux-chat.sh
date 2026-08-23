@@ -8,6 +8,11 @@
 
 set -uo pipefail
 
+if [[ ! -t 0 || ! -t 1 ]]; then
+    echo "This chat UI must be run in an interactive terminal."
+    exit 1
+fi
+
 # ── colour helpers ──────────────────────────────────────────────────────────
 BOLD="\033[1m"
 CYAN="\033[36m"
