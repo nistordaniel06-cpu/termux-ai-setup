@@ -35,7 +35,7 @@ curl -fsSL https://claude.ai/install.cmd -o install.cmd && install.cmd && del in
 bash ./setup-termux-ai.sh
 ```
 
-After install you can open the same Claude terminal interface with:
+After installation you can open the same Claude terminal interface with:
 
 ```bash
 termux-ai
