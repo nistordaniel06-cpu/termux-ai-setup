@@ -14,7 +14,7 @@ BOLD="\033[1m"
 echo -e "${BOLD}==> Termux Copilot Chat — setup & launch${RESET}"
 
 if ! command -v pkg &>/dev/null; then
-    echo "This script must be run inside Termux (missing 'pkg' command)."
+    echo "This script must be run inside Termux (missing 'pkg' command)." >&2
     exit 1
 fi
 

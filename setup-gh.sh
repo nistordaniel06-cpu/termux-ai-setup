@@ -4,7 +4,7 @@
 set -e
 
 if ! command -v pkg >/dev/null 2>&1; then
-    echo "Acest script trebuie rulat din Termux (lipseste comanda 'pkg')." >&2
+    echo "Acest script trebuie rulat din Termux (lipsește comanda 'pkg')." >&2
     exit 1
 fi
 
