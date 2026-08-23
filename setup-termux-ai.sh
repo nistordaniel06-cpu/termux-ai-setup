@@ -3,6 +3,11 @@
 
 set -euo pipefail
 
+if [[ -z "${PREFIX:-}" ]] || [[ "$PREFIX" != "/data/data/com.termux/files/usr" ]]; then
+  echo "This installer must be run inside the Termux app environment." >&2
+  exit 1
+fi
+
 TMP_ROOT="${TMPDIR:-$PREFIX/tmp}"
 CLAUDE_VERSION="2.1.241" # Update from https://www.npmjs.com/package/@anthropic-ai/claude-code
 LAUNCHER="$PREFIX/bin/termux-ai"

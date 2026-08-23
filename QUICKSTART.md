@@ -41,7 +41,7 @@ curl -fsSL https://claude.ai/install.cmd -o install.cmd && install.cmd && del in
 bash ./setup-termux-ai.sh
 ```
 
-After installation you can open the same Claude terminal interface with:
+After installation, including your first login, open the same Claude terminal interface with:
 
 ```bash
 termux-ai
@@ -67,22 +67,33 @@ claude --version
 
 Start an interactive session and you'll be prompted to log in on first use:
 
+**macOS, Linux, WSL, Windows:**
+
 ```bash
 claude
+```
+
+**Android / Termux:**
+
+```bash
+termux-ai
 ```
 
 Follow the prompts to authenticate in your browser. To switch accounts later, type `/login` inside a running session.
 
 ## Step 3: Start a session in this repo
 
+**macOS, Linux, WSL, Windows:**
+
 ```bash
-cd /path/to/your/repo
+cd /path/to/termux-ai-setup
 claude
 ```
 
-On Termux, after changing into your repo, use the direct launcher instead:
+**Android / Termux:**
 
 ```bash
+cd /path/to/termux-ai-setup
 termux-ai
 ```
 
