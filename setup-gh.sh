@@ -23,7 +23,7 @@ else
     PROFILE="$HOME/.bashrc"
 
     if ! grep -q 'go/bin' "$PROFILE" 2>/dev/null; then
-        echo 'export PATH=$PATH:$HOME/go/bin' >> "$PROFILE"
+        echo "export PATH=\$PATH:\$HOME/go/bin" >> "$PROFILE"
     fi
     export PATH=$PATH:$HOME/go/bin
     echo "==> GitHub CLI instalat via Go la: $GH_BIN"

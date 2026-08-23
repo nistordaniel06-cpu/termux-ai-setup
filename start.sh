@@ -31,7 +31,7 @@ if ! command -v gh &>/dev/null; then
         go install github.com/cli/cli/v2/cmd/gh@latest
         PROFILE="$HOME/.bashrc"
         grep -q 'go/bin' "$PROFILE" 2>/dev/null || \
-            echo 'export PATH=$PATH:$HOME/go/bin' >> "$PROFILE"
+            echo "export PATH=\$PATH:\$HOME/go/bin" >> "$PROFILE"
         export PATH="$PATH:$HOME/go/bin"
     fi
     echo -e "${GREEN}  gh installed.${RESET}"
