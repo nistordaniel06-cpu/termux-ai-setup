@@ -1,3 +1,9 @@
+# Termux Copilot Chat — Quickstart
+
+> **Running on Android / Termux?** Jump straight to the [Termux setup](#termux-setup) section below.
+
+---
+
 # Claude Code Quickstart
 
 This guide will have you using AI-powered coding assistance in a few minutes. By the end, you'll understand how to use Claude Code for common development tasks in this repository.
@@ -162,3 +168,52 @@ review my changes and suggest improvements
 * [Claude Code documentation](https://code.claude.com/docs)
 * [Best practices](https://code.claude.com/docs/en/best-practices)
 * [Common workflows](https://code.claude.com/docs/en/common-workflows)
+
+---
+
+## Termux Setup
+
+A lightweight chat-style UI that talks to GitHub Copilot directly in your Termux terminal.
+It uses `gh copilot suggest` and `gh copilot explain` under the hood, wrapped in a loop that gives you readline-style input — so cursor keys, history (↑/↓), and in-line editing all work.
+
+### First-time setup (run once)
+
+```bash
+cd termux-ai-setup
+bash start.sh
+```
+
+`start.sh` will:
+
+1. Update Termux packages  
+2. Install `gh` (GitHub CLI)  
+3. Walk you through `gh auth login` if you are not yet authenticated  
+4. Install the `gh-copilot` extension  
+5. Add a single line to `~/.bashrc` so the chat launches automatically every time you open a new Termux session  
+6. Launch the chat immediately
+
+### Manual launch (after setup)
+
+```bash
+bash termux-chat.sh
+```
+
+### Usage
+
+| What you type | What happens |
+|---|---|
+| `suggest list files changed today` | Copilot suggests a shell command |
+| `explain find . -mtime -1` | Copilot explains the command |
+| Any bare text (no prefix) | Treated as a `suggest` query |
+| `help` | Show available commands |
+| `exit` or Ctrl-D | Quit the chat |
+
+### Removing the auto-start
+
+Open `~/.bashrc` in any editor and delete the two lines that start with `# termux-copilot-autostart`.
+
+### Requirements
+
+- Termux (Android) or any bash environment  
+- A GitHub account with Copilot access  
+- Internet connection for the first setup
