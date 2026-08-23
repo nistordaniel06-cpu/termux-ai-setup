@@ -6,7 +6,7 @@
 # Usage:  bash termux-chat.sh
 # Quit:   type  exit  or press Ctrl-D
 
-set -euo pipefail
+set -uo pipefail
 
 # ── colour helpers ──────────────────────────────────────────────────────────
 BOLD="\033[1m"

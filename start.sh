@@ -63,7 +63,7 @@ if ! grep -qF "$MARKER" "$BASHRC" 2>/dev/null; then
     echo "$MARKER" >> "$BASHRC"
     echo "bash \"$CHAT_SCRIPT\"" >> "$BASHRC"
     echo -e "${GREEN}  Auto-start added to ~/.bashrc${RESET}"
-    echo "  To remove it later, delete the two lines after '$MARKER' in ~/.bashrc"
+    echo "  To remove it later, delete the marker line and the bash line that follows it in ~/.bashrc"
 else
     echo -e "${GREEN}  Auto-start already configured in ~/.bashrc${RESET}"
 fi
