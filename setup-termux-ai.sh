@@ -3,6 +3,11 @@
 
 set -euo pipefail
 
+if ! command -v pkg >/dev/null 2>&1; then
+  echo "This script must be run inside Termux (missing 'pkg' command)." >&2
+  exit 1
+fi
+
 TMP_ROOT="${TMPDIR:-$PREFIX/tmp}"
 CLAUDE_VERSION="2.1.241" # Update from https://www.npmjs.com/package/@anthropic-ai/claude-code
 LAUNCHER="$PREFIX/bin/termux-ai"
