@@ -12,7 +12,7 @@ echo "==> Updating Termux packages..."
 pkg update -y && pkg upgrade -y
 
 echo "==> Installing required dependencies..."
-pkg install nodejs-lts git proot -y
+pkg install nodejs-lts proot -y
 
 echo "==> Installing Claude Code..."
 npm install -g @anthropic-ai/claude-code
