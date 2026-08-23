@@ -35,6 +35,18 @@ irm https://claude.ai/install.ps1 | iex
 curl -fsSL https://claude.ai/install.cmd -o install.cmd && install.cmd && del install.cmd
 ```
 
+**Android / Termux (direct launcher in this repo):**
+
+```bash
+bash ./setup-termux-ai.sh
+```
+
+After install you can open the same Claude terminal interface with:
+
+```bash
+termux-ai
+```
+
 Or via Homebrew / WinGet:
 
 ```bash
@@ -66,6 +78,13 @@ Follow the prompts to authenticate in your browser. To switch accounts later, ty
 ```bash
 cd termux-ai-setup
 claude
+```
+
+On Termux, use the direct launcher instead:
+
+```bash
+cd termux-ai-setup
+termux-ai
 ```
 
 Type `/help` for available commands or `/resume` to continue a previous conversation.
@@ -143,6 +162,7 @@ review my changes and suggest improvements
 | Command             | What it does                                           |
 | -------------------- | ------------------------------------------------------ |
 | `claude`             | Start interactive mode                                  |
+| `termux-ai`          | Start Claude in Termux with the direct launcher         |
 | `claude "task"`      | Run a one-time task                                     |
 | `claude -p "query"`  | Run one-off query, then exit                             |
 | `claude -c`          | Continue most recent conversation in current directory   |
