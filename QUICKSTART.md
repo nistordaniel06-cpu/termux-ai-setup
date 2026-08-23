@@ -47,6 +47,8 @@ After installation you can open the same Claude terminal interface with:
 termux-ai
 ```
 
+> **Termux users:** use `termux-ai` instead of `claude` for all interactive sessions — including the first-run login — to ensure `/tmp` is correctly bind-mounted via `proot`.
+
 Or via Homebrew / WinGet:
 
 ```bash
@@ -71,12 +73,18 @@ Start an interactive session and you'll be prompted to log in on first use:
 claude
 ```
 
+**Termux users:** run `termux-ai` instead of `claude` to go through the login flow with the `/tmp` compatibility wrapper active:
+
+```bash
+termux-ai
+```
+
 Follow the prompts to authenticate in your browser. To switch accounts later, type `/login` inside a running session.
 
 ## Step 3: Start a session in this repo
 
 ```bash
-cd /path/to/your/repo
+cd termux-ai-setup
 claude
 ```
 
