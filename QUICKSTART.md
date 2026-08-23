@@ -210,7 +210,7 @@ bash termux-chat.sh
 
 ### Removing the auto-start
 
-Open `~/.bashrc` in any editor and delete the two lines that start with `# termux-copilot-autostart`.
+Open `~/.bashrc` in any editor and delete the `# termux-copilot-autostart` marker line and the `bash "..."` line that immediately follows it.
 
 ### Requirements
 
