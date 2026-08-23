@@ -15,6 +15,7 @@ echo "==> Installing required dependencies..."
 pkg install nodejs-lts proot -y
 
 echo "==> Installing Claude Code..."
+# Pin the version so reruns stay reproducible until the launcher is updated intentionally.
 npm install -g @anthropic-ai/claude-code@2.1.241
 
 if ! command -v claude >/dev/null 2>&1; then
