@@ -80,7 +80,7 @@ cd termux-ai-setup
 claude
 ```
 
-On Termux, use the direct launcher instead:
+On Termux, from inside the repo, use the direct launcher instead:
 
 ```bash
 cd termux-ai-setup
