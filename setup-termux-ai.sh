@@ -10,7 +10,7 @@ LAUNCHER="$PREFIX/bin/termux-ai"
 mkdir -p "$TMP_ROOT"
 
 echo "==> Updating Termux packages..."
-pkg update -y && pkg upgrade -y
+pkg update -y
 
 echo "==> Installing required dependencies..."
 pkg install nodejs-lts proot -y
