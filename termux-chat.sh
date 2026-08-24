@@ -100,7 +100,8 @@ while true; do
                 echo -e "${YELLOW}Usage:${RESET} suggest <what you want to do>"
             else
                 echo ""
-                gh copilot suggest -t shell "$rest"
+                gh copilot suggest -t shell "$rest" || \
+                    echo -e "${RED}Copilot suggest failed (exit $?). Check your connection or run: gh auth status${RESET}"
                 echo ""
             fi
             ;;
@@ -109,14 +110,16 @@ while true; do
                 echo -e "${YELLOW}Usage:${RESET} explain <command>"
             else
                 echo ""
-                gh copilot explain "$rest"
+                gh copilot explain "$rest" || \
+                    echo -e "${RED}Copilot explain failed (exit $?). Check your connection or run: gh auth status${RESET}"
                 echo ""
             fi
             ;;
         *)
             # treat bare input as a suggest query for convenience
             echo ""
-            gh copilot suggest -t shell "$input"
+            gh copilot suggest -t shell "$input" || \
+                echo -e "${RED}Copilot suggest failed (exit $?). Check your connection or run: gh auth status${RESET}"
             echo ""
             ;;
     esac
