@@ -1,21 +1,21 @@
 #!/data/data/com.termux/files/usr/bin/bash
-# Instalare automată GitHub CLI (gh) în Termux
+# Automatic GitHub CLI (gh) installer for Termux
 
 set -e
 
 if ! command -v pkg >/dev/null 2>&1; then
-    echo "Acest script trebuie rulat din Termux (lipsește comanda 'pkg')." >&2
+    echo "This script must be run inside Termux (missing 'pkg' command)." >&2
     exit 1
 fi
 
-echo "==> Actualizare pachete Termux..."
+echo "==> Updating Termux packages..."
 pkg update -y && pkg upgrade -y
 
-echo "==> Instalare GitHub CLI..."
+echo "==> Installing GitHub CLI..."
 if pkg install gh -y 2>/dev/null; then
-    echo "==> GitHub CLI instalat cu succes via pkg."
+    echo "==> GitHub CLI installed successfully via pkg."
 else
-    echo "==> pkg install gh a eșuat. Se încearcă instalarea via Go..."
+    echo "==> pkg install gh failed. Trying installation via Go..."
     pkg install golang git -y
     go install github.com/cli/cli/v2/cmd/gh@latest
 
@@ -26,13 +26,13 @@ else
         echo "export PATH=\$PATH:\$HOME/go/bin" >> "$PROFILE"
     fi
     export PATH=$PATH:$HOME/go/bin
-    echo "==> GitHub CLI instalat via Go la: $GH_BIN"
+    echo "==> GitHub CLI installed via Go at: $GH_BIN"
 fi
 
 echo ""
-echo "==> Verificare versiune:"
+echo "==> Version check:"
 gh --version
 
 echo ""
-echo "==> Autentificare GitHub (rulează manual):"
+echo "==> To authenticate with GitHub, run:"
 echo "    gh auth login"

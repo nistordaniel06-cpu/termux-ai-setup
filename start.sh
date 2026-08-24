@@ -63,13 +63,19 @@ CHAT_SCRIPT="$(cd "$(dirname "$0")" && pwd)/termux-chat.sh"
 BASHRC="$HOME/.bashrc"
 
 if ! grep -qF "$MARKER" "$BASHRC" 2>/dev/null; then
-    {
-        echo ""
-        echo "$MARKER"
-        echo "bash \"$CHAT_SCRIPT\""
-    } >> "$BASHRC"
-    echo -e "${GREEN}  Auto-start added to ~/.bashrc${RESET}"
-    echo "  To remove it later, delete the marker line and the bash line that follows it in ~/.bashrc"
+    echo ""
+    read -r -p "Add Copilot Chat auto-start to ~/.bashrc? [y/N] " _autostart
+    if [[ "$_autostart" =~ ^[Yy]$ ]]; then
+        {
+            echo ""
+            echo "$MARKER"
+            echo "bash \"$CHAT_SCRIPT\""
+        } >> "$BASHRC"
+        echo -e "${GREEN}  Auto-start added to ~/.bashrc${RESET}"
+        echo "  To remove it later, delete the marker line and the bash line that follows it in ~/.bashrc"
+    else
+        echo "  Skipped auto-start. You can run the chat manually with:  bash termux-chat.sh"
+    fi
 else
     echo -e "${GREEN}  Auto-start already configured in ~/.bashrc${RESET}"
 fi
