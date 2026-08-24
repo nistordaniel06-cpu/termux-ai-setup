@@ -53,6 +53,23 @@ if ! command -v claude >/dev/null 2>&1; then
   exit 1
 fi
 
+echo "==> Verifying the Claude Code native binary..."
+if ! claude --version >/dev/null 2>&1; then
+  # Recent npm versions require install scripts to be explicitly allowlisted,
+  # so the postinstall step that downloads the native binary may get skipped.
+  echo "    Native binary missing, running postinstall manually..."
+  NPM_GLOBAL_ROOT="$(npm root -g)"
+  POSTINSTALL="$NPM_GLOBAL_ROOT/@anthropic-ai/claude-code/install.cjs"
+  if [[ -f "$POSTINSTALL" ]]; then
+    node "$POSTINSTALL"
+  fi
+  if ! claude --version >/dev/null 2>&1; then
+    echo "Claude Code installed but the native binary still isn't working." >&2
+    echo "Try running it manually: node \"$POSTINSTALL\"" >&2
+    exit 1
+  fi
+fi
+
 echo "==> Checking proot sandbox support..."
 USE_PROOT=1
 if ! proot -b "$TMP_ROOT:/tmp" true >/dev/null 2>&1; then
