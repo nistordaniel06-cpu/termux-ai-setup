@@ -11,6 +11,23 @@ GREEN="\033[32m"
 RESET="\033[0m"
 BOLD="\033[1m"
 
+RETRIES=3
+
+# Retry a flaky, network-dependent command with backoff (2s, 4s, 8s).
+retry() {
+    local attempt=1 delay=2
+    until "$@"; do
+        if (( attempt >= RETRIES )); then
+            echo "  Command failed after $RETRIES attempts: $*" >&2
+            return 1
+        fi
+        echo "  Retrying in ${delay}s... (attempt $((attempt + 1))/$RETRIES)" >&2
+        sleep "$delay"
+        attempt=$((attempt + 1))
+        delay=$((delay * 2))
+    done
+}
+
 echo -e "${BOLD}==> Termux Copilot Chat — setup & launch${RESET}"
 
 if ! command -v pkg &>/dev/null; then
@@ -20,15 +37,15 @@ fi
 
 # 1. Update packages (non-fatal if offline)
 echo -e "${YELLOW}[1/4] Updating Termux packages…${RESET}"
-pkg update -y 2>/dev/null || echo "  (skipped — no network or already up to date)"
+retry pkg update -y || echo "  (skipped — no network or already up to date)"
 
 # 2. Install gh CLI
 echo -e "${YELLOW}[2/4] Installing GitHub CLI (gh)…${RESET}"
 if ! command -v gh &>/dev/null; then
-    if ! pkg install gh -y 2>/dev/null; then
+    if ! retry pkg install gh -y; then
         echo "  pkg install gh failed, trying via Go…"
-        pkg install golang git -y
-        go install github.com/cli/cli/v2/cmd/gh@latest
+        retry pkg install golang git -y
+        retry go install github.com/cli/cli/v2/cmd/gh@latest
         PROFILE="$HOME/.bashrc"
         grep -q 'go/bin' "$PROFILE" 2>/dev/null || \
             echo "export PATH=\$PATH:\$HOME/go/bin" >> "$PROFILE"
@@ -51,7 +68,7 @@ fi
 # 4. Install gh-copilot extension
 echo -e "${YELLOW}[4/4] Checking gh-copilot extension…${RESET}"
 if ! gh extension list 2>/dev/null | grep -q "gh-copilot"; then
-    gh extension install github/gh-copilot
+    retry gh extension install github/gh-copilot
     echo -e "${GREEN}  gh-copilot extension installed.${RESET}"
 else
     echo -e "${GREEN}  gh-copilot already installed.${RESET}"
@@ -61,6 +78,11 @@ fi
 MARKER="# termux-copilot-autostart"
 CHAT_SCRIPT="$(cd "$(dirname "$0")" && pwd)/termux-chat.sh"
 BASHRC="$HOME/.bashrc"
+
+if [[ ! -f "$CHAT_SCRIPT" ]]; then
+    echo "termux-chat.sh not found next to start.sh ($CHAT_SCRIPT) — skipping autostart setup." >&2
+    exit 1
+fi
 
 if ! grep -qF "$MARKER" "$BASHRC" 2>/dev/null; then
     {
