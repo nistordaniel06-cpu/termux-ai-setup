@@ -98,7 +98,7 @@ what does this project do?
 explain the folder structure
 ```
 
-This repo hosts the **Heroium** game (a Godot 4 action-roguelike, under `games/heroium/`) plus the GitHub Pages redirect in `index.html` that sends visitors straight to the playable web build.
+This repo hosts two independent things: Termux/Claude Code setup tooling (this file, `setup-termux-ai.sh`, `setup-gh.sh`, `start.sh`, `termux-chat.sh`) and the **Booking & Growth Platform**, a booking/marketplace app under `booking-platform/` (see `booking-platform/README.md` and `booking-platform/docs/ARCHITECTURE.md`).
 
 ## Step 5: Make a code change
 
@@ -127,25 +127,25 @@ create a new branch called feature/my-change
 **Fix a bug**
 
 ```
-there's a bug where the joystick doesn't reset after release - fix it
+there's a bug where booking cancellation doesn't free up the time slot - fix it
 ```
 
 **Refactor code**
 
 ```
-refactor hero_combat.gd to simplify the attack state machine
+refactor booking.service.ts to simplify the availability check
 ```
 
 **Write or update tests**
 
 ```
-add a test in games/heroium/tests for the new ability
+add a test in booking-platform/packages/api/tests for the new ability
 ```
 
 **Update documentation**
 
 ```
-update games/heroium/README.md with the new control scheme
+update booking-platform/README.md with the new setup step
 ```
 
 **Code review**
