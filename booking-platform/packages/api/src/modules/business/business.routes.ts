@@ -7,8 +7,10 @@ import * as reviewService from "../review/review.service";
 import * as favoriteService from "../favorite/favorite.service";
 import * as growthService from "../growth/growth.service";
 import * as loyaltyService from "../loyalty/loyalty.service";
+import * as customerService from "../customer/customer.service";
 import { setDiscountLimitsSchema, createOfferSchema } from "../growth/growth.schema";
 import { setLoyaltyConfigSchema } from "../loyalty/loyalty.schema";
+import { listCustomersQuerySchema } from "../customer/customer.schema";
 
 export const businessRouter = Router();
 
@@ -155,5 +157,24 @@ businessRouter.get(
   asyncHandler(async (req, res) => {
     const status = await loyaltyService.getLoyaltyStatus(req.params.id, req.auth!.userId);
     res.json(status);
+  })
+);
+
+businessRouter.get(
+  "/:id/customers",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const query = listCustomersQuerySchema.parse(req.query);
+    const customers = await customerService.listCustomers(req.params.id, req.auth!.userId, query);
+    res.json(customers);
+  })
+);
+
+businessRouter.get(
+  "/:id/customers/:customerId",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const customer = await customerService.getCustomerDetail(req.params.id, req.params.customerId, req.auth!.userId);
+    res.json(customer);
   })
 );

@@ -1,0 +1,15 @@
+{
+  "name": "booking-platform",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "app",
+  "workspaceFolder": "/workspace",
+  "forwardPorts": [3000, 4000, 5432],
+  "portsAttributes": {
+    "3000": { "label": "web (Next.js)" },
+    "4000": { "label": "api (Express)" }
+  },
+  "postCreateCommand": "npm install",
+  "remoteEnv": {
+    "DATABASE_URL": "postgresql://postgres:postgres@db:5432/booking_platform"
+  }
+}

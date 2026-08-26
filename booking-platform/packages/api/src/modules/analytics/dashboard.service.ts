@@ -1,18 +1,12 @@
 import { prisma } from "../../lib/prisma";
-import { forbidden, notFound } from "../../lib/errors";
+import { requireBusinessStaffAccess } from "../business/business.service";
 import { getAvailableWindows } from "../professional/professional.service";
 import { subtractIntervals, generateCandidateSlots } from "../professional/availability.util";
 
 const EMPTY_SLOT_GRANULARITY_MINUTES = 30;
 
 export async function getDashboard(businessId: string, userId: string) {
-  const business = await prisma.business.findUnique({ where: { id: businessId } });
-  if (!business) throw notFound("Business not found");
-
-  if (business.ownerId !== userId) {
-    const isProfessional = await prisma.professional.findFirst({ where: { businessId, userId } });
-    if (!isProfessional) throw forbidden("You cannot view this business's dashboard");
-  }
+  await requireBusinessStaffAccess(businessId, userId);
 
   const professionals = await prisma.professional.findMany({ where: { businessId, active: true } });
   const now = new Date();

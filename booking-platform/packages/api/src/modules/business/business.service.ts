@@ -76,6 +76,16 @@ export async function requireOwnedBusiness(businessId: string, ownerId: string) 
   return business;
 }
 
+/** Owner or any professional working at the business — read access to internal, non-public views. */
+export async function requireBusinessStaffAccess(businessId: string, userId: string) {
+  const business = await getBusinessById(businessId);
+  if (business.ownerId !== userId) {
+    const isProfessional = await prisma.professional.findFirst({ where: { businessId, userId } });
+    if (!isProfessional) throw forbidden("You do not have access to this business");
+  }
+  return business;
+}
+
 export async function updateBusiness(
   businessId: string,
   ownerId: string,
