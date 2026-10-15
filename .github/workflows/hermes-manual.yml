@@ -53,8 +53,8 @@ jobs:
       group: hermes-manual
       cancel-in-progress: false
     env:
-      HERMES_HOME: ${{ runner.temp }}/hermes-home
-      HERMES_REPORT_DIR: ${{ runner.temp }}/hermes-report
+      HERMES_HOME: ${{ github.workspace }}/hermes-home
+      HERMES_REPORT_DIR: ${{ github.workspace }}/hermes-report
       HERMES_SOURCE: ${{ github.workspace }}/.hermes-runtime
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
