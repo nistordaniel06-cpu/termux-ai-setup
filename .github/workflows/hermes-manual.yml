@@ -1,0 +1,104 @@
+name: Hermes - sarcina manuala
+
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: "Sarcina text (fără date private; maximum 6000 caractere)"
+        required: true
+        type: string
+        default: "Pregătește o listă de verificare pentru prezentarea unui site de salon unui potențial client. Marchează presupunerile."
+      provider:
+        description: "Furnizorul cheii HERMES_API_KEY"
+        required: true
+        type: choice
+        options:
+          - groq
+          - openrouter
+      confirm:
+        description: "Accept consumul API și vizibilitatea raportului pentru cei cu acces la rulare"
+        type: boolean
+        required: true
+        default: false
+  pull_request:
+    paths:
+      - ".github/workflows/hermes-manual.yml"
+      - "scripts/hermes_actions_report.py"
+      - "tests/test_hermes_actions_report.py"
+  push:
+    paths:
+      - ".github/workflows/hermes-manual.yml"
+      - "scripts/hermes_actions_report.py"
+      - "tests/test_hermes_actions_report.py"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - run: python3 -m unittest discover -s tests -p test_hermes_actions_report.py -v
+
+  report:
+    if: github.event_name == 'workflow_dispatch' && inputs.confirm
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    concurrency:
+      group: hermes-manual
+      cancel-in-progress: false
+    env:
+      HERMES_HOME: ${{ runner.temp }}/hermes-home
+      HERMES_REPORT_DIR: ${{ runner.temp }}/hermes-report
+      HERMES_SOURCE: ${{ github.workspace }}/.hermes-runtime
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Verifica configurarea
+        env:
+          API_KEY: ${{ secrets.HERMES_API_KEY }}
+          MODEL: ${{ vars.HERMES_MODEL }}
+          TASK: ${{ inputs.task }}
+        run: |
+          python3 - <<'PY'
+          import os
+          import sys
+          ok = bool(os.environ["API_KEY"].strip() and os.environ["MODEL"].strip())
+          ok = ok and 0 < len(os.environ["TASK"].strip()) <= 6000
+          if not ok:
+              sys.exit("Configurează HERMES_API_KEY, HERMES_MODEL și o sarcină de maximum 6000 caractere.")
+          PY
+      - name: Descarca Hermes la versiunea verificata
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: NousResearch/hermes-agent
+          ref: b51e8b850494e0a95a4b410c3d9b9a26df9ae261
+          path: .hermes-runtime
+          persist-credentials: false
+      - name: Pregateste mediul oficial Hermes (fara cheie API)
+        timeout-minutes: 24
+        working-directory: .hermes-runtime
+        run: bash scripts/run-in-hermes-env python -c 'from run_agent import AIAgent; print("Hermes import OK")'
+      - name: Genereaza raportul
+        timeout-minutes: 4
+        working-directory: .hermes-runtime
+        env:
+          HERMES_TASK: ${{ inputs.task }}
+          HERMES_PROVIDER: ${{ inputs.provider }}
+          HERMES_API_KEY: ${{ secrets.HERMES_API_KEY }}
+          HERMES_MODEL: ${{ vars.HERMES_MODEL }}
+        run: timeout --signal=TERM --kill-after=10s 180s bash scripts/run-in-hermes-env python "$GITHUB_WORKSPACE/scripts/hermes_actions_report.py"
+      - name: Salveaza numai raportul
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: hermes-report
+          path: ${{ env.HERMES_REPORT_DIR }}/raport.md
+          retention-days: 7
+          if-no-files-found: error
+
