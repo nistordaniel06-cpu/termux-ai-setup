@@ -14,9 +14,15 @@ echo "Acest script configureaza depozitul oficial; nu repara pachetul upstream."
 pkg install curl gnupg -y
 hermes_tmp="$(mktemp -d)"
 trap 'rm -rf "$hermes_tmp"' EXIT
-curl --fail --show-error --location --retry 3 \
+if ! curl --fail --show-error --location --retry 3 --connect-timeout 15 --max-time 90 \
   https://hermes-assets.nousresearch.com/releases/termux/stable/key.asc \
-  -o "$hermes_tmp/key.asc"
+  -o "$hermes_tmp/key.asc"; then
+  echo "Nu se poate descarca cheia din depozitul oficial Hermes." >&2
+  echo "Daca apare 404, fisierul lipseste de pe server; repetarea comenzii nu il repara." >&2
+  echo "Nu am modificat configuratia APT Hermes. Verifica starea suportului Termux:" >&2
+  echo "https://hermes-agent.nousresearch.com/docs/getting-started/termux" >&2
+  exit 1
+fi
 fingerprint="$(gpg --batch --show-keys --with-colons "$hermes_tmp/key.asc" | awk -F: '$1 == "fpr" {print $10; exit}')"
 if [[ "$fingerprint" != C572B5FDD1A29CCFA9A912B6840B0848E139156D ]]; then
   echo "Amprenta cheii nu corespunde. Instalarea a fost oprita." >&2
