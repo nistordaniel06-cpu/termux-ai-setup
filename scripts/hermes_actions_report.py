@@ -12,6 +12,8 @@ def run(env, agent_factory):
     model = env.get("HERMES_MODEL", "").strip()
     key = env.get("HERMES_API_KEY", "").strip()
     provider = env.get("HERMES_PROVIDER", "groq")
+    if provider == "groq" and model == "llama-3.3-70b-versatile":
+        model = "openai/gpt-oss-120b"
     if not task or len(task) > 6000:
         raise ValueError("Sarcina trebuie să conțină între 1 și 6000 de caractere.")
     if not model or not key:

@@ -15,6 +15,8 @@ Nu este un server permanent, chat live sau integrare cu Agent City.
    la furnizorul ales. Pentru Groq folosește un model text Chat Completions fără
    cerințe speciale de reasoning; verifică ID-ul în consola furnizorului. Modelul
    și cheia trebuie să aparțină aceluiași furnizor. Nu există fallback către altul.
+   Dacă HERMES_MODEL este încă `llama-3.3-70b-versatile`, workflow-ul îl înlocuiește
+   pentru Groq cu `openai/gpt-oss-120b`; actualizează variabila la ID-ul nou.
 4. Intră în **Actions → Hermes - sarcina manuala → Run workflow**. Alege `main`,
    furnizorul, scrie sarcina și bifează confirmarea consumului API și vizibilității.
 5. Deschide rularea. După succes, în **Artifacts**, descarcă **hermes-report**.
