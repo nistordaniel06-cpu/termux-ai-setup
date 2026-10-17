@@ -1,0 +1,38 @@
+# Dependențe
+node_modules/
+jspm_packages/
+
+# Build / artefacte
+dist/
+build/
+.next/
+out/
+*.tsbuildinfo
+
+# Medii și secrete — niciodată în git
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Loguri și cache local
+*.log
+npm-debug.log*
+.cache/
+.hermes/
+hermes-home/
+hermes-report/
+.hermes-runtime/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

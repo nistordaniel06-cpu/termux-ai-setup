@@ -1,0 +1,38 @@
+name: Shell scripts
+
+on:
+  push:
+    paths:
+      - "**/*.sh"
+      - ".github/workflows/shell-scripts.yml"
+  pull_request:
+    paths:
+      - "**/*.sh"
+      - ".github/workflows/shell-scripts.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - name: Syntax check (bash -n)
+        run: |
+          status=0
+          while IFS= read -r -d '' script; do
+            printf 'bash -n %s\n' "$script"
+            bash -n "$script" || status=1
+          done < <(find . -name '*.sh' -not -path './node_modules/*' -print0)
+          exit "$status"
+
+      - name: ShellCheck
+        run: |
+          mapfile -d '' scripts < <(find . -name '*.sh' -not -path './node_modules/*' -print0)
+          shellcheck --version
+          shellcheck -S warning -x "${scripts[@]}"
