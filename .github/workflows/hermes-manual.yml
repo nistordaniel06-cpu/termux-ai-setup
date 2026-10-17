@@ -95,7 +95,7 @@ jobs:
           HERMES_MODEL: ${{ vars.HERMES_MODEL }}
         run: timeout --signal=TERM --kill-after=10s 180s bash scripts/run-in-hermes-env python "$GITHUB_WORKSPACE/scripts/hermes_actions_report.py"
       - name: Salveaza numai raportul
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: hermes-report
           path: ${{ env.HERMES_REPORT_DIR }}/raport.md
