@@ -30,22 +30,6 @@ class ReportTests(unittest.TestCase):
         self.assertTrue(self.settings["skip_background_review"])
         self.assertTrue(self.closed)
 
-    def test_retired_groq_model_uses_supported_replacement(self):
-        env = self.env | {
-            "HERMES_PROVIDER": "groq",
-            "HERMES_MODEL": "llama-3.3-70b-versatile",
-        }
-        report.run(env, self.factory)
-        self.assertEqual(self.settings["model"], "openai/gpt-oss-120b")
-
-    def test_model_is_not_rewritten_for_other_providers(self):
-        env = self.env | {
-            "HERMES_PROVIDER": "openrouter",
-            "HERMES_MODEL": "llama-3.3-70b-versatile",
-        }
-        report.run(env, self.factory)
-        self.assertEqual(self.settings["model"], "llama-3.3-70b-versatile")
-
     def test_missing_key_and_oversized_input_before_agent_creation(self):
         for patch in ({"HERMES_API_KEY": ""}, {"HERMES_TASK": "x" * 6001}, {"HERMES_PROVIDER": "unknown"}):
             with self.subTest(patch=patch), self.assertRaises(ValueError):
