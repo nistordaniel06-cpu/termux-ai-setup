@@ -39,7 +39,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
       - run: python3 -m unittest discover -s tests -p test_hermes_actions_report.py -v
@@ -57,7 +57,7 @@ jobs:
       HERMES_REPORT_DIR: ${{ github.workspace }}/hermes-report
       HERMES_SOURCE: ${{ github.workspace }}/.hermes-runtime
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
       - name: Verifica configurarea
@@ -75,7 +75,7 @@ jobs:
               sys.exit("Configurează HERMES_API_KEY, HERMES_MODEL și o sarcină de maximum 6000 caractere.")
           PY
       - name: Descarca Hermes la versiunea verificata
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           repository: NousResearch/hermes-agent
           ref: b51e8b850494e0a95a4b410c3d9b9a26df9ae261
