@@ -13,6 +13,10 @@ if [[ ! -t 0 || ! -t 1 ]]; then
     exit 1
 fi
 
+# Ignore Ctrl-C at the shell level so it interrupts a running
+# `gh copilot` call instead of killing the whole chat session.
+trap '' INT
+
 # ── colour helpers ──────────────────────────────────────────────────────────
 BOLD="\033[1m"
 CYAN="\033[36m"
